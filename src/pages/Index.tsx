@@ -1,13 +1,36 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React from 'react';
+import AppLayout from '@/components/layout/AppLayout';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import BalanceCard from '@/components/dashboard/BalanceCard';
+import ExpenseChart from '@/components/dashboard/ExpenseChart';
+import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown';
+import TransactionList from '@/components/dashboard/TransactionList';
+import BudgetProgress from '@/components/dashboard/BudgetProgress';
+import { FinanceProvider } from '@/context/FinanceContext';
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <FinanceProvider>
+      <AppLayout>
+        <DashboardHeader />
+        <BalanceCard />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <ExpenseChart />
+          </div>
+          <div>
+            <CategoryBreakdown />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TransactionList />
+          <BudgetProgress />
+        </div>
+      </AppLayout>
+    </FinanceProvider>
   );
 };
 
