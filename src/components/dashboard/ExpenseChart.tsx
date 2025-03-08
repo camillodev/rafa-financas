@@ -43,17 +43,22 @@ export function ExpenseChart() {
             <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
+                  // Ensure we're working with numbers for the calculation
+                  const incomeValue = Number(payload[0].value) || 0;
+                  const expenseValue = Number(payload[1].value) || 0;
+                  const netValue = incomeValue - expenseValue;
+                  
                   return (
                     <div className="bg-background p-3 border rounded-lg shadow-md">
                       <p className="font-medium text-foreground">{label}</p>
                       <p className="text-sm text-finance-income">
-                        Income: ${payload[0].value.toLocaleString()}
+                        Income: ${incomeValue.toLocaleString()}
                       </p>
                       <p className="text-sm text-finance-expense">
-                        Expenses: ${payload[1].value.toLocaleString()}
+                        Expenses: ${expenseValue.toLocaleString()}
                       </p>
                       <p className="text-sm font-medium text-primary mt-1">
-                        Net: ${(payload[0].value - payload[1].value).toLocaleString()}
+                        Net: ${netValue.toLocaleString()}
                       </p>
                     </div>
                   );
@@ -104,17 +109,22 @@ export function ExpenseChart() {
           <Tooltip
             content={({ active, payload, label }) => {
               if (active && payload && payload.length) {
+                // Ensure we're working with numbers for the calculation
+                const incomeValue = Number(payload[0].value) || 0;
+                const expenseValue = Number(payload[1].value) || 0;
+                const netValue = incomeValue - expenseValue;
+                
                 return (
                   <div className="bg-background p-3 border rounded-lg shadow-md">
                     <p className="font-medium text-foreground">{label}</p>
                     <p className="text-sm text-finance-income">
-                      Income: ${payload[0].value.toLocaleString()}
+                      Income: ${incomeValue.toLocaleString()}
                     </p>
                     <p className="text-sm text-finance-expense">
-                      Expenses: ${payload[1].value.toLocaleString()}
+                      Expenses: ${expenseValue.toLocaleString()}
                     </p>
                     <p className="text-sm font-medium text-primary mt-1">
-                      Net: ${(payload[0].value - payload[1].value).toLocaleString()}
+                      Net: ${netValue.toLocaleString()}
                     </p>
                   </div>
                 );
