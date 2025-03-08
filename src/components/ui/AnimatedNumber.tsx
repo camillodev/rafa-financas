@@ -1,18 +1,23 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useSpring, animated } from '@react-spring/web';
 
 interface AnimatedNumberProps {
   value: number;
   duration?: number;
   formatValue?: (value: number) => string;
+  formatter?: (value: number) => string; // Add this line to support both prop names
 }
 
 const AnimatedNumber = ({ 
   value,
   duration = 2000,
   formatValue = (val) => val.toFixed(2),
+  formatter, // Add this prop
 }: AnimatedNumberProps) => {
+  // Use formatter if provided, otherwise use formatValue
+  const formatFn = formatter || formatValue;
+  
   // Start at 0 and animate to the actual value
   const { number } = useSpring({
     from: { number: 0 },
@@ -23,7 +28,7 @@ const AnimatedNumber = ({
 
   return (
     <animated.span>
-      {number.to((val) => formatValue(val))}
+      {number.to((val) => formatFn(val))}
     </animated.span>
   );
 };

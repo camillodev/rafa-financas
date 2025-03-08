@@ -54,7 +54,7 @@ export function BalanceCard() {
               <div className={cn("text-2xl font-bold", card.valueColor)}>
                 <AnimatedNumber 
                   value={card.value} 
-                  formatter={(value) => formatCurrency(value)} 
+                  formatValue={(value) => formatCurrency(value)}
                 />
               </div>
             </div>
