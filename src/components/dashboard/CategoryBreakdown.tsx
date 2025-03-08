@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { useFinance } from '@/context/FinanceContext';
 
 export function CategoryBreakdown() {
-  const { expenseBreakdown } = useFinance();
+  const { expenseBreakdown, formatCurrency } = useFinance();
   
   // Filter out categories with 0 value
   const filteredData = expenseBreakdown.filter(item => item.value > 0);
@@ -12,7 +12,7 @@ export function CategoryBreakdown() {
   return (
     <div className="rounded-xl border bg-card shadow-sm h-full animate-fade-in">
       <div className="p-6">
-        <h3 className="text-lg font-medium mb-6">Expense Breakdown</h3>
+        <h3 className="text-lg font-medium mb-6">Despesas por Categoria</h3>
         
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -34,16 +34,16 @@ export function CategoryBreakdown() {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value) => [`$${value.toLocaleString()}`, 'Amount']}
+                formatter={(value) => [formatCurrency(Number(value)), 'Valor']}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
                       <div className="bg-background p-3 border rounded-lg shadow-md">
                         <p className="font-medium" style={{ color: data.color }}>{data.category}</p>
-                        <p className="text-sm text-foreground">${data.value.toLocaleString()}</p>
+                        <p className="text-sm text-foreground">{formatCurrency(data.value)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {((data.value / expenseBreakdown.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}% of total
+                          {((data.value / expenseBreakdown.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}% do total
                         </p>
                       </div>
                     );

@@ -5,9 +5,9 @@ import { useFinance } from '@/context/FinanceContext';
 import { ChevronDown } from 'lucide-react';
 
 export function ExpenseChart() {
-  const { monthlyData } = useFinance();
+  const { monthlyData, formatCurrency } = useFinance();
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
-  const [timeRange, setTimeRange] = useState('This Year');
+  const [timeRange, setTimeRange] = useState('Este Ano');
   
   const renderChart = () => {
     if (chartType === 'area') {
@@ -38,7 +38,7 @@ export function ExpenseChart() {
               axisLine={false} 
               tickLine={false} 
               tick={{ fontSize: 12, fill: '#64748b' }}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => `${value === 0 ? 'R$ 0' : 'R$ ' + value / 1000 + 'k'}`}
             />
             <Tooltip
               content={({ active, payload, label }) => {
@@ -52,13 +52,13 @@ export function ExpenseChart() {
                     <div className="bg-background p-3 border rounded-lg shadow-md">
                       <p className="font-medium text-foreground">{label}</p>
                       <p className="text-sm text-finance-income">
-                        Income: ${incomeValue.toLocaleString()}
+                        Receitas: {formatCurrency(incomeValue)}
                       </p>
                       <p className="text-sm text-finance-expense">
-                        Expenses: ${expenseValue.toLocaleString()}
+                        Despesas: {formatCurrency(expenseValue)}
                       </p>
                       <p className="text-sm font-medium text-primary mt-1">
-                        Net: ${netValue.toLocaleString()}
+                        Saldo: {formatCurrency(netValue)}
                       </p>
                     </div>
                   );
@@ -73,6 +73,7 @@ export function ExpenseChart() {
               strokeWidth={2}
               fill="url(#incomeGradient)"
               activeDot={{ r: 6 }}
+              name="Receitas"
             />
             <Area
               type="monotone"
@@ -81,6 +82,7 @@ export function ExpenseChart() {
               strokeWidth={2}
               fill="url(#expenseGradient)"
               activeDot={{ r: 6 }}
+              name="Despesas"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -104,7 +106,7 @@ export function ExpenseChart() {
             axisLine={false} 
             tickLine={false} 
             tick={{ fontSize: 12, fill: '#64748b' }}
-            tickFormatter={(value) => `$${value}`}
+            tickFormatter={(value) => `${value === 0 ? 'R$ 0' : 'R$ ' + value / 1000 + 'k'}`}
           />
           <Tooltip
             content={({ active, payload, label }) => {
@@ -118,13 +120,13 @@ export function ExpenseChart() {
                   <div className="bg-background p-3 border rounded-lg shadow-md">
                     <p className="font-medium text-foreground">{label}</p>
                     <p className="text-sm text-finance-income">
-                      Income: ${incomeValue.toLocaleString()}
+                      Receitas: {formatCurrency(incomeValue)}
                     </p>
                     <p className="text-sm text-finance-expense">
-                      Expenses: ${expenseValue.toLocaleString()}
+                      Despesas: {formatCurrency(expenseValue)}
                     </p>
                     <p className="text-sm font-medium text-primary mt-1">
-                      Net: ${netValue.toLocaleString()}
+                      Saldo: {formatCurrency(netValue)}
                     </p>
                   </div>
                 );
@@ -134,10 +136,10 @@ export function ExpenseChart() {
           />
           <Legend 
             wrapperStyle={{ paddingTop: 10 }}
-            formatter={(value) => <span className="text-sm">{value}</span>}
+            formatter={(value) => <span className="text-sm">{value === "income" ? "Receitas" : "Despesas"}</span>}
           />
-          <Bar dataKey="income" name="Income" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expenses" name="Expenses" fill="#f97316" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="income" name="Receitas" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expenses" name="Despesas" fill="#f97316" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     );
@@ -147,7 +149,7 @@ export function ExpenseChart() {
     <div className="rounded-xl border bg-card shadow-sm animate-fade-in">
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-medium">Income vs Expenses</h3>
+          <h3 className="text-lg font-medium">Receitas vs Despesas</h3>
           <div className="flex gap-2">
             <div className="relative">
               <button className="inline-flex items-center gap-1 text-sm border rounded-md px-2 py-1">
@@ -164,7 +166,7 @@ export function ExpenseChart() {
                 }`}
                 onClick={() => setChartType('area')}
               >
-                Area
+                Área
               </button>
               <button
                 className={`px-3 py-1 text-xs font-medium ${
@@ -174,7 +176,7 @@ export function ExpenseChart() {
                 }`}
                 onClick={() => setChartType('bar')}
               >
-                Bar
+                Barra
               </button>
             </div>
           </div>

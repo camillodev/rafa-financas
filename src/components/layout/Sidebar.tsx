@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ArrowRightLeft, 
@@ -47,6 +47,7 @@ const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProp
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   
   return (
     <div 
@@ -59,7 +60,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="flex items-center gap-2">
             <Home className="text-primary h-6 w-6" />
-            <span className="font-medium text-lg">Budgetaroo</span>
+            <span className="font-medium text-lg">Rafa Finanças</span>
           </div>
         )}
         {collapsed && <Home className="text-primary h-6 w-6 mx-auto" />}
@@ -81,37 +82,42 @@ export function Sidebar() {
           icon={<LayoutDashboard size={20} />} 
           label="Dashboard" 
           href="/" 
-          active 
+          active={location.pathname === '/'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<ArrowRightLeft size={20} />} 
           label="Transactions" 
           href="/transactions" 
+          active={location.pathname === '/transactions'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<BarChart3 size={20} />} 
           label="Budgets" 
           href="/budgets" 
+          active={location.pathname === '/budgets'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<PieChart size={20} />} 
           label="Analytics" 
           href="/analytics" 
+          active={location.pathname === '/analytics'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<Target size={20} />} 
           label="Goals" 
           href="/goals" 
+          active={location.pathname === '/goals'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<CreditCard size={20} />} 
           label="Accounts" 
           href="/accounts" 
+          active={location.pathname === '/accounts'} 
           isCollapsed={collapsed} 
         />
       </div>
@@ -121,6 +127,7 @@ export function Sidebar() {
           icon={<Settings size={20} />} 
           label="Settings" 
           href="/settings" 
+          active={location.pathname === '/settings'} 
           isCollapsed={collapsed} 
         />
       </div>

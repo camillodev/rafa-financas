@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { BarChart } from 'lucide-react';
 
@@ -38,20 +39,28 @@ function ProgressBar({
 }
 
 export function BudgetProgress() {
-  const { budgetGoals } = useFinance();
+  const { budgetGoals, formatCurrency } = useFinance();
+  const navigate = useNavigate();
   
   // Sort by highest percentage spent
   const sortedBudgets = [...budgetGoals]
     .sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount))
     .slice(0, 5);
   
+  const handleNavigateToBudgets = () => {
+    navigate('/budgets');
+  };
+  
   return (
     <div className="rounded-xl border bg-card shadow-sm h-full animate-fade-in">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium">Budget Progress</h3>
-          <button className="text-sm text-primary hover:underline">
-            Manage Budgets
+          <h3 className="text-lg font-medium">Progresso do Orçamento</h3>
+          <button 
+            className="text-sm text-primary hover:underline"
+            onClick={handleNavigateToBudgets}
+          >
+            Gerenciar Orçamentos
           </button>
         </div>
         
@@ -78,17 +87,17 @@ export function BudgetProgress() {
                             : 'text-foreground'
                       }`}
                     >
-                      ${budget.spent.toLocaleString()}
+                      {formatCurrency(budget.spent)}
                     </span>
-                    <span className="text-muted-foreground"> / ${budget.amount.toLocaleString()}</span>
+                    <span className="text-muted-foreground"> / {formatCurrency(budget.amount)}</span>
                   </span>
                 </div>
                 <div className="space-y-1">
                   <ProgressBar value={budget.spent} max={budget.amount} />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{percentage}% used</span>
+                    <span>{percentage}% usado</span>
                     <span>
-                      ${Math.max(budget.amount - budget.spent, 0).toLocaleString()} remaining
+                      {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
                     </span>
                   </div>
                 </div>

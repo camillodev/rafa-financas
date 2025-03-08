@@ -6,29 +6,32 @@ import AnimatedNumber from '@/components/ui/AnimatedNumber';
 import { cn } from '@/lib/utils';
 
 export function BalanceCard() {
-  const { financialSummary } = useFinance();
+  const { financialSummary, formatCurrency, navigateToTransactions } = useFinance();
   
   const cards = [
     {
-      title: 'Total Balance',
+      title: 'Saldo Total',
       value: financialSummary.netBalance,
       icon: <DollarSign className="h-5 w-5 text-primary" />,
       className: 'bg-gradient-to-br from-white to-primary/5',
       valueColor: 'text-primary',
+      onClick: () => {}
     },
     {
-      title: 'Income',
+      title: 'Receitas',
       value: financialSummary.totalIncome,
       icon: <ArrowUpRight className="h-5 w-5 text-finance-income" />,
       className: 'bg-gradient-to-br from-white to-finance-income/5',
       valueColor: 'text-finance-income',
+      onClick: () => navigateToTransactions('income')
     },
     {
-      title: 'Expenses',
+      title: 'Despesas',
       value: financialSummary.totalExpenses,
       icon: <ArrowDownRight className="h-5 w-5 text-finance-expense" />,
       className: 'bg-gradient-to-br from-white to-finance-expense/5',
       valueColor: 'text-finance-expense',
+      onClick: () => navigateToTransactions('expense')
     },
   ];
   
@@ -39,9 +42,11 @@ export function BalanceCard() {
           key={card.title}
           className={cn(
             "relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all hover:shadow-md animate-scale-in",
-            card.className
+            card.className,
+            index > 0 ? "cursor-pointer" : ""
           )}
           style={{ animationDelay: `${index * 100}ms` }}
+          onClick={card.onClick}
         >
           <div className="flex justify-between">
             <div className="space-y-1">
@@ -49,8 +54,7 @@ export function BalanceCard() {
               <div className={cn("text-2xl font-bold", card.valueColor)}>
                 <AnimatedNumber 
                   value={card.value} 
-                  prefix="$" 
-                  formatter={(value) => value.toLocaleString()} 
+                  formatter={(value) => formatCurrency(value)} 
                 />
               </div>
             </div>
