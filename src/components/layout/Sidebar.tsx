@@ -11,7 +11,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   BarChart3,
-  Home
+  Home,
+  Landmark,
+  List
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -87,37 +89,51 @@ export function Sidebar() {
         />
         <SidebarLink 
           icon={<ArrowRightLeft size={20} />} 
-          label="Transactions" 
+          label="Transações" 
           href="/transactions" 
           active={location.pathname === '/transactions'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<BarChart3 size={20} />} 
-          label="Budgets" 
+          label="Orçamentos" 
           href="/budgets" 
           active={location.pathname === '/budgets'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
+          icon={<List size={20} />} 
+          label="Categorias" 
+          href="/categories" 
+          active={location.pathname === '/categories'} 
+          isCollapsed={collapsed} 
+        />
+        <SidebarLink 
+          icon={<Landmark size={20} />} 
+          label="Instituições" 
+          href="/institutions" 
+          active={location.pathname === '/institutions'} 
+          isCollapsed={collapsed} 
+        />
+        <SidebarLink 
+          icon={<CreditCard size={20} />} 
+          label="Cartões" 
+          href="/cards" 
+          active={location.pathname === '/cards'} 
+          isCollapsed={collapsed} 
+        />
+        <SidebarLink 
           icon={<PieChart size={20} />} 
-          label="Analytics" 
+          label="Análises" 
           href="/analytics" 
           active={location.pathname === '/analytics'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
           icon={<Target size={20} />} 
-          label="Goals" 
+          label="Metas" 
           href="/goals" 
           active={location.pathname === '/goals'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<CreditCard size={20} />} 
-          label="Accounts" 
-          href="/accounts" 
-          active={location.pathname === '/accounts'} 
           isCollapsed={collapsed} 
         />
       </div>
@@ -125,7 +141,7 @@ export function Sidebar() {
       <div className="mt-auto px-3 mb-6">
         <SidebarLink 
           icon={<Settings size={20} />} 
-          label="Settings" 
+          label="Configurações" 
           href="/settings" 
           active={location.pathname === '/settings'} 
           isCollapsed={collapsed} 

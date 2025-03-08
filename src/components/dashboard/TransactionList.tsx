@@ -3,12 +3,13 @@ import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { ArrowUpRight, ArrowDownRight, MoreHorizontal, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export function TransactionList() {
-  const { currentMonthTransactions, formatCurrency, navigateToTransactions } = useFinance();
+  const { filteredTransactions, formatCurrency, navigateToTransactions, hasDataForCurrentMonth } = useFinance();
   
-  // Get the most recent 5 transactions from the current month
-  const recentTransactions = [...currentMonthTransactions]
+  // Get the most recent 5 transactions from the filtered transactions
+  const recentTransactions = [...filteredTransactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
   
@@ -26,7 +27,7 @@ export function TransactionList() {
         </div>
         
         <div className="space-y-4">
-          {recentTransactions.length > 0 ? (
+          {hasDataForCurrentMonth ? (
             recentTransactions.map((transaction) => (
               <div 
                 key={transaction.id}
@@ -49,7 +50,7 @@ export function TransactionList() {
                   <div>
                     <p className="font-medium">{transaction.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(transaction.date), 'dd/MM/yyyy')} • {transaction.category}
+                      {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })} • {transaction.category}
                     </p>
                   </div>
                 </div>
@@ -71,7 +72,7 @@ export function TransactionList() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <AlertCircle className="h-12 w-12 text-muted-foreground mb-2" />
               <h4 className="text-lg font-medium">Sem transações</h4>
-              <p className="text-sm text-muted-foreground">Não há transações para o mês atual</p>
+              <p className="text-sm text-muted-foreground">Não há transações para o mês selecionado</p>
             </div>
           )}
         </div>

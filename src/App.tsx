@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
+import Categories from "./pages/Categories";
 import NotFound from "./pages/NotFound";
 import { FinanceProvider } from "@/context/FinanceContext";
 
@@ -32,6 +33,11 @@ const App = () => (
           <Route path="/budgets" element={
             <FinanceProvider>
               <Budgets />
+            </FinanceProvider>
+          } />
+          <Route path="/categories" element={
+            <FinanceProvider>
+              <Categories />
             </FinanceProvider>
           } />
           <Route path="*" element={<NotFound />} />

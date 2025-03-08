@@ -8,8 +8,11 @@ export interface Transaction {
   category: string;
   subcategory?: string;
   date: Date;
+  settlementDate?: Date;
   description: string;
   paymentMethod?: string;
+  financialInstitution?: string;
+  transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   status: 'completed' | 'pending';
 }
 
@@ -35,4 +38,21 @@ export interface FinancialSummary {
   netBalance: number;
   savingsGoal: number;
   savingsProgress: number;
+}
+
+export interface FinancialInstitution {
+  id: string;
+  name: string;
+  icon: string;
+  currentBalance: number;
+  isActive: boolean;
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  limit: number;
+  brand: string;
+  dueDate: number; // Day of the month
+  institutionId: string;
 }

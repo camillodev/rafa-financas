@@ -1,71 +1,31 @@
 
-import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useState } from 'react';
+import { useSpring, animated } from '@react-spring/web';
 
 interface AnimatedNumberProps {
   value: number;
   duration?: number;
-  className?: string;
-  formatter?: (value: number) => string;
-  prefix?: string;
-  suffix?: string;
-  decimalPlaces?: number;
+  formatValue?: (value: number) => string;
 }
 
-export function AnimatedNumber({
+const AnimatedNumber = ({ 
   value,
-  duration = 1000,
-  className,
-  formatter,
-  prefix = '',
-  suffix = '',
-  decimalPlaces = 0,
-}: AnimatedNumberProps) {
-  const [displayValue, setDisplayValue] = useState(0);
-  
-  useEffect(() => {
-    let startTimestamp: number | null = null;
-    const startValue = displayValue;
-    const endValue = value;
-    
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      const currentValue = startValue + progress * (endValue - startValue);
-      
-      setDisplayValue(currentValue);
-      
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    
-    window.requestAnimationFrame(step);
-    
-    return () => {
-      startTimestamp = null;
-    };
-  }, [value, duration, displayValue]);
-  
-  const formatValue = (val: number) => {
-    if (formatter) return formatter(val);
-    
-    const fixedValue = val.toFixed(decimalPlaces);
-    
-    if (val >= 1000000) {
-      return (val / 1000000).toFixed(decimalPlaces) + 'M';
-    } else if (val >= 1000) {
-      return (val / 1000).toFixed(decimalPlaces) + 'K';
-    }
-    
-    return fixedValue;
-  };
-  
+  duration = 2000,
+  formatValue = (val) => val.toFixed(2),
+}: AnimatedNumberProps) => {
+  // Start at 0 and animate to the actual value
+  const { number } = useSpring({
+    from: { number: 0 },
+    number: value,
+    delay: 200,
+    config: { duration },
+  });
+
   return (
-    <span className={cn("tabular-nums transition-colors", className)}>
-      {prefix}{formatValue(displayValue)}{suffix}
-    </span>
+    <animated.span>
+      {number.to((val) => formatValue(val))}
+    </animated.span>
   );
-}
+};
 
 export default AnimatedNumber;
