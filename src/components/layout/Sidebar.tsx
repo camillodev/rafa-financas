@@ -4,7 +4,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ArrowRightLeft, 
-  PieChart, 
   Target, 
   CreditCard, 
   Settings, 
@@ -120,13 +119,6 @@ export function Sidebar() {
           label="Cartões" 
           href="/cards" 
           active={location.pathname === '/cards'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<PieChart size={20} />} 
-          label="Análises" 
-          href="/analytics" 
-          active={location.pathname === '/analytics'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 

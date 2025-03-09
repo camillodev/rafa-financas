@@ -21,16 +21,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Plus, 
   Pencil, 
   Trash2, 
   AlertCircle, 
-  Check, 
-  X,
-  FileSymlink,
-  Briefcase,
   TrendingUp,
+  Briefcase,
   Gift,
   Home,
   Utensils,
@@ -41,9 +45,11 @@ import {
   Activity,
   Book,
   Repeat,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from "sonner";
-import { Category } from '@/types/finance';
+import { Category, Subcategory } from '@/types/finance';
 
 // Icons mapping for categories
 const iconMapping: Record<string, React.ReactNode> = {
@@ -70,10 +76,14 @@ const colorOptions = [
 ];
 
 export default function Categories() {
-  const { categories } = useFinance();
+  const { categories, subcategories, addCategory, updateCategory, deleteCategory, addSubcategory, updateSubcategory, deleteSubcategory } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubcategoryDialogOpen, setIsSubcategoryDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteSubcategoryDialogOpen, setIsDeleteSubcategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -82,8 +92,26 @@ export default function Categories() {
     type: 'expense' as 'income' | 'expense',
   });
 
+  const [subcategoryFormData, setSubcategoryFormData] = useState({
+    name: '',
+    categoryId: '',
+    color: '',
+  });
+
   const incomeCategories = categories.filter(c => c.type === 'income');
   const expenseCategories = categories.filter(c => c.type === 'expense');
+
+  const toggleCategoryExpansion = (categoryId: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId) 
+        : [...prev, categoryId]
+    );
+  };
+
+  const getCategorySubcategories = (categoryId: string) => {
+    return subcategories.filter(sc => sc.categoryId === categoryId);
+  };
 
   const handleOpenAddDialog = () => {
     setEditingCategory(null);
@@ -112,9 +140,50 @@ export default function Categories() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleOpenAddSubcategoryDialog = (categoryId: string) => {
+    setEditingSubcategory(null);
+    const category = categories.find(c => c.id === categoryId);
+    setSubcategoryFormData({
+      name: '',
+      categoryId,
+      color: category?.color || '',
+    });
+    setIsSubcategoryDialogOpen(true);
+  };
+
+  const handleOpenEditSubcategoryDialog = (subcategory: Subcategory) => {
+    setEditingSubcategory(subcategory);
+    setSubcategoryFormData({
+      name: subcategory.name,
+      categoryId: subcategory.categoryId,
+      color: subcategory.color || '',
+    });
+    setIsSubcategoryDialogOpen(true);
+  };
+
+  const handleOpenDeleteSubcategoryDialog = (subcategory: Subcategory) => {
+    setEditingSubcategory(subcategory);
+    setIsDeleteSubcategoryDialogOpen(true);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubcategoryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSubcategoryFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setSubcategoryFormData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -138,22 +207,57 @@ export default function Categories() {
     e.preventDefault();
     
     if (editingCategory) {
-      // Update category
-      toast.success('Categoria atualizada com sucesso');
+      updateCategory(editingCategory.id, {
+        name: formData.name,
+        icon: formData.icon,
+        color: formData.color,
+        type: formData.type,
+      });
     } else {
-      // Add new category
-      toast.success('Nova categoria adicionada com sucesso');
+      addCategory({
+        name: formData.name,
+        icon: formData.icon,
+        color: formData.color,
+        type: formData.type,
+      });
     }
     
     setIsDialogOpen(false);
   };
 
+  const handleSubmitSubcategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingSubcategory) {
+      updateSubcategory(editingSubcategory.id, {
+        name: subcategoryFormData.name,
+        categoryId: subcategoryFormData.categoryId,
+        color: subcategoryFormData.color || undefined,
+      });
+    } else {
+      addSubcategory({
+        name: subcategoryFormData.name,
+        categoryId: subcategoryFormData.categoryId,
+        color: subcategoryFormData.color || undefined,
+      });
+    }
+    
+    setIsSubcategoryDialogOpen(false);
+  };
+
   const handleConfirmDelete = () => {
     if (editingCategory) {
-      // Delete category
-      toast.success('Categoria excluída com sucesso');
+      deleteCategory(editingCategory.id);
       setIsDeleteDialogOpen(false);
       setEditingCategory(null);
+    }
+  };
+
+  const handleConfirmDeleteSubcategory = () => {
+    if (editingSubcategory) {
+      deleteSubcategory(editingSubcategory.id);
+      setIsDeleteSubcategoryDialogOpen(false);
+      setEditingSubcategory(null);
     }
   };
 
@@ -162,6 +266,103 @@ export default function Categories() {
       ...prev,
       type
     }));
+  };
+
+  const renderCategoryItem = (category: Category) => {
+    const isExpanded = expandedCategories.includes(category.id);
+    const categorySubcategories = getCategorySubcategories(category.id);
+    
+    return (
+      <div key={category.id} className="border rounded-lg mb-2">
+        <div 
+          className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${category.color}30`, color: category.color }}
+            >
+              {iconMapping[category.icon]}
+            </div>
+            <div>
+              <p className="font-medium">{category.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleOpenAddSubcategoryDialog(category.id)}
+              title="Adicionar Subcategoria"
+            >
+              <Plus size={16} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleOpenEditDialog(category)}
+              title="Editar Categoria"
+            >
+              <Pencil size={16} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleOpenDeleteDialog(category)}
+              title="Excluir Categoria"
+            >
+              <Trash2 size={16} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => toggleCategoryExpansion(category.id)}
+              title={isExpanded ? "Recolher Subcategorias" : "Expandir Subcategorias"}
+            >
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </Button>
+          </div>
+        </div>
+        
+        {isExpanded && (
+          <div className="pl-12 pr-4 pb-3">
+            {categorySubcategories.length > 0 ? (
+              categorySubcategories.map(subcategory => (
+                <div 
+                  key={subcategory.id}
+                  className="flex items-center justify-between py-2 border-b last:border-b-0"
+                >
+                  <span className="text-sm">{subcategory.name}</span>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleOpenEditSubcategoryDialog(subcategory)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil size={14} />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-destructive hover:text-destructive h-8 w-8"
+                      onClick={() => handleOpenDeleteSubcategoryDialog(subcategory)}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground py-2">
+                Nenhuma subcategoria cadastrada
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -194,42 +395,8 @@ export default function Categories() {
           </CardHeader>
           <CardContent>
             {incomeCategories.length > 0 ? (
-              <div className="space-y-4">
-                {incomeCategories.map((category) => (
-                  <div 
-                    key={category.id}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: `${category.color}30`, color: category.color }}
-                      >
-                        {iconMapping[category.icon]}
-                      </div>
-                      <div>
-                        <p className="font-medium">{category.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleOpenEditDialog(category)}
-                      >
-                        <Pencil size={16} />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleOpenDeleteDialog(category)}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {incomeCategories.map(renderCategoryItem)}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -256,42 +423,8 @@ export default function Categories() {
           </CardHeader>
           <CardContent>
             {expenseCategories.length > 0 ? (
-              <div className="space-y-4">
-                {expenseCategories.map((category) => (
-                  <div 
-                    key={category.id}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: `${category.color}30`, color: category.color }}
-                      >
-                        {iconMapping[category.icon]}
-                      </div>
-                      <div>
-                        <p className="font-medium">{category.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleOpenEditDialog(category)}
-                      >
-                        <Pencil size={16} />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleOpenDeleteDialog(category)}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {expenseCategories.map(renderCategoryItem)}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -403,7 +536,66 @@ export default function Categories() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Add/Edit Subcategory Dialog */}
+      <Dialog open={isSubcategoryDialogOpen} onOpenChange={setIsSubcategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingSubcategory ? 'Editar Subcategoria' : 'Nova Subcategoria'}</DialogTitle>
+            <DialogDescription>
+              {editingSubcategory 
+                ? 'Edite os detalhes da subcategoria abaixo.'
+                : 'Preencha os detalhes da nova subcategoria abaixo.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitSubcategory}>
+            <div className="grid gap-4 py-4">
+              {editingSubcategory && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="categoryId" className="text-right">
+                    Categoria
+                  </Label>
+                  <Select
+                    value={subcategoryFormData.categoryId}
+                    onValueChange={(value) => handleSelectChange('categoryId', value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Nome
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={subcategoryFormData.name}
+                  onChange={handleSubcategoryInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">
+                {editingSubcategory ? 'Salvar Alterações' : 'Adicionar Subcategoria'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Category Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -417,6 +609,26 @@ export default function Categories() {
               Cancelar
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Subcategory Confirmation Dialog */}
+      <Dialog open={isDeleteSubcategoryDialogOpen} onOpenChange={setIsDeleteSubcategoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta subcategoria? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteSubcategoryDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteSubcategory}>
               Excluir
             </Button>
           </DialogFooter>

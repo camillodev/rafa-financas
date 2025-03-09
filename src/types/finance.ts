@@ -25,6 +25,13 @@ export interface Category {
   type: TransactionType;
 }
 
+export interface Subcategory {
+  id: string;
+  name: string;
+  categoryId: string;
+  color?: string;
+}
+
 export interface BudgetGoal {
   category: string;
   amount: number;

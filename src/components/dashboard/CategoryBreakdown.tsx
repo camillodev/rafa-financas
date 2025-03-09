@@ -1,73 +1,194 @@
 
-import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import React, { useState } from 'react';
+import { PieChart, Pie, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight } from 'lucide-react';
+
+const CustomTooltip = ({ active, payload }: any) => {
+  const { formatCurrency } = useFinance();
+  
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="custom-tooltip bg-background border rounded-lg shadow-md p-3">
+        <p className="font-medium mb-1" style={{ color: data.color }}>{data.category}</p>
+        <div className="flex items-center justify-between gap-4">
+          <span>Valor:</span>
+          <span className="font-medium">{formatCurrency(data.value)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span>Porcentagem:</span>
+          <span className="font-medium">{data.percent}%</span>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
 
 export function CategoryBreakdown() {
-  const { expenseBreakdown, formatCurrency } = useFinance();
+  const { expenseBreakdown, formatCurrency, filteredTransactions, categories, selectedCategories, toggleCategorySelection, resetCategorySelection } = useFinance();
+  const [showingSubcategories, setShowingSubcategories] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
-  // Filter out categories with 0 value
-  const filteredData = expenseBreakdown.filter(item => item.value > 0);
+  // If we have selected categories to filter by, filter the expense breakdown
+  const filteredExpenseBreakdown = selectedCategories.length > 0
+    ? expenseBreakdown.filter(item => selectedCategories.includes(item.category))
+    : expenseBreakdown;
+  
+  // Calculate total expenses for percentage calculation
+  const totalExpenses = filteredExpenseBreakdown.reduce((sum, item) => sum + item.value, 0);
+  
+  // Add percentage data to each category
+  const chartData = filteredExpenseBreakdown.map(item => ({
+    ...item,
+    percent: totalExpenses > 0 ? Math.round((item.value / totalExpenses) * 100) : 0
+  }));
+  
+  // Get subcategories for the selected category
+  const subcategoriesData = React.useMemo(() => {
+    if (!selectedCategory) return [];
+    
+    // Get category id from name
+    const category = categories.find(c => c.name === selectedCategory);
+    if (!category) return [];
+    
+    // Group filtered transactions by subcategory for this category
+    const subcategoryTransactions = filteredTransactions
+      .filter(t => t.category === selectedCategory && t.type === 'expense' && t.subcategory);
+    
+    // Calculate amounts for each subcategory
+    const subcategoryAmounts: Record<string, number> = {};
+    subcategoryTransactions.forEach(t => {
+      if (t.subcategory) {
+        subcategoryAmounts[t.subcategory] = (subcategoryAmounts[t.subcategory] || 0) + t.amount;
+      }
+    });
+    
+    // Convert to chart data format
+    const subTotal = Object.values(subcategoryAmounts).reduce((sum, val) => sum + val, 0);
+    
+    return Object.entries(subcategoryAmounts).map(([name, value], index) => ({
+      category: name,
+      value,
+      color: category.color,
+      percent: subTotal > 0 ? Math.round((value / subTotal) * 100) : 0
+    }));
+  }, [selectedCategory, filteredTransactions, categories]);
+  
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setShowingSubcategories(true);
+  };
+  
+  const handleBackToCategories = () => {
+    setShowingSubcategories(false);
+    setSelectedCategory(null);
+  };
+  
+  const expenseCategories = categories.filter(c => c.type === 'expense');
   
   return (
-    <div className="rounded-xl border bg-card shadow-sm h-full animate-fade-in">
-      <div className="p-6">
-        <h3 className="text-lg font-medium mb-6">Despesas por Categoria</h3>
+    <Card className="animate-fade-in h-full">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>
+          {showingSubcategories ? (
+            <button 
+              onClick={handleBackToCategories}
+              className="flex items-center gap-1 text-primary"
+            >
+              <ArrowRight className="h-4 w-4 rotate-180" />
+              <span>Subcategorias: {selectedCategory}</span>
+            </button>
+          ) : (
+            "Despesas por Categoria"
+          )}
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent>
+        {!showingSubcategories && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Badge 
+              variant={selectedCategories.length === 0 ? "default" : "outline"} 
+              className="cursor-pointer"
+              onClick={resetCategorySelection}
+            >
+              Todas
+            </Badge>
+            {expenseCategories.map(category => (
+              <Badge 
+                key={category.id}
+                variant={selectedCategories.includes(category.name) ? "default" : "outline"}
+                className="cursor-pointer"
+                style={{ 
+                  backgroundColor: selectedCategories.includes(category.name) ? category.color : 'transparent',
+                  borderColor: category.color,
+                  color: selectedCategories.includes(category.name) ? 'white' : category.color
+                }}
+                onClick={() => toggleCategorySelection(category.name)}
+              >
+                {category.name}
+              </Badge>
+            ))}
+          </div>
+        )}
         
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="mt-6">
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
-                data={filteredData}
+                data={showingSubcategories ? subcategoriesData : chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
-                outerRadius={90}
+                outerRadius={80}
                 paddingAngle={2}
                 dataKey="value"
                 nameKey="category"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                labelLine={false}
+                onClick={!showingSubcategories ? (data) => handleCategoryClick(data.category) : undefined}
+                style={{ cursor: !showingSubcategories ? 'pointer' : 'default' }}
               >
-                {filteredData.map((entry, index) => (
+                {(showingSubcategories ? subcategoriesData : chartData).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                formatter={(value) => [formatCurrency(Number(value)), 'Valor']}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                      <div className="bg-background p-3 border rounded-lg shadow-md">
-                        <p className="font-medium" style={{ color: data.color }}>{data.category}</p>
-                        <p className="text-sm text-foreground">{formatCurrency(data.value)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {((data.value / expenseBreakdown.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}% do total
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
+              <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          {filteredData.slice(0, 4).map((item) => (
-            <div key={item.category} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="text-xs font-medium truncate">{item.category}</span>
+        <div className="space-y-2 mt-4">
+          {(showingSubcategories ? subcategoriesData : chartData).map((entry, index) => (
+            <div
+              key={`item-${index}`}
+              className="flex items-center justify-between py-1 cursor-pointer hover:bg-accent/50 rounded px-2"
+              style={{ cursor: !showingSubcategories ? 'pointer' : 'default' }}
+              onClick={() => !showingSubcategories && handleCategoryClick(entry.category)}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-sm">{entry.category}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {formatCurrency(entry.value)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {entry.percent}%
+                </span>
+              </div>
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

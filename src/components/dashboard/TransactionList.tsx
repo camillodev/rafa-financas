@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { ArrowUpRight, ArrowDownRight, MoreHorizontal, ChevronRight, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight, AlertCircle, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -32,6 +32,7 @@ export function TransactionList() {
               <div 
                 key={transaction.id}
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                onClick={() => navigateToTransactions()}
               >
                 <div className="flex items-center gap-3">
                   <div 
@@ -62,8 +63,14 @@ export function TransactionList() {
                   >
                     {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                   </span>
-                  <button className="p-1 rounded-full hover:bg-accent">
-                    <MoreHorizontal size={16} className="text-muted-foreground" />
+                  <button 
+                    className="p-1 rounded-full hover:bg-accent"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigateToTransactions();
+                    }}
+                  >
+                    <Eye size={16} className="text-muted-foreground" />
                   </button>
                 </div>
               </div>

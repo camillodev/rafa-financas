@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ResponsiveContainer, 
   ComposedChart, 
@@ -76,7 +76,7 @@ export function ExpenseChart() {
       return {
         date: format(day, 'dd/MM', { locale: ptBR }),
         income,
-        expenses
+        expenses,
       };
     });
   }, [filteredTransactions, currentDate]);
@@ -106,11 +106,6 @@ export function ExpenseChart() {
               tickFormatter={(value) => formatCurrency(value).replace('R$', '')}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="top"
-              height={36}
-              iconType="circle"
-            />
             <Bar 
               dataKey="income" 
               name="Receitas" 
@@ -122,14 +117,6 @@ export function ExpenseChart() {
               name="Despesas" 
               fill="#f97316" 
               radius={[4, 4, 0, 0]} 
-            />
-            <Line 
-              type="monotone" 
-              dataKey="income" 
-              stroke="#10b981" 
-              dot={false} 
-              strokeWidth={2} 
-              activeDot={{ r: 6 }} 
             />
           </ComposedChart>
         </ResponsiveContainer>

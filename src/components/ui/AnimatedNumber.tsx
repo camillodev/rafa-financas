@@ -6,7 +6,7 @@ interface AnimatedNumberProps {
   value: number;
   duration?: number;
   formatValue?: (value: number) => string;
-  formatter?: (value: number) => string; // Add this line to support both prop names
+  formatter?: (value: number) => string; // Support both prop names
 }
 
 const AnimatedNumber = ({ 
