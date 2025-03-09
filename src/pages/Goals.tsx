@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useFinance } from '@/context/FinanceContext';
-import { Edit, MoreHorizontal, Plus, Target, Trash2, ArrowUpRight, ArrowDownRight, Calendar, PlusCircle, MinusCircle, Eye, ChevronRight } from 'lucide-react';
+import { useFinance, GoalTransaction } from '@/context/FinanceContext';
+import { Edit, MoreHorizontal, Plus, Target, Trash2, ArrowUpRight, ArrowDownRight, Calendar, PlusCircle, MinusCircle, Eye, ChevronRight, History, CircleDollarSign, Clock, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -34,90 +34,23 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AnimatedNumber from '@/components/ui/AnimatedNumber';
-import { format, differenceInMonths } from 'date-fns';
+import { format, differenceInMonths, formatDistance } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
 
-interface Goal {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  targetDate: string;
-  category: string;
-  icon: string;
-  color: string;
-  transactions: GoalTransaction[];
-}
-
-interface GoalTransaction {
-  id: string;
-  date: Date;
-  amount: number;
-  type: 'add' | 'remove';
-  description: string;
-}
-
 export function Goals() {
-  // Mock data for goals
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: 'g1',
-      name: 'Viagem para Europa',
-      targetAmount: 15000,
-      currentAmount: 6000,
-      targetDate: '2023-12-31',
-      category: 'Viagem',
-      icon: 'target',
-      color: '#4F46E5',
-      transactions: [
-        { id: 'gt1', date: new Date(2023, 4, 15), amount: 3000, type: 'add', description: 'Depósito inicial' },
-        { id: 'gt2', date: new Date(2023, 5, 10), amount: 2000, type: 'add', description: 'Bônus do trabalho' },
-        { id: 'gt3', date: new Date(2023, 6, 5), amount: 1500, type: 'add', description: 'Economia mensal' },
-        { id: 'gt4', date: new Date(2023, 6, 20), amount: 500, type: 'remove', description: 'Compra de passagem' },
-      ]
-    },
-    {
-      id: 'g2',
-      name: 'Comprar um carro',
-      targetAmount: 60000,
-      currentAmount: 35000,
-      targetDate: '2024-06-30',
-      category: 'Veículo',
-      icon: 'target',
-      color: '#10B981',
-      transactions: [
-        { id: 'gt5', date: new Date(2023, 2, 10), amount: 20000, type: 'add', description: 'Venda de investimentos' },
-        { id: 'gt6', date: new Date(2023, 3, 15), amount: 5000, type: 'add', description: 'Economia trimestral' },
-        { id: 'gt7', date: new Date(2023, 4, 20), amount: 10000, type: 'add', description: 'Bônus anual' },
-      ]
-    },
-    {
-      id: 'g3',
-      name: 'Reserva de emergência',
-      targetAmount: 20000,
-      currentAmount: 12000,
-      targetDate: '2023-09-30',
-      category: 'Economia',
-      icon: 'target',
-      color: '#F59E0B',
-      transactions: [
-        { id: 'gt8', date: new Date(2023, 0, 5), amount: 5000, type: 'add', description: 'Depósito inicial' },
-        { id: 'gt9', date: new Date(2023, 1, 10), amount: 3000, type: 'add', description: 'Economia mensal' },
-        { id: 'gt10', date: new Date(2023, 2, 15), amount: 4000, type: 'add', description: 'Economia mensal' },
-      ]
-    },
-  ]);
-  
-  const { formatCurrency, categories } = useFinance();
+  const { formatCurrency, categories, goals, addGoal, updateGoal, deleteGoal, addGoalTransaction, deleteGoalTransaction } = useFinance();
   
   const [openDialog, setOpenDialog] = useState(false);
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [openAddFundsDialog, setOpenAddFundsDialog] = useState(false);
-  const [editGoal, setEditGoal] = useState<Goal | null>(null);
-  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
+  const [editGoal, setEditGoal] = useState<typeof goals[0] | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<typeof goals[0] | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     targetAmount: 0,
@@ -133,7 +66,7 @@ export function Goals() {
     description: '',
   });
   
-  const handleOpenDialog = (goal?: Goal) => {
+  const handleOpenDialog = (goal?: typeof goals[0]) => {
     if (goal) {
       setEditGoal(goal);
       setFormData({
@@ -158,12 +91,12 @@ export function Goals() {
     setOpenDialog(true);
   };
   
-  const handleOpenDetailDialog = (goal: Goal) => {
+  const handleOpenDetailDialog = (goal: typeof goals[0]) => {
     setSelectedGoal(goal);
     setOpenDetailDialog(true);
   };
   
-  const handleOpenAddFundsDialog = (goal: Goal, type: 'add' | 'remove') => {
+  const handleOpenAddFundsDialog = (goal: typeof goals[0], type: 'add' | 'remove') => {
     setSelectedGoal(goal);
     setTransactionData({
       amount: 0,
@@ -171,6 +104,11 @@ export function Goals() {
       description: type === 'add' ? 'Adição de fundos' : 'Retirada de fundos',
     });
     setOpenAddFundsDialog(true);
+  };
+  
+  const handleOpenHistoryDialog = (goal: typeof goals[0]) => {
+    setSelectedGoal(goal);
+    setOpenHistoryDialog(true);
   };
   
   const handleCloseDialog = () => {
@@ -182,24 +120,9 @@ export function Goals() {
     e.preventDefault();
     
     if (editGoal) {
-      setGoals(goals.map(goal => 
-        goal.id === editGoal.id ? { 
-          ...goal, 
-          ...formData, 
-          icon: 'target',
-          transactions: goal.transactions,
-        } : goal
-      ));
-      toast.success("Meta atualizada com sucesso");
+      updateGoal(editGoal.id, formData);
     } else {
-      const newGoal: Goal = {
-        id: `g${goals.length + 1}`,
-        ...formData,
-        icon: 'target',
-        transactions: [],
-      };
-      setGoals([...goals, newGoal]);
-      toast.success("Meta criada com sucesso");
+      addGoal(formData);
     }
     
     handleCloseDialog();
@@ -210,34 +133,19 @@ export function Goals() {
     
     if (!selectedGoal) return;
     
-    const newTransaction: GoalTransaction = {
-      id: `gt${Math.random().toString(36).substr(2, 9)}`,
+    if (transactionData.type === 'remove' && transactionData.amount > selectedGoal.currentAmount) {
+      toast.error("Não é possível retirar mais do que o valor atual da meta");
+      return;
+    }
+    
+    addGoalTransaction(selectedGoal.id, {
       date: new Date(),
       amount: transactionData.amount,
       type: transactionData.type,
       description: transactionData.description,
-    };
-    
-    const updatedGoal = { ...selectedGoal };
-    
-    if (transactionData.type === 'add') {
-      updatedGoal.currentAmount += transactionData.amount;
-    } else {
-      if (transactionData.amount > updatedGoal.currentAmount) {
-        toast.error("Não é possível retirar mais do que o valor atual da meta");
-        return;
-      }
-      updatedGoal.currentAmount -= transactionData.amount;
-    }
-    
-    updatedGoal.transactions = [...updatedGoal.transactions, newTransaction];
-    
-    setGoals(goals.map(goal => 
-      goal.id === selectedGoal.id ? updatedGoal : goal
-    ));
+    });
     
     setOpenAddFundsDialog(false);
-    toast.success(`${transactionData.type === 'add' ? 'Adição' : 'Retirada'} realizada com sucesso`);
   };
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,16 +168,19 @@ export function Goals() {
     }
   };
   
-  const handleDelete = (id: string) => {
-    setGoals(goals.filter(goal => goal.id !== id));
-    toast.success("Meta excluída com sucesso");
+  const handleDeleteGoal = (id: string) => {
+    deleteGoal(id);
+  };
+  
+  const handleDeleteTransaction = (goalId: string, transactionId: string) => {
+    deleteGoalTransaction(goalId, transactionId);
   };
   
   const calculateProgress = (current: number, target: number) => {
     return Math.min(Math.round((current / target) * 100), 100);
   };
   
-  const calculateMonthlyContribution = (goal: Goal) => {
+  const calculateMonthlyContribution = (goal: typeof goals[0]) => {
     const today = new Date();
     const targetDate = new Date(goal.targetDate);
     
@@ -287,6 +198,25 @@ export function Goals() {
     // Calculate monthly contribution
     return remaining / months;
   };
+
+  // Calculate remaining time until target date
+  const calculateRemainingTime = (targetDate: string) => {
+    const today = new Date();
+    const target = new Date(targetDate);
+    
+    if (target < today) {
+      return "Meta vencida";
+    }
+    
+    return formatDistance(today, target, { 
+      locale: ptBR,
+      addSuffix: true 
+    });
+  };
+  
+  // Group goals by completion status
+  const completedGoals = goals.filter(goal => goal.currentAmount >= goal.targetAmount);
+  const activeGoals = goals.filter(goal => goal.currentAmount < goal.targetAmount);
   
   return (
     <AppLayout>
@@ -298,134 +228,285 @@ export function Goals() {
       </div>
       
       <div className="flex justify-between mb-6">
-        <div></div>
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList>
+            <TabsTrigger value="active">
+              Metas Ativas ({activeGoals.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed">
+              Metas Concluídas ({completedGoals.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
         <Button onClick={() => handleOpenDialog()}>
           <Plus size={16} className="mr-1" />
           Nova Meta
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {goals.map((goal) => {
-          const progress = calculateProgress(goal.currentAmount, goal.targetAmount);
-          const remainingAmount = goal.targetAmount - goal.currentAmount;
-          const monthlyContribution = calculateMonthlyContribution(goal);
-          
-          return (
-            <Card key={goal.id} className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${goal.color}20` }}
-                    >
-                      <Target size={20} style={{ color: goal.color }} />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{goal.name}</h3>
-                      <div className="text-xs text-muted-foreground">{goal.category}</div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal size={16} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenAddFundsDialog(goal, 'add')}>
-                        <PlusCircle size={16} className="mr-2 text-finance-income" />
-                        Adicionar Fundos
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenAddFundsDialog(goal, 'remove')}>
-                        <MinusCircle size={16} className="mr-2 text-finance-expense" />
-                        Retirar Fundos
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenDetailDialog(goal)}>
-                        <Eye size={16} className="mr-2" />
-                        Ver Detalhes
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenDialog(goal)}>
-                        <Edit size={16} className="mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => handleDelete(goal.id)}
-                      >
-                        <Trash2 size={16} className="mr-2" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progresso</span>
-                    <span className="font-medium">{progress}%</span>
-                  </div>
-                  
-                  <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${progress}%`,
-                        backgroundColor: goal.color,
-                      }}
-                    ></div>
-                  </div>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">
-                      <AnimatedNumber 
-                        value={goal.currentAmount} 
-                        formatValue={(val) => formatCurrency(val)} 
-                      />
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatCurrency(goal.targetAmount)}
-                    </span>
-                  </div>
-                </div>
+      <Tabs defaultValue="active">
+        <TabsContent value="active">
+          {activeGoals.length === 0 ? (
+            <div className="text-center p-12 border rounded-lg bg-muted/10">
+              <Target size={48} className="mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma meta ativa</h3>
+              <p className="text-muted-foreground mb-4">
+                Crie uma meta financeira para acompanhar seu progresso
+              </p>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus size={16} className="mr-2" />
+                Adicionar meta
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeGoals.map((goal) => {
+                const progress = calculateProgress(goal.currentAmount, goal.targetAmount);
+                const remainingAmount = goal.targetAmount - goal.currentAmount;
+                const monthlyContribution = calculateMonthlyContribution(goal);
+                const remainingTime = calculateRemainingTime(goal.targetDate);
                 
-                <div className="flex justify-between">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Faltam</div>
-                    <div className="font-medium">
-                      {formatCurrency(remainingAmount)}
+                return (
+                  <Card key={goal.id} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: `${goal.color}20` }}
+                          >
+                            <Target size={20} style={{ color: goal.color }} />
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{goal.name}</h3>
+                            <div className="text-xs text-muted-foreground">{goal.category}</div>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenAddFundsDialog(goal, 'add')}>
+                              <PlusCircle size={16} className="mr-2 text-finance-income" />
+                              Adicionar Fundos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenAddFundsDialog(goal, 'remove')}>
+                              <MinusCircle size={16} className="mr-2 text-finance-expense" />
+                              Retirar Fundos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenHistoryDialog(goal)}>
+                              <History size={16} className="mr-2" />
+                              Histórico
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenDetailDialog(goal)}>
+                              <Eye size={16} className="mr-2" />
+                              Ver Detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenDialog(goal)}>
+                              <Edit size={16} className="mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteGoal(goal.id)}
+                            >
+                              <Trash2 size={16} className="mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progresso</span>
+                          <span className="font-medium">{progress}%</span>
+                        </div>
+                        
+                        <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ 
+                              width: `${progress}%`,
+                              backgroundColor: goal.color,
+                            }}
+                          ></div>
+                        </div>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">
+                            <AnimatedNumber 
+                              value={goal.currentAmount} 
+                              formatValue={(val) => formatCurrency(val)} 
+                            />
+                          </span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(goal.targetAmount)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Faltam</div>
+                          <div className="font-medium">
+                            {formatCurrency(remainingAmount)}
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Meta mensal</div>
+                          <div className="font-medium">
+                            {formatCurrency(monthlyContribution)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Data Alvo</div>
+                          <div className="font-medium flex items-center gap-1">
+                            <Clock size={14} />
+                            <span>{remainingTime}</span>
+                          </div>
+                        </div>
+                        
+                        <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => handleOpenDetailDialog(goal)}>
+                          Ver Detalhes
+                          <ChevronRight size={14} className="ml-1" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      
+        <TabsContent value="completed">
+          {completedGoals.length === 0 ? (
+            <div className="text-center p-10 border rounded-lg bg-muted/10">
+              <Target size={48} className="mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma meta concluída</h3>
+              <p className="text-muted-foreground">
+                Suas metas concluídas aparecerão aqui
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {completedGoals.map((goal) => (
+                <Card key={goal.id} className="overflow-hidden border-green-200 bg-green-50/30 dark:bg-green-950/10 dark:border-green-900">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: `${goal.color}20` }}
+                        >
+                          <Target size={20} style={{ color: goal.color }} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{goal.name}</h3>
+                            <Badge variant="success" className="bg-green-500 hover:bg-green-600">Concluída</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{goal.category}</div>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal size={16} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenHistoryDialog(goal)}>
+                            <History size={16} className="mr-2" />
+                            Histórico
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenDetailDialog(goal)}>
+                            <Eye size={16} className="mr-2" />
+                            Ver Detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteGoal(goal.id)}
+                          >
+                            <Trash2 size={16} className="mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
+                  </CardHeader>
                   
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground">Meta mensal</div>
-                    <div className="font-medium">
-                      {formatCurrency(monthlyContribution)}
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Meta Alcançada</span>
+                        <span className="font-medium">100%</span>
+                      </div>
+                      
+                      <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ 
+                            width: "100%",
+                            backgroundColor: goal.color,
+                          }}
+                        ></div>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium">
+                          <AnimatedNumber 
+                            value={goal.currentAmount} 
+                            formatValue={(val) => formatCurrency(val)} 
+                          />
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatCurrency(goal.targetAmount)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Data Alvo</div>
-                    <div className="font-medium">
-                      {new Date(goal.targetDate).toLocaleDateString('pt-BR')}
+                    
+                    <div className="flex justify-between">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Data Alvo</div>
+                        <div className="font-medium">
+                          {new Date(goal.targetDate).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Data Concluída</div>
+                        <div className="font-medium">
+                          {/* Show the date of the last transaction that caused completion */}
+                          {goal.transactions.length > 0 
+                            ? format(
+                                goal.transactions
+                                  .filter(t => t.type === 'add')
+                                  .sort((a, b) => b.date.getTime() - a.date.getTime())[0].date,
+                                'dd/MM/yyyy'
+                              )
+                            : 'N/A'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => handleOpenDetailDialog(goal)}>
-                    Ver Detalhes
-                    <ChevronRight size={14} className="ml-1" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       
       {/* Create/Edit Goal Dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -640,16 +721,22 @@ export function Goals() {
                     
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">Data Alvo</p>
-                      <p className="text-xl font-medium">
-                        {new Date(selectedGoal.targetDate).toLocaleDateString('pt-BR')}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays size={16} />
+                        <p className="text-xl font-medium">
+                          {new Date(selectedGoal.targetDate).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">Contribuição Mensal Necessária</p>
-                      <p className="text-xl font-medium">
-                        {formatCurrency(calculateMonthlyContribution(selectedGoal))}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <CircleDollarSign size={16} />
+                        <p className="text-xl font-medium">
+                          {formatCurrency(calculateMonthlyContribution(selectedGoal))}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   
@@ -671,7 +758,10 @@ export function Goals() {
                         {calculateProgress(selectedGoal.currentAmount, selectedGoal.targetAmount)}% completo
                       </span>
                       <span>
-                        Faltam {formatCurrency(selectedGoal.targetAmount - selectedGoal.currentAmount)}
+                        {selectedGoal.currentAmount >= selectedGoal.targetAmount
+                          ? "Meta alcançada!"
+                          : `Faltam ${formatCurrency(selectedGoal.targetAmount - selectedGoal.currentAmount)}`
+                        }
                       </span>
                     </div>
                   </div>
@@ -688,6 +778,7 @@ export function Goals() {
                       onClick={() => handleOpenAddFundsDialog(selectedGoal, 'remove')}
                       variant="outline"
                       className="flex-1"
+                      disabled={selectedGoal.currentAmount <= 0}
                     >
                       <MinusCircle size={16} className="mr-2" />
                       Retirar Fundos
@@ -710,7 +801,7 @@ export function Goals() {
                           .map(transaction => (
                             <div key={transaction.id} className="py-3 px-4 text-sm grid grid-cols-12 items-center">
                               <div className="col-span-2">
-                                {format(transaction.date, 'dd/MM/yyyy', { locale: ptBR })}
+                                {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
                               </div>
                               <div className="col-span-3">
                                 <div className="flex items-center gap-1">
@@ -752,6 +843,78 @@ export function Goals() {
           
           <DialogFooter>
             <Button onClick={() => setOpenDetailDialog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Goal History Dialog */}
+      <Dialog open={openHistoryDialog} onOpenChange={setOpenHistoryDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Histórico de Modificações</DialogTitle>
+            <DialogDescription>
+              Histórico completo de alterações da meta {selectedGoal?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedGoal && (
+            <div className="flex-1 overflow-auto pr-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedGoal.transactions.length > 0 ? (
+                    [...selectedGoal.transactions]
+                      .sort((a, b) => b.date.getTime() - a.date.getTime())
+                      .map((transaction) => (
+                        <TableRow key={transaction.id}>
+                          <TableCell>
+                            {format(new Date(transaction.date), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={transaction.type === 'add' ? 'outline' : 'destructive'} className="whitespace-nowrap">
+                              {transaction.type === 'add' ? 'Adição' : 'Retirada'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{transaction.description}</TableCell>
+                          <TableCell className={`text-right font-medium ${
+                            transaction.type === 'add' ? 'text-finance-income' : 'text-finance-expense'
+                          }`}>
+                            {transaction.type === 'add' ? '+' : '-'}
+                            {formatCurrency(transaction.amount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTransaction(selectedGoal.id, transaction.id)}
+                            >
+                              <Trash2 size={16} className="text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                        Nenhuma transação registrada para esta meta
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setOpenHistoryDialog(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

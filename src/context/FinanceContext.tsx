@@ -18,6 +18,28 @@ import { toast } from "sonner";
 
 export type TransactionFilterType = 'all' | 'income' | 'expense';
 
+// Goal transaction interface
+export interface GoalTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  type: 'add' | 'remove';
+  description: string;
+}
+
+// Financial goal interface
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  icon: string;
+  color: string;
+  transactions: GoalTransaction[];
+}
+
 interface FinanceContextType {
   transactions: Transaction[];
   filteredTransactions: Transaction[];
@@ -29,6 +51,7 @@ interface FinanceContextType {
   expenseBreakdown: Array<{ category: string; value: number; color: string }>;
   financialInstitutions: FinancialInstitution[];
   creditCards: CreditCard[];
+  goals: Goal[];
   currentDate: Date;
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
   navigateToPreviousMonth: () => void;
@@ -54,13 +77,69 @@ interface FinanceContextType {
   selectedCategories: string[];
   toggleCategorySelection: (categoryId: string) => void;
   resetCategorySelection: () => void;
-  // Add the missing budget goal functions
+  // Budget goal functions
   addBudgetGoal: (budgetGoal: Omit<BudgetGoal, 'spent'>) => void;
   updateBudgetGoal: (category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => void;
   deleteBudgetGoal: (category: string) => void;
+  // Goal management functions
+  addGoal: (goal: Omit<Goal, 'id' | 'transactions'>) => void;
+  updateGoal: (id: string, goal: Partial<Omit<Goal, 'id' | 'transactions'>>) => void;
+  deleteGoal: (id: string) => void;
+  addGoalTransaction: (goalId: string, transaction: Omit<GoalTransaction, 'id'>) => void;
+  deleteGoalTransaction: (goalId: string, transactionId: string) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
+
+// Initial Goals mock data
+const initialGoals: Goal[] = [
+  {
+    id: 'g1',
+    name: 'Viagem para Europa',
+    targetAmount: 15000,
+    currentAmount: 6000,
+    targetDate: '2023-12-31',
+    category: 'Viagem',
+    icon: 'target',
+    color: '#4F46E5',
+    transactions: [
+      { id: 'gt1', date: new Date(2023, 4, 15), amount: 3000, type: 'add', description: 'Depósito inicial' },
+      { id: 'gt2', date: new Date(2023, 5, 10), amount: 2000, type: 'add', description: 'Bônus do trabalho' },
+      { id: 'gt3', date: new Date(2023, 6, 5), amount: 1500, type: 'add', description: 'Economia mensal' },
+      { id: 'gt4', date: new Date(2023, 6, 20), amount: 500, type: 'remove', description: 'Compra de passagem' },
+    ]
+  },
+  {
+    id: 'g2',
+    name: 'Comprar um carro',
+    targetAmount: 60000,
+    currentAmount: 35000,
+    targetDate: '2024-06-30',
+    category: 'Veículo',
+    icon: 'target',
+    color: '#10B981',
+    transactions: [
+      { id: 'gt5', date: new Date(2023, 2, 10), amount: 20000, type: 'add', description: 'Venda de investimentos' },
+      { id: 'gt6', date: new Date(2023, 3, 15), amount: 5000, type: 'add', description: 'Economia trimestral' },
+      { id: 'gt7', date: new Date(2023, 4, 20), amount: 10000, type: 'add', description: 'Bônus anual' },
+    ]
+  },
+  {
+    id: 'g3',
+    name: 'Reserva de emergência',
+    targetAmount: 20000,
+    currentAmount: 12000,
+    targetDate: '2023-09-30',
+    category: 'Economia',
+    icon: 'target',
+    color: '#F59E0B',
+    transactions: [
+      { id: 'gt8', date: new Date(2023, 0, 5), amount: 5000, type: 'add', description: 'Depósito inicial' },
+      { id: 'gt9', date: new Date(2023, 1, 10), amount: 3000, type: 'add', description: 'Economia mensal' },
+      { id: 'gt10', date: new Date(2023, 2, 15), amount: 4000, type: 'add', description: 'Economia mensal' },
+    ]
+  },
+];
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
@@ -72,6 +151,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [expenseBreakdown] = useState(initialExpenseBreakdown);
   const [financialInstitutions, setFinancialInstitutions] = useState<FinancialInstitution[]>(initialFinancialInstitutions);
   const [creditCards, setCreditCards] = useState<CreditCard[]>(initialCreditCards);
+  const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const navigate = useNavigate();
@@ -210,6 +290,83 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Cartão de crédito excluído com sucesso');
   }, []);
 
+  // Goal management
+  const addGoal = useCallback((goal: Omit<Goal, 'id' | 'transactions'>) => {
+    const newGoal = {
+      ...goal,
+      id: `g${goals.length + 1}`,
+      transactions: []
+    };
+    setGoals(prev => [...prev, newGoal]);
+    toast.success('Meta adicionada com sucesso');
+  }, [goals]);
+
+  const updateGoal = useCallback((id: string, goalUpdate: Partial<Omit<Goal, 'id' | 'transactions'>>) => {
+    setGoals(prev => 
+      prev.map(goal => (goal.id === id ? { ...goal, ...goalUpdate } : goal))
+    );
+    toast.success('Meta atualizada com sucesso');
+  }, []);
+
+  const deleteGoal = useCallback((id: string) => {
+    setGoals(prev => prev.filter(goal => goal.id !== id));
+    toast.success('Meta excluída com sucesso');
+  }, []);
+
+  const addGoalTransaction = useCallback((goalId: string, transaction: Omit<GoalTransaction, 'id'>) => {
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+        
+        const newTransaction = {
+          ...transaction,
+          id: `gt${Math.random().toString(36).substring(2, 9)}`,
+        };
+        
+        let newAmount = goal.currentAmount;
+        if (transaction.type === 'add') {
+          newAmount += transaction.amount;
+        } else {
+          newAmount = Math.max(0, newAmount - transaction.amount);
+        }
+        
+        return {
+          ...goal,
+          currentAmount: newAmount,
+          transactions: [...goal.transactions, newTransaction]
+        };
+      });
+    });
+    
+    toast.success(`${transaction.type === 'add' ? 'Valor adicionado' : 'Valor retirado'} com sucesso`);
+  }, []);
+
+  const deleteGoalTransaction = useCallback((goalId: string, transactionId: string) => {
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+        
+        const transaction = goal.transactions.find(t => t.id === transactionId);
+        if (!transaction) return goal;
+        
+        let newAmount = goal.currentAmount;
+        if (transaction.type === 'add') {
+          newAmount = Math.max(0, newAmount - transaction.amount);
+        } else {
+          newAmount += transaction.amount;
+        }
+        
+        return {
+          ...goal,
+          currentAmount: newAmount,
+          transactions: goal.transactions.filter(t => t.id !== transactionId)
+        };
+      });
+    });
+    
+    toast.success('Transação da meta excluída com sucesso');
+  }, []);
+
   // Toggle category selection for filtering
   const toggleCategorySelection = useCallback((categoryId: string) => {
     setSelectedCategories(prev => {
@@ -294,6 +451,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         expenseBreakdown,
         financialInstitutions,
         creditCards,
+        goals,
         currentDate,
         setCurrentDate,
         navigateToPreviousMonth,
@@ -319,10 +477,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         selectedCategories,
         toggleCategorySelection,
         resetCategorySelection,
-        // Add the new budget goal management functions
+        // Budget goal management functions
         addBudgetGoal,
         updateBudgetGoal,
         deleteBudgetGoal,
+        // Goal management functions
+        addGoal,
+        updateGoal,
+        deleteGoal,
+        addGoalTransaction,
+        deleteGoalTransaction,
       }}
     >
       {children}
