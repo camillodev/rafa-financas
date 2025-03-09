@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -235,13 +234,21 @@ export function Transactions() {
     setAdvancedFilters(prev => {
       if (field.includes('.')) {
         const [parent, child] = field.split('.');
-        return {
-          ...prev,
-          [parent]: {
-            ...prev[parent as keyof typeof prev],
+        const result = { ...prev };
+        
+        if (parent === 'dateRange') {
+          result.dateRange = {
+            ...prev.dateRange,
             [child]: value
-          }
-        };
+          };
+        } else if (parent === 'amountRange') {
+          result.amountRange = {
+            ...prev.amountRange,
+            [child]: value
+          };
+        }
+        
+        return result;
       }
       return { ...prev, [field]: value };
     });
@@ -1029,7 +1036,7 @@ export function Transactions() {
                     <SelectItem value="Credit Card">Cartão de Crédito</SelectItem>
                     <SelectItem value="Transfer">Transferência</SelectItem>
                     <SelectItem value="Debit">Débito</SelectItem>
-                    <SelectItem value="Other">Outros</SelectItem>
+                    <SelectItem value="Other">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
