@@ -553,7 +553,7 @@ export function Transactions() {
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as categorias</SelectItem>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
                       {categories.map(category => (
                         <SelectItem key={category.id} value={category.name}>
                           {category.name}
@@ -583,7 +583,7 @@ export function Transactions() {
                       <SelectValue placeholder="Selecione uma instituição" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as instituições</SelectItem>
+                      <SelectItem value="all">Todas as instituições</SelectItem>
                       {financialInstitutions.map(institution => (
                         <SelectItem key={institution.id} value={institution.name}>
                           {institution.name}
@@ -603,7 +603,7 @@ export function Transactions() {
                       <SelectValue placeholder="Selecione um tipo de transação" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os tipos</SelectItem>
+                      <SelectItem value="all">Todos os tipos</SelectItem>
                       <SelectItem value="Credit Card">Cartão de Crédito</SelectItem>
                       <SelectItem value="Transfer">Transferência</SelectItem>
                       <SelectItem value="Debit">Débito</SelectItem>
@@ -622,7 +622,7 @@ export function Transactions() {
                       <SelectValue placeholder="Selecione um método de pagamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os métodos</SelectItem>
+                      <SelectItem value="all">Todos os métodos</SelectItem>
                       <SelectItem value="Débito">Débito</SelectItem>
                       <SelectItem value="Crédito">Cartão de Crédito</SelectItem>
                       <SelectItem value="Transferência">Transferência</SelectItem>
@@ -642,7 +642,7 @@ export function Transactions() {
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os status</SelectItem>
+                      <SelectItem value="all">Todos os status</SelectItem>
                       <SelectItem value="completed">Concluído</SelectItem>
                       <SelectItem value="pending">Pendente</SelectItem>
                     </SelectContent>
