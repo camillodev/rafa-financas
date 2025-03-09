@@ -54,6 +54,10 @@ interface FinanceContextType {
   selectedCategories: string[];
   toggleCategorySelection: (categoryId: string) => void;
   resetCategorySelection: () => void;
+  // Add the missing budget goal functions
+  addBudgetGoal: (budgetGoal: Omit<BudgetGoal, 'spent'>) => void;
+  updateBudgetGoal: (category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => void;
+  deleteBudgetGoal: (category: string) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -62,7 +66,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories);
-  const [budgetGoals] = useState<BudgetGoal[]>(initialBudgetGoals);
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>(initialBudgetGoals);
   const [financialSummary] = useState<FinancialSummary>(initialFinancialSummary);
   const [monthlyData] = useState(initialMonthlyData);
   const [expenseBreakdown] = useState(initialExpenseBreakdown);
@@ -250,6 +254,33 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     navigate(`/transactions${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
+  // Budget Goal management
+  const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'spent'>) => {
+    const newBudgetGoal = {
+      ...budgetGoal,
+      spent: 0, // Initialize with 0 spent
+    };
+    
+    setBudgetGoals(prev => [...prev, newBudgetGoal]);
+    toast.success('Orçamento adicionado com sucesso');
+  }, []);
+
+  const updateBudgetGoal = useCallback((category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => {
+    setBudgetGoals(prev => 
+      prev.map(bg => 
+        bg.category === category 
+          ? { ...bg, ...budgetGoal } 
+          : bg
+      )
+    );
+    toast.success('Orçamento atualizado com sucesso');
+  }, []);
+
+  const deleteBudgetGoal = useCallback((category: string) => {
+    setBudgetGoals(prev => prev.filter(bg => bg.category !== category));
+    toast.success('Orçamento excluído com sucesso');
+  }, []);
+
   return (
     <FinanceContext.Provider
       value={{
@@ -288,6 +319,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         selectedCategories,
         toggleCategorySelection,
         resetCategorySelection,
+        // Add the new budget goal management functions
+        addBudgetGoal,
+        updateBudgetGoal,
+        deleteBudgetGoal,
       }}
     >
       {children}
