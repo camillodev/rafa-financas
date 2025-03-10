@@ -112,7 +112,7 @@ export function Budgets() {
     );
     
     // Create a map of categories and their monthly values
-    const categoryData = {};
+    const categoryData: Record<string, number[]> = {};
     categories
       .filter(cat => cat.type === 'expense')
       .forEach(category => {

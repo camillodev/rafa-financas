@@ -58,6 +58,7 @@ export function Goals() {
     targetDate: '',
     category: '',
     color: '#4F46E5',
+    icon: 'target', // Adicionado o valor padrão para o ícone
   });
   
   const [transactionData, setTransactionData] = useState({
@@ -76,6 +77,7 @@ export function Goals() {
         targetDate: goal.targetDate,
         category: goal.category,
         color: goal.color,
+        icon: goal.icon,
       });
     } else {
       setEditGoal(null);
@@ -86,6 +88,7 @@ export function Goals() {
         targetDate: new Date().toISOString().split('T')[0],
         category: categories.length > 0 ? categories[0].name : '',
         color: '#4F46E5',
+        icon: 'target',
       });
     }
     setOpenDialog(true);
@@ -415,7 +418,7 @@ export function Goals() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium">{goal.name}</h3>
-                            <Badge variant="success" className="bg-green-500 hover:bg-green-600">Concluída</Badge>
+                            <Badge variant="outline" className="bg-green-500 text-white hover:bg-green-600">Concluída</Badge>
                           </div>
                           <div className="text-xs text-muted-foreground">{goal.category}</div>
                         </div>
