@@ -40,6 +40,13 @@ export interface Goal {
   transactions: GoalTransaction[];
 }
 
+// Budget reallocation context
+export interface BudgetReallocation {
+  totalBudget: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+}
+
 interface FinanceContextType {
   transactions: Transaction[];
   filteredTransactions: Transaction[];
@@ -68,12 +75,14 @@ interface FinanceContextType {
   addSubcategory: (subcategory: Omit<Subcategory, 'id'>) => void;
   updateSubcategory: (id: string, subcategory: Partial<Subcategory>) => void;
   deleteSubcategory: (id: string) => void;
-  addFinancialInstitution: (institution: Omit<FinancialInstitution, 'id'>) => void;
+  addFinancialInstitution: (institution: Omit<FinancialInstitution, 'id' | 'archived'>) => void;
   updateFinancialInstitution: (id: string, institution: Partial<FinancialInstitution>) => void;
   deleteFinancialInstitution: (id: string) => void;
-  addCreditCard: (card: Omit<CreditCard, 'id'>) => void;
+  archiveFinancialInstitution: (id: string, archived: boolean) => void;
+  addCreditCard: (card: Omit<CreditCard, 'id' | 'archived'>) => void;
   updateCreditCard: (id: string, card: Partial<CreditCard>) => void;
   deleteCreditCard: (id: string) => void;
+  archiveCreditCard: (id: string, archived: boolean) => void;
   selectedCategories: string[];
   toggleCategorySelection: (categoryId: string) => void;
   resetCategorySelection: () => void;
@@ -87,6 +96,10 @@ interface FinanceContextType {
   deleteGoal: (id: string) => void;
   addGoalTransaction: (goalId: string, transaction: Omit<GoalTransaction, 'id'>) => void;
   deleteGoalTransaction: (goalId: string, transactionId: string) => void;
+  // Budget reallocation
+  budgetReallocation: BudgetReallocation;
+  setBudgetTotalAmount: (amount: number) => void;
+  updateBudgetAllocation: (category: string, amount: number) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -141,6 +154,17 @@ const initialGoals: Goal[] = [
   },
 ];
 
+// Adicionar propriedade archived para financialInstitutions e creditCards
+const institutionsWithArchive = initialFinancialInstitutions.map(institution => ({
+  ...institution,
+  archived: false,
+}));
+
+const cardsWithArchive = initialCreditCards.map(card => ({
+  ...card,
+  archived: false,
+}));
+
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
@@ -149,11 +173,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [financialSummary] = useState<FinancialSummary>(initialFinancialSummary);
   const [monthlyData] = useState(initialMonthlyData);
   const [expenseBreakdown] = useState(initialExpenseBreakdown);
-  const [financialInstitutions, setFinancialInstitutions] = useState<FinancialInstitution[]>(initialFinancialInstitutions);
-  const [creditCards, setCreditCards] = useState<CreditCard[]>(initialCreditCards);
+  const [financialInstitutions, setFinancialInstitutions] = useState<(FinancialInstitution & { archived: boolean })[]>(institutionsWithArchive);
+  const [creditCards, setCreditCards] = useState<(CreditCard & { archived: boolean })[]>(cardsWithArchive);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [budgetReallocation, setBudgetReallocation] = useState<BudgetReallocation>({
+    totalBudget: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
+    allocatedAmount: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
+    unallocatedAmount: 0
+  });
   const navigate = useNavigate();
 
   // Get filtered transactions for the selected month
@@ -247,10 +276,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Financial Institution management
-  const addFinancialInstitution = useCallback((institution: Omit<FinancialInstitution, 'id'>) => {
+  const addFinancialInstitution = useCallback((institution: Omit<FinancialInstitution, 'id' | 'archived'>) => {
     const newInstitution = {
       ...institution,
       id: `fi${financialInstitutions.length + 1}`,
+      archived: false
     };
     setFinancialInstitutions(prev => [...prev, newInstitution]);
     toast.success('Instituição financeira adicionada com sucesso');
@@ -268,11 +298,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Instituição financeira excluída com sucesso');
   }, []);
 
+  // Arquivar instituição financeira
+  const archiveFinancialInstitution = useCallback((id: string, archived: boolean) => {
+    setFinancialInstitutions(prev => 
+      prev.map(fi => (fi.id === id ? { ...fi, archived } : fi))
+    );
+    toast.success(archived 
+      ? 'Instituição financeira arquivada com sucesso' 
+      : 'Instituição financeira desarquivada com sucesso');
+  }, []);
+
   // Credit Card management
-  const addCreditCard = useCallback((card: Omit<CreditCard, 'id'>) => {
+  const addCreditCard = useCallback((card: Omit<CreditCard, 'id' | 'archived'>) => {
     const newCard = {
       ...card,
       id: `cc${creditCards.length + 1}`,
+      archived: false
     };
     setCreditCards(prev => [...prev, newCard]);
     toast.success('Cartão de crédito adicionado com sucesso');
@@ -288,6 +329,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const deleteCreditCard = useCallback((id: string) => {
     setCreditCards(prev => prev.filter(cc => cc.id !== id));
     toast.success('Cartão de crédito excluído com sucesso');
+  }, []);
+
+  // Arquivar cartão de crédito
+  const archiveCreditCard = useCallback((id: string, archived: boolean) => {
+    setCreditCards(prev => 
+      prev.map(cc => (cc.id === id ? { ...cc, archived } : cc))
+    );
+    toast.success(archived 
+      ? 'Cartão de crédito arquivado com sucesso' 
+      : 'Cartão de crédito desarquivado com sucesso');
   }, []);
 
   // Goal management
@@ -438,6 +489,39 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Orçamento excluído com sucesso');
   }, []);
 
+  // Budget reallocation
+  const setBudgetTotalAmount = useCallback((amount: number) => {
+    const currentAllocated = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
+    
+    setBudgetReallocation({
+      totalBudget: amount,
+      allocatedAmount: currentAllocated,
+      unallocatedAmount: amount - currentAllocated
+    });
+  }, [budgetGoals]);
+
+  const updateBudgetAllocation = useCallback((category: string, amount: number) => {
+    let newAllocatedAmount = 0;
+    
+    setBudgetGoals(prev => {
+      const updated = prev.map(bg => {
+        if (bg.category === category) {
+          return { ...bg, amount };
+        }
+        return bg;
+      });
+      
+      newAllocatedAmount = updated.reduce((acc, budget) => acc + budget.amount, 0);
+      return updated;
+    });
+    
+    setBudgetReallocation(prev => ({
+      ...prev,
+      allocatedAmount: newAllocatedAmount,
+      unallocatedAmount: prev.totalBudget - newAllocatedAmount
+    }));
+  }, []);
+
   return (
     <FinanceContext.Provider
       value={{
@@ -471,9 +555,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         addFinancialInstitution,
         updateFinancialInstitution,
         deleteFinancialInstitution,
+        archiveFinancialInstitution,
         addCreditCard,
         updateCreditCard,
         deleteCreditCard,
+        archiveCreditCard,
         selectedCategories,
         toggleCategorySelection,
         resetCategorySelection,
@@ -487,6 +573,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         deleteGoal,
         addGoalTransaction,
         deleteGoalTransaction,
+        // Budget reallocation
+        budgetReallocation,
+        setBudgetTotalAmount,
+        updateBudgetAllocation,
       }}
     >
       {children}

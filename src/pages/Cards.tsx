@@ -2,8 +2,26 @@
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
-import { CreditCard, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { 
+  CreditCard, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  ExternalLink, 
+  MoreHorizontal, 
+  Calendar, 
+  Archive,
+  ArrowUpFromLine
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -11,95 +29,98 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import AnimatedNumber from '@/components/ui/AnimatedNumber';
-import { CreditCard as CreditCardType } from '@/types/finance';
-
-const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Outro'];
+} from "@/components/ui/select";
 
 export function Cards() {
   const { 
     creditCards, 
-    financialInstitutions,
+    financialInstitutions, 
+    formatCurrency, 
     addCreditCard, 
     updateCreditCard, 
     deleteCreditCard,
-    formatCurrency,
-    navigateToTransactions,
+    archiveCreditCard,
+    navigateToTransactions 
   } = useFinance();
   
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editCard, setEditCard] = useState<CreditCardType | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<(typeof creditCards)[0] | null>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
+    number: '',
+    institution: '',
     limit: 0,
-    brand: CARD_BRANDS[0],
-    dueDate: 1,
-    institutionId: '',
+    closingDay: 1,
+    dueDay: 10,
+    color: '#4F46E5',
   });
   
-  const handleOpenDialog = (card?: CreditCardType) => {
-    if (card) {
-      setEditCard(card);
-      setFormData({
-        name: card.name,
-        limit: card.limit,
-        brand: card.brand,
-        dueDate: card.dueDate,
-        institutionId: card.institutionId,
-      });
-    } else {
-      setEditCard(null);
-      setFormData({
-        name: '',
-        limit: 0,
-        brand: CARD_BRANDS[0],
-        dueDate: 1,
-        institutionId: financialInstitutions.length > 0 ? financialInstitutions[0].id : '',
-      });
-    }
-    setOpenDialog(true);
+  const activeCards = creditCards.filter(card => !card.archived);
+  const archivedCards = creditCards.filter(card => card.archived);
+  
+  const handleOpenAddDialog = () => {
+    setEditingCard(null);
+    setFormData({
+      name: '',
+      number: '',
+      institution: financialInstitutions.length > 0 ? financialInstitutions[0].id : '',
+      limit: 0,
+      closingDay: 1,
+      dueDay: 10,
+      color: '#4F46E5',
+    });
+    setIsDialogOpen(true);
+  };
+  
+  const handleOpenEditDialog = (card: (typeof creditCards)[0]) => {
+    setEditingCard(card);
+    setFormData({
+      name: card.name,
+      number: card.number,
+      institution: card.institution,
+      limit: card.limit,
+      closingDay: card.closingDay,
+      dueDay: card.dueDay,
+      color: card.color,
+    });
+    setIsDialogOpen(true);
+  };
+  
+  const handleOpenDeleteDialog = (card: (typeof creditCards)[0]) => {
+    setEditingCard(card);
+    setIsDeleteDialogOpen(true);
   };
   
   const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditCard(null);
+    setIsDialogOpen(false);
+    setEditingCard(null);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Make sure dueDate is between 1 and 31
-    const validatedFormData = {
-      ...formData,
-      dueDate: Math.min(Math.max(formData.dueDate, 1), 31),
-    };
-    
-    if (editCard) {
-      updateCreditCard(editCard.id, validatedFormData);
-    } else {
-      addCreditCard(validatedFormData);
-    }
-    
-    handleCloseDialog();
-  };
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     
     if (type === 'number') {
@@ -109,18 +130,154 @@ export function Cards() {
     }
   };
   
-  const handleDelete = (id: string) => {
-    deleteCreditCard(id);
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
   };
   
-  const handleViewTransactions = (id: string) => {
-    navigateToTransactions('all', undefined, id);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingCard) {
+      updateCreditCard(editingCard.id, formData);
+    } else {
+      addCreditCard(formData);
+    }
+    
+    handleCloseDialog();
   };
   
-  // Get institution name by id
-  const getInstitutionName = (institutionId: string) => {
-    const institution = financialInstitutions.find(inst => inst.id === institutionId);
-    return institution ? institution.name : 'Desconhecido';
+  const handleDelete = () => {
+    if (editingCard) {
+      deleteCreditCard(editingCard.id);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+  
+  const handleArchive = (id: string, archived: boolean) => {
+    archiveCreditCard(id, archived);
+  };
+  
+  const handleNavigateToTransactions = (cardId: string) => {
+    navigateToTransactions('all', undefined, cardId);
+  };
+  
+  const formatCardNumber = (number: string) => {
+    if (!number) return '';
+    
+    const last4 = number.slice(-4);
+    return `•••• ${last4}`;
+  };
+  
+  const getInstitutionById = (id: string) => {
+    return financialInstitutions.find(institution => institution.id === id);
+  };
+  
+  const renderCardItem = (card: (typeof creditCards)[0]) => {
+    const institution = getInstitutionById(card.institution);
+    
+    return (
+      <Card key={card.id} className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `${card.color}20` }}
+              >
+                <CreditCard size={20} style={{ color: card.color }} />
+              </div>
+              <div>
+                <CardTitle className="text-lg">{card.name}</CardTitle>
+                <CardDescription>
+                  {institution?.name} - {formatCardNumber(card.number)}
+                </CardDescription>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleNavigateToTransactions(card.id)}>
+                  <ExternalLink size={16} className="mr-2" />
+                  Ver Transações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenEditDialog(card)}>
+                  <Edit size={16} className="mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                {card.archived ? (
+                  <DropdownMenuItem onClick={() => handleArchive(card.id, false)}>
+                    <ArrowUpFromLine size={16} className="mr-2" />
+                    Desarquivar
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => handleArchive(card.id, true)}>
+                    <Archive size={16} className="mr-2" />
+                    Arquivar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem 
+                  onClick={() => handleOpenDeleteDialog(card)}
+                  className="text-destructive"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <div>
+                <span className="text-sm text-muted-foreground">Limite</span>
+                <p className="text-xl font-semibold">{formatCurrency(card.limit)}</p>
+              </div>
+              
+              <div className="text-right">
+                <span className="text-sm text-muted-foreground">Utilizado</span>
+                <p className="text-xl font-semibold">{formatCurrency(card.used)}</p>
+              </div>
+            </div>
+            
+            <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
+              <div 
+                className="h-full transition-all duration-500 ease-out rounded-full"
+                style={{ 
+                  width: `${Math.min((card.used / card.limit) * 100, 100)}%`,
+                  backgroundColor: card.color,
+                }}
+              ></div>
+            </div>
+            
+            <div className="flex justify-between text-sm">
+              <div className="flex items-center gap-1">
+                <Calendar size={14} />
+                <span>Fechamento: dia {card.closingDay}</span>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Calendar size={14} />
+                <span>Vencimento: dia {card.dueDay}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="bg-muted/50 pt-2">
+          <Button 
+            variant="ghost" 
+            className="w-full"
+            onClick={() => handleNavigateToTransactions(card.id)}
+          >
+            Ver Transações
+          </Button>
+        </CardFooter>
+      </Card>
+    );
   };
   
   return (
@@ -128,97 +285,77 @@ export function Cards() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Cartões de Crédito</h1>
         <p className="text-muted-foreground mt-1">
-          Gerencie seus cartões de crédito e visualize seus limites
+          Gerencie seus cartões de crédito e acompanhe seus gastos
         </p>
       </div>
       
       <div className="flex justify-between mb-6">
-        <div></div>
-        <Button onClick={() => handleOpenDialog()}>
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList>
+            <TabsTrigger value="active">
+              Ativos ({activeCards.length})
+            </TabsTrigger>
+            <TabsTrigger value="archived">
+              Arquivados ({archivedCards.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        <Button onClick={handleOpenAddDialog}>
           <Plus size={16} className="mr-1" />
           Novo Cartão
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {creditCards.map((card) => (
-          <div 
-            key={card.id} 
-            className="border rounded-lg p-4 transition hover:shadow-md cursor-pointer"
-            onClick={() => handleViewTransactions(card.id)}
-          >
-            <div className="flex justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <CreditCard size={20} className="text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">{card.name}</h3>
-                  <div className="text-xs text-muted-foreground">{card.brand}</div>
-                </div>
+      <Tabs defaultValue="active">
+        <TabsContent value="active">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeCards.length > 0 ? (
+              activeCards.map(renderCardItem)
+            ) : (
+              <div className="col-span-full text-center p-12 border rounded-lg bg-muted/10">
+                <CreditCard size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhum cartão de crédito</h3>
+                <p className="text-muted-foreground mb-4">
+                  Adicione seus cartões de crédito para acompanhar seus gastos
+                </p>
+                <Button onClick={handleOpenAddDialog}>
+                  <Plus size={16} className="mr-2" />
+                  Adicionar Cartão
+                </Button>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal size={16} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenDialog(card);
-                  }}>
-                    <Edit size={16} className="mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(card.id);
-                    }}
-                  >
-                    <Trash2 size={16} className="mr-2" />
-                    Excluir
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            
-            <div className="mt-4">
-              <div className="text-sm text-muted-foreground mb-1">Limite</div>
-              <div className="text-2xl font-medium">
-                <AnimatedNumber 
-                  value={card.limit} 
-                  formatValue={(val) => formatCurrency(val)} 
-                />
-              </div>
-            </div>
-            
-            <div className="mt-4 flex flex-col gap-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Instituição</span>
-                <span className="text-sm font-medium">{getInstitutionName(card.institutionId)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Vencimento</span>
-                <span className="text-sm font-medium">Dia {card.dueDate}</span>
-              </div>
-            </div>
+            )}
           </div>
-        ))}
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="archived">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {archivedCards.length > 0 ? (
+              archivedCards.map(renderCardItem)
+            ) : (
+              <div className="col-span-full text-center p-12 border rounded-lg bg-muted/10">
+                <Archive size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhum cartão arquivado</h3>
+                <p className="text-muted-foreground mb-4">
+                  Cartões arquivados aparecerão aqui
+                </p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
       
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+      {/* Add/Edit Card Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editCard ? 'Editar Cartão' : 'Novo Cartão'}
+              {editingCard ? 'Editar Cartão' : 'Novo Cartão'}
             </DialogTitle>
             <DialogDescription>
-              {editCard 
-                ? 'Edite os detalhes do seu cartão de crédito' 
-                : 'Adicione um novo cartão de crédito ao seu perfil'}
+              {editingCard 
+                ? 'Edite os detalhes do cartão de crédito' 
+                : 'Adicione um novo cartão de crédito'}
             </DialogDescription>
           </DialogHeader>
           
@@ -230,60 +367,28 @@ export function Cards() {
                   id="name" 
                   name="name" 
                   value={formData.name} 
-                  onChange={handleChange} 
+                  onChange={handleInputChange} 
                   required 
                 />
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="limit">Limite</Label>
+                <Label htmlFor="number">Número do Cartão</Label>
                 <Input 
-                  id="limit" 
-                  name="limit" 
-                  type="number" 
-                  step="0.01" 
-                  value={formData.limit} 
-                  onChange={handleChange} 
+                  id="number" 
+                  name="number" 
+                  value={formData.number} 
+                  onChange={handleInputChange} 
                   required 
+                  placeholder="**** **** **** ****"
                 />
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="brand">Bandeira</Label>
+                <Label htmlFor="institution">Instituição</Label>
                 <Select 
-                  value={formData.brand} 
-                  onValueChange={(value) => setFormData({...formData, brand: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma bandeira" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CARD_BRANDS.map(brand => (
-                      <SelectItem key={brand} value={brand}>{brand}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="dueDate">Dia de Vencimento</Label>
-                <Input 
-                  id="dueDate" 
-                  name="dueDate" 
-                  type="number" 
-                  min="1" 
-                  max="31" 
-                  value={formData.dueDate} 
-                  onChange={handleChange} 
-                  required 
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="institutionId">Instituição Financeira</Label>
-                <Select 
-                  value={formData.institutionId} 
-                  onValueChange={(value) => setFormData({...formData, institutionId: value})}
+                  value={formData.institution} 
+                  onValueChange={(value) => handleSelectChange('institution', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma instituição" />
@@ -297,6 +402,69 @@ export function Cards() {
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="limit">Limite</Label>
+                <Input 
+                  id="limit" 
+                  name="limit" 
+                  type="number" 
+                  step="0.01" 
+                  value={formData.limit} 
+                  onChange={handleInputChange} 
+                  required 
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="closingDay">Dia de Fechamento</Label>
+                  <Input 
+                    id="closingDay" 
+                    name="closingDay" 
+                    type="number" 
+                    min="1" 
+                    max="31" 
+                    value={formData.closingDay} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="dueDay">Dia de Vencimento</Label>
+                  <Input 
+                    id="dueDay" 
+                    name="dueDay" 
+                    type="number" 
+                    min="1" 
+                    max="31" 
+                    value={formData.dueDay} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="color">Cor</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="color" 
+                    name="color" 
+                    type="color" 
+                    value={formData.color} 
+                    onChange={handleInputChange} 
+                    className="w-12 h-10 p-1"
+                  />
+                  <Input 
+                    type="text" 
+                    value={formData.color} 
+                    onChange={(e) => setFormData({...formData, color: e.target.value})} 
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
             
             <DialogFooter>
@@ -304,10 +472,30 @@ export function Cards() {
                 Cancelar
               </Button>
               <Button type="submit">
-                {editCard ? 'Salvar Alterações' : 'Adicionar'}
+                {editingCard ? 'Salvar Alterações' : 'Adicionar'}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Cartão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o cartão "{editingCard?.name}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>
