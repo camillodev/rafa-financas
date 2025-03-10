@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 import { 
   transactions as initialTransactions, 
@@ -11,7 +10,7 @@ import {
   creditCards as initialCreditCards,
   subcategories as initialSubcategories
 } from '../data/mockData';
-import { Transaction, Category, BudgetGoal, FinancialSummary, FinancialInstitution, CreditCard, Subcategory } from '../types/finance';
+import { Transaction, Category, BudgetGoal, FinancialSummary, FinancialInstitution, CreditCard, Subcategory, GoalModification } from '../types/finance';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { toast } from "sonner";
@@ -38,6 +37,7 @@ export interface Goal {
   icon: string;
   color: string;
   transactions: GoalTransaction[];
+  modifications?: GoalModification[]; // Add modifications array to Goal interface
 }
 
 // Budget reallocation context
@@ -91,20 +91,24 @@ interface FinanceContextType {
   updateBudgetGoal: (category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => void;
   deleteBudgetGoal: (category: string) => void;
   // Goal management functions
-  addGoal: (goal: Omit<Goal, 'id' | 'transactions'>) => void;
-  updateGoal: (id: string, goal: Partial<Omit<Goal, 'id' | 'transactions'>>) => void;
+  addGoal: (goal: Omit<Goal, 'id' | 'transactions' | 'modifications'>) => void;
+  updateGoal: (id: string, goal: Partial<Omit<Goal, 'id' | 'transactions' | 'modifications'>>) => void;
   deleteGoal: (id: string) => void;
   addGoalTransaction: (goalId: string, transaction: Omit<GoalTransaction, 'id'>) => void;
   deleteGoalTransaction: (goalId: string, transactionId: string) => void;
+  // New functions for goal modifications
+  addGoalModification: (goalId: string, modification: Omit<GoalModification, 'id' | 'goalId' | 'date'>) => void;
+  getGoalModifications: (goalId: string) => GoalModification[];
   // Budget reallocation
   budgetReallocation: BudgetReallocation;
   setBudgetTotalAmount: (amount: number) => void;
   updateBudgetAllocation: (category: string, amount: number) => void;
+  navigateToGoalDetail: (goalId: string) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
-// Initial Goals mock data
+// Initial Goals mock data with modifications
 const initialGoals: Goal[] = [
   {
     id: 'g1',
@@ -120,6 +124,12 @@ const initialGoals: Goal[] = [
       { id: 'gt2', date: new Date(2023, 5, 10), amount: 2000, type: 'add', description: 'Bônus do trabalho' },
       { id: 'gt3', date: new Date(2023, 6, 5), amount: 1500, type: 'add', description: 'Economia mensal' },
       { id: 'gt4', date: new Date(2023, 6, 20), amount: 500, type: 'remove', description: 'Compra de passagem' },
+    ],
+    modifications: [
+      { id: 'gm1', goalId: 'g1', date: new Date(2023, 4, 15), type: 'contribution', description: 'Depósito inicial', amount: 3000 },
+      { id: 'gm2', goalId: 'g1', date: new Date(2023, 5, 10), type: 'target_change', description: 'Aumento do objetivo', previousValue: 12000, newValue: 15000 },
+      { id: 'gm3', goalId: 'g1', date: new Date(2023, 6, 5), type: 'contribution', description: 'Economia mensal', amount: 1500 },
+      { id: 'gm4', goalId: 'g1', date: new Date(2023, 6, 20), type: 'withdrawal', description: 'Compra de passagem', amount: 500 },
     ]
   },
   {
@@ -135,6 +145,11 @@ const initialGoals: Goal[] = [
       { id: 'gt5', date: new Date(2023, 2, 10), amount: 20000, type: 'add', description: 'Venda de investimentos' },
       { id: 'gt6', date: new Date(2023, 3, 15), amount: 5000, type: 'add', description: 'Economia trimestral' },
       { id: 'gt7', date: new Date(2023, 4, 20), amount: 10000, type: 'add', description: 'Bônus anual' },
+    ],
+    modifications: [
+      { id: 'gm5', goalId: 'g2', date: new Date(2023, 2, 10), type: 'contribution', description: 'Venda de investimentos', amount: 20000 },
+      { id: 'gm6', goalId: 'g2', date: new Date(2023, 3, 15), type: 'date_change', description: 'Prazo estendido', previousValue: '2023-12-31', newValue: '2024-06-30' },
+      { id: 'gm7', goalId: 'g2', date: new Date(2023, 4, 20), type: 'contribution', description: 'Bônus anual', amount: 10000 },
     ]
   },
   {
@@ -150,6 +165,11 @@ const initialGoals: Goal[] = [
       { id: 'gt8', date: new Date(2023, 0, 5), amount: 5000, type: 'add', description: 'Depósito inicial' },
       { id: 'gt9', date: new Date(2023, 1, 10), amount: 3000, type: 'add', description: 'Economia mensal' },
       { id: 'gt10', date: new Date(2023, 2, 15), amount: 4000, type: 'add', description: 'Economia mensal' },
+    ],
+    modifications: [
+      { id: 'gm8', goalId: 'g3', date: new Date(2023, 0, 5), type: 'contribution', description: 'Depósito inicial', amount: 5000 },
+      { id: 'gm9', goalId: 'g3', date: new Date(2023, 1, 10), type: 'description_change', description: 'Mudança de descrição', previousValue: 'Fundo de emergência', newValue: 'Reserva de emergência' },
+      { id: 'gm10', goalId: 'g3', date: new Date(2023, 2, 15), type: 'contribution', description: 'Economia mensal', amount: 4000 },
     ]
   },
 ];
@@ -185,7 +205,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   });
   const navigate = useNavigate();
 
-  // Get filtered transactions for the selected month
   const filteredTransactions = useMemo(() => {
     const startDate = startOfMonth(currentDate);
     const endDate = endOfMonth(currentDate);
@@ -196,12 +215,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     });
   }, [transactions, currentDate]);
 
-  // Check if there's data for the current month
   const hasDataForCurrentMonth = useMemo(() => {
     return filteredTransactions.length > 0;
   }, [filteredTransactions]);
 
-  // Month navigation functions
   const navigateToPreviousMonth = useCallback(() => {
     setCurrentDate(prevDate => subMonths(prevDate, 1));
   }, []);
@@ -231,7 +248,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Transação atualizada com sucesso');
   }, []);
 
-  // Category management
   const addCategory = useCallback((category: Omit<Category, 'id'>) => {
     const newCategory = {
       ...category,
@@ -253,7 +269,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Categoria excluída com sucesso');
   }, []);
 
-  // Subcategory management
   const addSubcategory = useCallback((subcategory: Omit<Subcategory, 'id'>) => {
     const newSubcategory = {
       ...subcategory,
@@ -275,7 +290,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Subcategoria excluída com sucesso');
   }, []);
 
-  // Financial Institution management
   const addFinancialInstitution = useCallback((institution: Omit<FinancialInstitution, 'id' | 'archived'>) => {
     const newInstitution = {
       ...institution,
@@ -298,7 +312,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Instituição financeira excluída com sucesso');
   }, []);
 
-  // Arquivar instituição financeira
   const archiveFinancialInstitution = useCallback((id: string, archived: boolean) => {
     setFinancialInstitutions(prev => 
       prev.map(fi => (fi.id === id ? { ...fi, archived } : fi))
@@ -308,7 +321,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       : 'Instituição financeira desarquivada com sucesso');
   }, []);
 
-  // Credit Card management
   const addCreditCard = useCallback((card: Omit<CreditCard, 'id' | 'archived'>) => {
     const newCard = {
       ...card,
@@ -331,7 +343,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Cartão de crédito excluído com sucesso');
   }, []);
 
-  // Arquivar cartão de crédito
   const archiveCreditCard = useCallback((id: string, archived: boolean) => {
     setCreditCards(prev => 
       prev.map(cc => (cc.id === id ? { ...cc, archived } : cc))
@@ -341,28 +352,45 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       : 'Cartão de crédito desarquivado com sucesso');
   }, []);
 
-  // Goal management
-  const addGoal = useCallback((goal: Omit<Goal, 'id' | 'transactions'>) => {
+  const addGoal = useCallback((goal: Omit<Goal, 'id' | 'transactions' | 'modifications'>) => {
     const newGoal = {
       ...goal,
       id: `g${goals.length + 1}`,
-      transactions: []
+      transactions: [],
+      modifications: []
     };
     setGoals(prev => [...prev, newGoal]);
     toast.success('Meta adicionada com sucesso');
   }, [goals]);
 
-  const updateGoal = useCallback((id: string, goalUpdate: Partial<Omit<Goal, 'id' | 'transactions'>>) => {
-    setGoals(prev => 
-      prev.map(goal => (goal.id === id ? { ...goal, ...goalUpdate } : goal))
-    );
-    toast.success('Meta atualizada com sucesso');
+  const navigateToGoalDetail = useCallback((goalId: string) => {
+    navigate(`/goals/${goalId}`);
+  }, [navigate]);
+
+  const addGoalModification = useCallback((goalId: string, modification: Omit<GoalModification, 'id' | 'goalId' | 'date'>) => {
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+        
+        const newModification = {
+          ...modification,
+          id: `gm${Math.random().toString(36).substring(2, 9)}`,
+          goalId,
+          date: new Date()
+        };
+        
+        return {
+          ...goal,
+          modifications: [...(goal.modifications || []), newModification]
+        };
+      });
+    });
   }, []);
 
-  const deleteGoal = useCallback((id: string) => {
-    setGoals(prev => prev.filter(goal => goal.id !== id));
-    toast.success('Meta excluída com sucesso');
-  }, []);
+  const getGoalModifications = useCallback((goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    return goal?.modifications || [];
+  }, [goals]);
 
   const addGoalTransaction = useCallback((goalId: string, transaction: Omit<GoalTransaction, 'id'>) => {
     setGoals(prev => {
@@ -389,7 +417,57 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       });
     });
     
+    addGoalModification(goalId, {
+      type: transaction.type === 'add' ? 'contribution' : 'withdrawal',
+      description: transaction.description,
+      amount: transaction.amount
+    });
+    
     toast.success(`${transaction.type === 'add' ? 'Valor adicionado' : 'Valor retirado'} com sucesso`);
+  }, [addGoalModification]);
+
+  const updateGoal = useCallback((id: string, goalUpdate: Partial<Omit<Goal, 'id' | 'transactions' | 'modifications'>>) => {
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== id) return goal;
+        
+        if (goalUpdate.targetAmount && goalUpdate.targetAmount !== goal.targetAmount) {
+          addGoalModification(id, {
+            type: 'target_change',
+            description: 'Alteração do valor alvo',
+            previousValue: goal.targetAmount,
+            newValue: goalUpdate.targetAmount
+          });
+        }
+        
+        if (goalUpdate.targetDate && goalUpdate.targetDate !== goal.targetDate) {
+          addGoalModification(id, {
+            type: 'date_change',
+            description: 'Alteração da data alvo',
+            previousValue: goal.targetDate,
+            newValue: goalUpdate.targetDate
+          });
+        }
+        
+        if (goalUpdate.name && goalUpdate.name !== goal.name) {
+          addGoalModification(id, {
+            type: 'description_change',
+            description: 'Alteração do nome da meta',
+            previousValue: goal.name,
+            newValue: goalUpdate.name
+          });
+        }
+        
+        return { ...goal, ...goalUpdate };
+      });
+    });
+    
+    toast.success('Meta atualizada com sucesso');
+  }, [addGoalModification]);
+
+  const deleteGoal = useCallback((id: string) => {
+    setGoals(prev => prev.filter(goal => goal.id !== id));
+    toast.success('Meta excluída com sucesso');
   }, []);
 
   const deleteGoalTransaction = useCallback((goalId: string, transactionId: string) => {
@@ -418,7 +496,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Transação da meta excluída com sucesso');
   }, []);
 
-  // Toggle category selection for filtering
   const toggleCategorySelection = useCallback((categoryId: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(categoryId)) {
@@ -433,7 +510,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setSelectedCategories([]);
   }, []);
 
-  // Format currency to Brazilian Real format
   const formatCurrency = (value: number): string => {
     return value.toLocaleString('pt-BR', {
       style: 'currency',
@@ -442,7 +518,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   };
 
   const navigateToTransactions = (filter: TransactionFilterType = 'all', institutionId?: string, cardId?: string) => {
-    // Construct query parameters
     const params = new URLSearchParams();
     
     if (filter !== 'all') {
@@ -458,15 +533,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       params.append('transactionType', 'Credit Card');
     }
     
-    // Navigate to transactions page with filter
     navigate(`/transactions${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
-  // Budget Goal management
   const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'spent'>) => {
     const newBudgetGoal = {
       ...budgetGoal,
-      spent: 0, // Initialize with 0 spent
+      spent: 0,
     };
     
     setBudgetGoals(prev => [...prev, newBudgetGoal]);
@@ -489,7 +562,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Orçamento excluído com sucesso');
   }, []);
 
-  // Budget reallocation
   const setBudgetTotalAmount = useCallback((amount: number) => {
     const currentAllocated = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
     
@@ -563,17 +635,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         selectedCategories,
         toggleCategorySelection,
         resetCategorySelection,
-        // Budget goal management functions
         addBudgetGoal,
         updateBudgetGoal,
         deleteBudgetGoal,
-        // Goal management functions
         addGoal,
         updateGoal,
         deleteGoal,
         addGoalTransaction,
         deleteGoalTransaction,
-        // Budget reallocation
+        addGoalModification,
+        getGoalModifications,
+        navigateToGoalDetail,
         budgetReallocation,
         setBudgetTotalAmount,
         updateBudgetAllocation,

@@ -11,6 +11,7 @@ import Categories from "./pages/Categories";
 import Institutions from "./pages/Institutions";
 import Cards from "./pages/Cards";
 import Goals from "./pages/Goals";
+import GoalDetail from "./pages/GoalDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { FinanceProvider } from "@/context/FinanceContext";
@@ -57,6 +58,11 @@ const App = () => (
           <Route path="/goals" element={
             <FinanceProvider>
               <Goals />
+            </FinanceProvider>
+          } />
+          <Route path="/goals/:id" element={
+            <FinanceProvider>
+              <GoalDetail />
             </FinanceProvider>
           } />
           <Route path="/settings" element={

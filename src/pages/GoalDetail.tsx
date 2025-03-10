@@ -2,26 +2,30 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { useFinance, GoalTransaction } from '@/context/FinanceContext';
+import { useFinance } from '@/context/FinanceContext';
 import { 
-  Edit, 
-  ChevronLeft, 
-  PlusCircle, 
-  MinusCircle, 
   Target, 
-  Trash2, 
-  ArrowUpRight, 
-  ArrowDownRight, 
+  ArrowLeft, 
   Calendar, 
-  CircleDollarSign, 
-  Clock, 
-  CalendarDays,
-  History, 
-  Info,
+  Edit, 
+  Plus, 
+  Trash2, 
+  Coins, 
+  LineChart, 
+  BanknoteIcon, 
+  Clock,
+  History,
   AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -29,595 +33,684 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import AnimatedNumber from '@/components/ui/AnimatedNumber';
-import { format, differenceInMonths, formatDistance } from 'date-fns';
+} from "@/components/ui/select";
+import { differenceInMonths, format, isAfter, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 import { toast } from "sonner";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { GoalModification, GoalTransaction } from '@/types/finance';
 
 export function GoalDetail() {
-  const { goalId } = useParams<{ goalId: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { formatCurrency, categories, goals, updateGoal, deleteGoal, addGoalTransaction, deleteGoalTransaction } = useFinance();
   
-  const [goal, setGoal] = useState<typeof goals[0] | null>(null);
-  const [openAddFundsDialog, setOpenAddFundsDialog] = useState(false);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const { 
+    goals, 
+    categories, 
+    formatCurrency, 
+    updateGoal, 
+    deleteGoal, 
+    addGoalTransaction, 
+    deleteGoalTransaction,
+    addGoalModification,
+    getGoalModifications
+  } = useFinance();
   
-  const [formData, setFormData] = useState({
+  const goal = goals.find(g => g.id === id);
+  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [isDeleteTransactionDialogOpen, setIsDeleteTransactionDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<GoalTransaction | null>(null);
+  
+  const [modificationHistory, setModificationHistory] = useState<GoalModification[]>([]);
+  
+  const [editFormData, setEditFormData] = useState({
     name: '',
     targetAmount: 0,
-    currentAmount: 0,
     targetDate: '',
     category: '',
-    color: '#4F46E5',
-    icon: 'target',
+    icon: '',
+    color: '',
   });
   
-  const [transactionData, setTransactionData] = useState({
+  const [transactionFormData, setTransactionFormData] = useState({
     amount: 0,
-    type: 'add' as 'add' | 'remove',
+    type: 'add',
     description: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
   });
   
+  // Load modification history
   useEffect(() => {
-    if (goalId) {
-      const foundGoal = goals.find(g => g.id === goalId);
-      if (foundGoal) {
-        setGoal(foundGoal);
-        setFormData({
-          name: foundGoal.name,
-          targetAmount: foundGoal.targetAmount,
-          currentAmount: foundGoal.currentAmount,
-          targetDate: foundGoal.targetDate,
-          category: foundGoal.category,
-          color: foundGoal.color,
-          icon: foundGoal.icon
-        });
-      } else {
-        // Meta não encontrada, redirecionar para página de metas
-        navigate('/goals');
-        toast.error('Meta não encontrada');
-      }
+    if (id) {
+      const modifications = getGoalModifications(id);
+      setModificationHistory(modifications);
     }
-  }, [goalId, goals, navigate]);
+  }, [id, getGoalModifications]);
   
-  const handleOpenAddFundsDialog = (type: 'add' | 'remove') => {
-    setTransactionData({
-      amount: 0,
-      type: type,
-      description: type === 'add' ? 'Adição de fundos' : 'Retirada de fundos',
-    });
-    setOpenAddFundsDialog(true);
-  };
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === 'number') {
-      setFormData({ ...formData, [name]: parseFloat(value) || 0 });
-    } else {
-      setFormData({ ...formData, [name]: value });
+  // Initialize form data with goal details
+  useEffect(() => {
+    if (goal) {
+      setEditFormData({
+        name: goal.name,
+        targetAmount: goal.targetAmount,
+        targetDate: goal.targetDate,
+        category: goal.category,
+        icon: goal.icon,
+        color: goal.color,
+      });
     }
-  };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
-  
-  const handleTransactionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === 'number') {
-      setTransactionData({ ...transactionData, [name]: parseFloat(value) || 0 });
-    } else {
-      setTransactionData({ ...transactionData, [name]: value });
-    }
-  };
-  
-  const handleSubmitEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!goalId) return;
-    
-    updateGoal(goalId, formData);
-    setOpenEditDialog(false);
-  };
-  
-  const handleAddFunds = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!goalId || !goal) return;
-    
-    if (transactionData.type === 'remove' && transactionData.amount > goal.currentAmount) {
-      toast.error("Não é possível retirar mais do que o valor atual da meta");
-      return;
-    }
-    
-    addGoalTransaction(goalId, {
-      date: new Date(),
-      amount: transactionData.amount,
-      type: transactionData.type,
-      description: transactionData.description,
-    });
-    
-    setOpenAddFundsDialog(false);
-  };
-  
-  const handleDeleteGoal = () => {
-    if (!goalId) return;
-    
-    deleteGoal(goalId);
-    navigate('/goals');
-    toast.success('Meta excluída com sucesso');
-  };
-  
-  const handleDeleteTransaction = (transactionId: string) => {
-    if (!goalId) return;
-    
-    deleteGoalTransaction(goalId, transactionId);
-  };
-  
-  const calculateProgress = (current: number, target: number) => {
-    return Math.min(Math.round((current / target) * 100), 100);
-  };
-  
-  const calculateMonthlyContribution = (goal: typeof goals[0]) => {
-    const today = new Date();
-    const targetDate = new Date(goal.targetDate);
-    
-    // If target date is in the past, return 0
-    if (targetDate < today) return 0;
-    
-    // Calculate months between now and target date (add 1 to include current month)
-    const months = differenceInMonths(targetDate, today) + 1;
-    if (months <= 0) return 0;
-    
-    // Calculate remaining amount
-    const remaining = goal.targetAmount - goal.currentAmount;
-    if (remaining <= 0) return 0;
-    
-    // Calculate monthly contribution
-    return remaining / months;
-  };
-
-  // Calculate remaining time until target date
-  const calculateRemainingTime = (targetDate: string) => {
-    const today = new Date();
-    const target = new Date(targetDate);
-    
-    if (target < today) {
-      return "Meta vencida";
-    }
-    
-    return formatDistance(today, target, { 
-      locale: ptBR,
-      addSuffix: true 
-    });
-  };
+  }, [goal]);
   
   if (!goal) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <Info size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Carregando meta...</h2>
-            <p className="text-muted-foreground">
-              Se esta mensagem persistir, a meta pode não existir.
-            </p>
-            <Button className="mt-4" onClick={() => navigate('/goals')}>
-              <ChevronLeft size={16} className="mr-2" />
-              Voltar para Metas
-            </Button>
-          </div>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <AlertTriangle size={48} className="text-destructive mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Meta não encontrada</h1>
+          <p className="text-muted-foreground mb-6">A meta que você está procurando não existe ou foi removida.</p>
+          <Button onClick={() => navigate('/goals')}>
+            <ArrowLeft size={16} className="mr-2" />
+            Voltar para Metas
+          </Button>
         </div>
       </AppLayout>
     );
   }
   
-  const progress = calculateProgress(goal.currentAmount, goal.targetAmount);
-  const remainingAmount = goal.targetAmount - goal.currentAmount;
-  const monthlyContribution = calculateMonthlyContribution(goal);
-  const remainingTime = calculateRemainingTime(goal.targetDate);
-  const isCompleted = goal.currentAmount >= goal.targetAmount;
+  const percentage = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100);
+  
+  const calculateMonthlyContribution = () => {
+    const targetDate = new Date(goal.targetDate);
+    const today = new Date();
+    const monthsRemaining = Math.max(1, differenceInMonths(targetDate, today) || 1);
+    const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
+    
+    return remainingAmount / monthsRemaining;
+  };
+  
+  const isTargetDatePassed = isAfter(new Date(), parseISO(goal.targetDate));
+  
+  const handleGoBack = () => {
+    navigate('/goals');
+  };
+  
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target as HTMLInputElement;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? parseFloat(value) || 0 : value
+    }));
+  };
+  
+  const handleTransactionInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target as HTMLInputElement;
+    setTransactionFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? parseFloat(value) || 0 : value
+    }));
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    if (name === 'type') {
+      setTransactionFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    } else {
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+  
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    updateGoal(goal.id, editFormData);
+    setIsEditDialogOpen(false);
+  };
+  
+  const handleTransactionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const transaction = {
+      date: new Date(transactionFormData.date),
+      amount: transactionFormData.amount,
+      type: transactionFormData.type as 'add' | 'remove',
+      description: transactionFormData.description,
+    };
+    
+    addGoalTransaction(goal.id, transaction);
+    setIsTransactionDialogOpen(false);
+    
+    // Reset form
+    setTransactionFormData({
+      amount: 0,
+      type: 'add',
+      description: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+  };
+  
+  const handleDeleteGoal = () => {
+    deleteGoal(goal.id);
+    navigate('/goals');
+    toast.success('Meta excluída com sucesso');
+  };
+  
+  const handleOpenDeleteTransactionDialog = (transaction: GoalTransaction) => {
+    setSelectedTransaction(transaction);
+    setIsDeleteTransactionDialogOpen(true);
+  };
+  
+  const handleDeleteTransaction = () => {
+    if (selectedTransaction) {
+      deleteGoalTransaction(goal.id, selectedTransaction.id);
+      setIsDeleteTransactionDialogOpen(false);
+    }
+  };
+  
+  const formatModificationType = (type: string) => {
+    switch (type) {
+      case 'contribution':
+        return 'Contribuição';
+      case 'withdrawal':
+        return 'Retirada';
+      case 'target_change':
+        return 'Alteração do valor';
+      case 'date_change':
+        return 'Alteração da data';
+      case 'description_change':
+        return 'Alteração da descrição';
+      default:
+        return type;
+    }
+  };
   
   return (
     <AppLayout>
-      <div className="mb-8">
-        <div className="flex items-center mb-4">
-          <Button variant="outline" size="icon" className="mr-4" onClick={() => navigate('/goals')}>
-            <ChevronLeft size={16} />
+      <div className="mb-6">
+        <div className="flex items-center mb-1">
+          <Button variant="ghost" size="icon" onClick={handleGoBack} className="mr-2">
+            <ArrowLeft size={16} />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${goal.color}20` }}
-              >
-                <Target size={20} style={{ color: goal.color }} />
-              </div>
-              {goal.name}
-              {isCompleted && (
-                <Badge variant="outline" className="bg-green-500 text-white hover:bg-green-600 ml-2">
-                  Concluída
-                </Badge>
-              )}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {goal.category} — Criado em {format(goal.transactions[0]?.date || new Date(), 'dd/MM/yyyy', { locale: ptBR })}
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold tracking-tight">{goal.name}</h1>
         </div>
-        
-        <div className="flex gap-2">
-          <Button onClick={() => setOpenEditDialog(true)}>
-            <Edit size={16} className="mr-2" />
-            Editar Meta
-          </Button>
-          <Button variant="outline" onClick={() => handleOpenAddFundsDialog('add')}>
-            <PlusCircle size={16} className="mr-2 text-finance-income" />
-            Adicionar Fundos
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => handleOpenAddFundsDialog('remove')}
-            disabled={goal.currentAmount <= 0}
-          >
-            <MinusCircle size={16} className="mr-2 text-finance-expense" />
-            Retirar Fundos
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={() => setOpenDeleteDialog(true)}
-          >
-            <Trash2 size={16} className="mr-2" />
-            Excluir
-          </Button>
+        <div className="flex items-center ml-9 text-muted-foreground">
+          <Calendar size={14} className="mr-1" />
+          <span>Meta para {format(new Date(goal.targetDate), 'dd MMMM yyyy', { locale: ptBR })}</span>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <CardTitle>Progresso da Meta</CardTitle>
-              <CardDescription>Acompanhe o progresso rumo ao seu objetivo</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Valor Atual</p>
-                  <p className="text-3xl font-bold">
-                    <AnimatedNumber 
-                      value={goal.currentAmount} 
-                      formatValue={(val) => formatCurrency(val)} 
-                    />
-                  </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex justify-between">
+              <div>
+                <CardTitle>Progresso</CardTitle>
+                <CardDescription>Acompanhe seu progresso em direção à meta</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
+                  <Edit size={14} className="mr-1" />
+                  Editar
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
+                  <Trash2 size={14} className="mr-1" />
+                  Excluir
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <div>
+                  <span className="text-sm text-muted-foreground">Valor Atual</span>
+                  <p className="text-2xl font-semibold">{formatCurrency(goal.currentAmount)}</p>
                 </div>
                 
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Valor Alvo</p>
-                  <p className="text-3xl font-bold">{formatCurrency(goal.targetAmount)}</p>
+                <div className="text-right">
+                  <span className="text-sm text-muted-foreground">Meta</span>
+                  <p className="text-2xl font-semibold">{formatCurrency(goal.targetAmount)}</p>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progresso</span>
-                  <span className="font-medium">{progress}%</span>
-                </div>
-                
-                <div className="h-4 w-full bg-accent rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${progress}%`,
-                      backgroundColor: goal.color,
-                    }}
-                  ></div>
+              <div className="h-4 w-full bg-secondary rounded-full overflow-hidden mt-2">
+                <div 
+                  className="h-full transition-all duration-500 ease-out rounded-full relative"
+                  style={{ 
+                    width: `${percentage}%`,
+                    backgroundColor: goal.color
+                  }}
+                >
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">
+                    {percentage}%
+                  </span>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Faltam</p>
-                  <p className="text-xl font-medium">
-                    {isCompleted ? (
-                      <span className="text-green-500">Meta atingida!</span>
-                    ) : (
-                      formatCurrency(remainingAmount)
-                    )}
-                  </p>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Data Alvo</p>
-                  <div className="flex items-center gap-2">
-                    <CalendarDays size={16} />
-                    <p className="text-xl font-medium">
-                      {format(new Date(goal.targetDate), 'dd/MM/yyyy', { locale: ptBR })}
-                    </p>
+              <div className="flex justify-between text-sm mt-1">
+                <span>
+                  {percentage < 100 
+                    ? `Faltando ${formatCurrency(goal.targetAmount - goal.currentAmount)}`
+                    : 'Meta atingida!'}
+                </span>
+                {isTargetDatePassed && percentage < 100 && (
+                  <span className="text-destructive flex items-center">
+                    <Clock size={12} className="mr-1" />
+                    Data alvo já passou
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Coins size={16} className="text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Contribuição Mensal</h3>
                   </div>
+                  <p className="text-xl font-semibold">{formatCurrency(calculateMonthlyContribution())}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Para atingir a meta até {format(new Date(goal.targetDate), 'MMM yyyy', { locale: ptBR })}
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BanknoteIcon size={16} className="text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Categoria</h3>
+                  </div>
+                  <p className="text-xl font-semibold">{goal.category}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Classificação da meta
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar size={16} className="text-muted-foreground" />
+                    <h3 className="text-sm font-medium">Tempo Restante</h3>
+                  </div>
+                  <p className="text-xl font-semibold">
+                    {differenceInMonths(new Date(goal.targetDate), new Date())} meses
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Até {format(new Date(goal.targetDate), 'dd/MM/yyyy')}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button onClick={() => setIsTransactionDialogOpen(true)}>
+                <Plus size={14} className="mr-1" />
+                Adicionar Transação
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo</CardTitle>
+            <CardDescription>Detalhes da sua meta</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Data de Criação</span>
+                  <span className="font-medium">
+                    {format(new Date(2023, 0, 1), 'dd/MM/yyyy')}
+                  </span>
                 </div>
+                <Separator />
               </div>
               
-              {!isCompleted && (
-                <>
-                  <Separator />
-                  
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Planejamento para atingir a meta</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Tempo Restante</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock size={16} />
-                          <p className="font-medium">{remainingTime}</p>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-muted-foreground">Contribuição Mensal Necessária</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <CircleDollarSign size={16} />
-                          <p className="font-medium">{formatCurrency(monthlyContribution)}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {new Date(goal.targetDate) < new Date() && (
-                      <div className="rounded-md border-destructive border bg-destructive/10 p-3 mt-3">
-                        <div className="flex gap-2 items-center">
-                          <AlertTriangle className="text-destructive h-5 w-5" />
-                          <p className="text-sm font-medium">A data alvo já passou!</p>
-                        </div>
-                        <p className="text-sm mt-1 pl-7">
-                          Atualize a data alvo ou aumente suas contribuições para atingir sua meta.
-                        </p>
-                      </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Data Alvo</span>
+                  <span className="font-medium">
+                    {format(new Date(goal.targetDate), 'dd/MM/yyyy')}
+                  </span>
+                </div>
+                <Separator />
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Total de Depósitos</span>
+                  <span className="font-medium text-finance-income">
+                    {formatCurrency(
+                      goal.transactions
+                        .filter(t => t.type === 'add')
+                        .reduce((acc, t) => acc + t.amount, 0)
                     )}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-          
+                  </span>
+                </div>
+                <Separator />
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Total de Retiradas</span>
+                  <span className="font-medium text-finance-expense">
+                    {formatCurrency(
+                      goal.transactions
+                        .filter(t => t.type === 'remove')
+                        .reduce((acc, t) => acc + t.amount, 0)
+                    )}
+                  </span>
+                </div>
+                <Separator />
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Número de Transações</span>
+                  <span className="font-medium">
+                    {goal.transactions.length}
+                  </span>
+                </div>
+                <Separator />
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Categoria</span>
+                  <span className="font-medium">
+                    {goal.category}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs defaultValue="transactions">
+        <TabsList className="mb-4">
+          <TabsTrigger value="transactions">Transações</TabsTrigger>
+          <TabsTrigger value="history">Histórico de Modificações</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="transactions">
           <Card>
             <CardHeader>
-              <CardTitle>Histórico de Alterações</CardTitle>
-              <CardDescription>Registro completo de todas as transações desta meta</CardDescription>
+              <CardTitle>Transações</CardTitle>
+              <CardDescription>
+                Todas as contribuições e retiradas desta meta
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <div className="py-2 px-4 bg-muted font-medium text-sm grid grid-cols-12">
-                  <div className="col-span-2">Data</div>
-                  <div className="col-span-2">Tipo</div>
-                  <div className="col-span-5">Descrição</div>
-                  <div className="col-span-2 text-right">Valor</div>
-                  <div className="col-span-1 text-right">Ações</div>
-                </div>
-                <div className="divide-y">
-                  {goal.transactions.length > 0 ? (
-                    [...goal.transactions]
-                      .sort((a, b) => b.date.getTime() - a.date.getTime())
+              {goal.transactions.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...goal.transactions]
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                       .map(transaction => (
-                        <div key={transaction.id} className="py-3 px-4 text-sm grid grid-cols-12 items-center">
-                          <div className="col-span-2">
-                            {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
-                          </div>
-                          <div className="col-span-2">
-                            <div className="flex items-center gap-1">
-                              {transaction.type === 'add' ? (
-                                <>
-                                  <ArrowUpRight size={16} className="text-finance-income" />
-                                  <span className="text-finance-income">Adição</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ArrowDownRight size={16} className="text-finance-expense" />
-                                  <span className="text-finance-expense">Retirada</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="col-span-5 truncate" title={transaction.description}>
-                            {transaction.description}
-                          </div>
-                          <div className={`col-span-2 text-right font-medium ${
-                            transaction.type === 'add' ? 'text-finance-income' : 'text-finance-expense'
+                        <TableRow key={transaction.id}>
+                          <TableCell>
+                            {format(new Date(transaction.date), 'dd/MM/yyyy')}
+                          </TableCell>
+                          <TableCell>{transaction.description}</TableCell>
+                          <TableCell>
+                            <Badge variant={transaction.type === 'add' ? 'default' : 'destructive'}>
+                              {transaction.type === 'add' ? 'Depósito' : 'Retirada'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`text-right ${
+                            transaction.type === 'add' 
+                              ? 'text-finance-income' 
+                              : 'text-finance-expense'
                           }`}>
-                            {transaction.type === 'add' ? '+' : '-'}
-                            {formatCurrency(transaction.amount)}
-                          </div>
-                          <div className="col-span-1 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteTransaction(transaction.id)}
+                            {transaction.type === 'add' ? '+' : '-'} {formatCurrency(transaction.amount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleOpenDeleteTransactionDialog(transaction)}
                             >
                               <Trash2 size={16} className="text-destructive" />
                             </Button>
-                          </div>
-                        </div>
-                      ))
-                  ) : (
-                    <div className="py-6 text-center text-muted-foreground">
-                      Nenhuma transação registrada para esta meta
-                    </div>
-                  )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12">
+                  <Coins size={48} className="mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma transação</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Adicione depósitos ou retiradas para acompanhar seu progresso
+                  </p>
+                  <Button onClick={() => setIsTransactionDialogOpen(true)}>
+                    <Plus size={16} className="mr-2" />
+                    Adicionar Transação
+                  </Button>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
         
-        <div className="space-y-6">
+        <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Detalhes da Meta</CardTitle>
-              <CardDescription>Informações detalhadas sobre sua meta</CardDescription>
+              <CardTitle>Histórico de Modificações</CardTitle>
+              <CardDescription>
+                Registro de todas as alterações realizadas nesta meta
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Nome</p>
-                <p className="font-medium">{goal.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Categoria</p>
-                <p className="font-medium">{goal.category}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Data Alvo</p>
-                <p className="font-medium">
-                  {format(new Date(goal.targetDate), 'dd/MM/yyyy', { locale: ptBR })}
-                </p>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Status</p>
-                <p className="font-medium">
-                  {isCompleted ? (
-                    <span className="text-green-500">Concluída</span>
-                  ) : (
-                    <span>Em andamento</span>
-                  )}
-                </p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total de Transações</p>
-                <p className="font-medium">{goal.transactions.length}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Adicionado</p>
-                <p className="font-medium text-finance-income">
-                  {formatCurrency(
-                    goal.transactions
-                      .filter(t => t.type === 'add')
-                      .reduce((acc, t) => acc + t.amount, 0)
-                  )}
-                </p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Retirado</p>
-                <p className="font-medium text-finance-expense">
-                  {formatCurrency(
-                    goal.transactions
-                      .filter(t => t.type === 'remove')
-                      .reduce((acc, t) => acc + t.amount, 0)
-                  )}
-                </p>
-              </div>
+            <CardContent>
+              {modificationHistory && modificationHistory.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Detalhes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...modificationHistory]
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .map(modification => (
+                        <TableRow key={modification.id}>
+                          <TableCell>
+                            {format(new Date(modification.date), 'dd/MM/yyyy HH:mm')}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {formatModificationType(modification.type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{modification.description}</TableCell>
+                          <TableCell>
+                            {modification.type === 'contribution' && (
+                              <span className="text-finance-income">
+                                +{formatCurrency(modification.amount || 0)}
+                              </span>
+                            )}
+                            
+                            {modification.type === 'withdrawal' && (
+                              <span className="text-finance-expense">
+                                -{formatCurrency(modification.amount || 0)}
+                              </span>
+                            )}
+                            
+                            {(modification.type === 'target_change' || modification.type === 'date_change' || modification.type === 'description_change') && (
+                              <span className="text-xs">
+                                <span className="text-muted-foreground">De: </span>
+                                <span className="font-medium">
+                                  {modification.type === 'target_change' 
+                                    ? formatCurrency(Number(modification.previousValue) || 0)
+                                    : modification.previousValue}
+                                </span>
+                                <span className="text-muted-foreground"> Para: </span>
+                                <span className="font-medium">
+                                  {modification.type === 'target_change' 
+                                    ? formatCurrency(Number(modification.newValue) || 0)
+                                    : modification.newValue}
+                                </span>
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12">
+                  <History size={48} className="mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma modificação registrada</h3>
+                  <p className="text-muted-foreground">
+                    O histórico de modificações aparecerá aqui
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
       
       {/* Edit Goal Dialog */}
-      <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Meta</DialogTitle>
             <DialogDescription>
-              Edite os detalhes da sua meta financeira
+              Atualize os detalhes da sua meta financeira
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmitEdit}>
+          <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Nome da Meta</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  value={formData.name} 
-                  onChange={handleChange} 
-                  required 
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="targetAmount">Valor Alvo</Label>
-                <Input 
-                  id="targetAmount" 
-                  name="targetAmount" 
-                  type="number" 
-                  step="0.01" 
-                  value={formData.targetAmount} 
-                  onChange={handleChange} 
-                  required 
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="targetDate">Data Alvo</Label>
-                <Input 
-                  id="targetDate" 
-                  name="targetDate" 
-                  type="date" 
-                  value={formData.targetDate} 
-                  onChange={handleChange} 
-                  required 
+                <Input
+                  id="name"
+                  name="name"
+                  value={editFormData.name}
+                  onChange={handleEditInputChange}
+                  required
                 />
               </div>
               
               <div className="grid gap-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select 
-                  value={formData.category} 
+                <Select
+                  value={editFormData.category}
                   onValueChange={(value) => handleSelectChange('category', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(category => (
-                      <SelectItem key={category.id} value={category.name}>
-                        {category.name}
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="Viagem">Viagem</SelectItem>
+                    <SelectItem value="Veículo">Veículo</SelectItem>
+                    <SelectItem value="Casa">Casa</SelectItem>
+                    <SelectItem value="Educação">Educação</SelectItem>
+                    <SelectItem value="Economia">Economia</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="grid gap-2">
+                <Label htmlFor="targetAmount">Valor da Meta</Label>
+                <Input
+                  id="targetAmount"
+                  name="targetAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editFormData.targetAmount}
+                  onChange={handleEditInputChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="targetDate">Data Alvo</Label>
+                <Input
+                  id="targetDate"
+                  name="targetDate"
+                  type="date"
+                  value={editFormData.targetDate}
+                  onChange={handleEditInputChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
                 <Label htmlFor="color">Cor</Label>
                 <div className="flex gap-2">
-                  <Input 
-                    id="color" 
-                    name="color" 
-                    type="color" 
-                    value={formData.color} 
-                    onChange={handleChange} 
+                  <Input
+                    id="color"
+                    name="color"
+                    type="color"
+                    value={editFormData.color}
+                    onChange={handleEditInputChange}
                     className="w-12 h-10 p-1"
                   />
-                  <Input 
-                    type="text" 
-                    value={formData.color} 
-                    onChange={(e) => setFormData({...formData, color: e.target.value})} 
+                  <Input
+                    type="text"
+                    value={editFormData.color}
+                    onChange={(e) => handleSelectChange('color', e.target.value)}
                     className="flex-1"
                   />
                 </div>
@@ -625,75 +718,93 @@ export function GoalDetail() {
             </div>
             
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpenEditDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Salvar Alterações
-              </Button>
+              <Button type="submit">Salvar Alterações</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
       
-      {/* Add/Remove Funds Dialog */}
-      <Dialog open={openAddFundsDialog} onOpenChange={setOpenAddFundsDialog}>
+      {/* Add Transaction Dialog */}
+      <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {transactionData.type === 'add' ? 'Adicionar Fundos' : 'Retirar Fundos'}
-            </DialogTitle>
+            <DialogTitle>Adicionar Transação</DialogTitle>
             <DialogDescription>
-              {transactionData.type === 'add' 
-                ? `Adicione fundos à sua meta "${goal.name}"` 
-                : `Retire fundos da sua meta "${goal.name}"`}
+              Registre um depósito ou retirada na sua meta
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleAddFunds}>
+          <form onSubmit={handleTransactionSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
+                <Label htmlFor="type">Tipo de Transação</Label>
+                <Select
+                  value={transactionFormData.type}
+                  onValueChange={(value) => handleSelectChange('type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="add">Depósito</SelectItem>
+                    <SelectItem value="remove">Retirada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
                 <Label htmlFor="amount">Valor</Label>
-                <Input 
-                  id="amount" 
-                  name="amount" 
-                  type="number" 
-                  step="0.01" 
-                  value={transactionData.amount} 
-                  onChange={handleTransactionChange} 
-                  required 
+                <Input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={transactionFormData.amount}
+                  onChange={handleTransactionInputChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="date">Data</Label>
+                <Input
+                  id="date"
+                  name="date"
+                  type="date"
+                  value={transactionFormData.date}
+                  onChange={handleTransactionInputChange}
+                  required
                 />
               </div>
               
               <div className="grid gap-2">
                 <Label htmlFor="description">Descrição</Label>
-                <Input 
-                  id="description" 
-                  name="description" 
-                  value={transactionData.description} 
-                  onChange={handleTransactionChange} 
-                  required 
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={transactionFormData.description}
+                  onChange={handleTransactionInputChange}
+                  required
                 />
               </div>
             </div>
             
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpenAddFundsDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsTransactionDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button 
-                type="submit"
-                variant={transactionData.type === 'add' ? 'default' : 'destructive'}
-              >
-                {transactionData.type === 'add' ? 'Adicionar' : 'Retirar'}
-              </Button>
+              <Button type="submit">Adicionar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+      {/* Delete Goal Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir Meta</DialogTitle>
@@ -702,11 +813,31 @@ export function GoalDetail() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={handleDeleteGoal}>
-              Excluir Meta
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Transaction Dialog */}
+      <Dialog open={isDeleteTransactionDialogOpen} onOpenChange={setIsDeleteTransactionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Transação</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteTransactionDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTransaction}>
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>

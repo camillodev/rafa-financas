@@ -1,4 +1,3 @@
-
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -78,3 +77,14 @@ export interface CreditCard {
   archived?: boolean;
 }
 
+// New type for goal modification log
+export interface GoalModification {
+  id: string;
+  goalId: string;
+  date: Date;
+  type: 'contribution' | 'withdrawal' | 'target_change' | 'date_change' | 'description_change';
+  description: string;
+  previousValue?: number | string;
+  newValue?: number | string;
+  amount?: number;
+}
