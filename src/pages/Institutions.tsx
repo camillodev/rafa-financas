@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -36,7 +37,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Tabs,
   TabsContent,
@@ -92,10 +92,10 @@ export function Institutions() {
     setEditingInstitution(institution);
     setFormData({
       name: institution.name,
-      type: institution.type,
-      logoUrl: institution.logoUrl,
-      balance: institution.balance,
-      color: institution.color,
+      type: institution.type || 'Bank',
+      logoUrl: institution.logoUrl || '',
+      balance: institution.balance || institution.currentBalance,
+      color: institution.color || '#4F46E5',
       icon: institution.icon,
       currentBalance: institution.currentBalance,
       isActive: institution.isActive
@@ -127,7 +127,11 @@ export function Institutions() {
     e.preventDefault();
     
     const institutionData = {
-      ...formData,
+      name: formData.name,
+      type: formData.type,
+      logoUrl: formData.logoUrl,
+      balance: formData.balance,
+      color: formData.color,
       icon: formData.icon || 'building',
       currentBalance: formData.balance || 0,
       isActive: true
@@ -171,14 +175,14 @@ export function Institutions() {
             ) : (
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${institution.color}20` }}
+                style={{ backgroundColor: `${institution.color || '#4F46E5'}20` }}
               >
-                <Building size={20} style={{ color: institution.color }} />
+                <Building size={20} style={{ color: institution.color || '#4F46E5' }} />
               </div>
             )}
             <div>
               <CardTitle className="text-lg">{institution.name}</CardTitle>
-              <CardDescription>{institution.type}</CardDescription>
+              <CardDescription>{institution.type || 'Banco'}</CardDescription>
             </div>
           </div>
           <DropdownMenu>
@@ -221,7 +225,9 @@ export function Institutions() {
       <CardContent>
         <div className="flex flex-col space-y-1.5">
           <span className="text-sm text-muted-foreground">Saldo Atual</span>
-          <span className="text-2xl font-semibold">{formatCurrency(institution.balance)}</span>
+          <span className="text-2xl font-semibold">
+            {formatCurrency(institution.balance || institution.currentBalance || 0)}
+          </span>
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 pt-2">

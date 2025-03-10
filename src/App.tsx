@@ -16,7 +16,15 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { FinanceProvider } from "@/context/FinanceContext";
 
-const queryClient = new QueryClient();
+// Create a client with default options
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

@@ -1,14 +1,14 @@
+
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
 import { 
-  CreditCard, 
+  CreditCard as CreditCardIcon, 
   Plus, 
   Edit, 
   Trash2, 
   ExternalLink, 
-  MoreHorizontal, 
-  Calendar, 
+  MoreHorizontal,
   Archive,
   ArrowUpFromLine
 } from 'lucide-react';
@@ -39,23 +39,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 export function Cards() {
   const { 
     creditCards, 
-    financialInstitutions, 
+    financialInstitutions,
     formatCurrency, 
     addCreditCard, 
     updateCreditCard, 
@@ -72,13 +73,13 @@ export function Cards() {
     name: '',
     number: '',
     institution: '',
+    brand: 'Visa', // Default value for required field
     limit: 0,
     closingDay: 1,
     dueDay: 10,
     color: '#4F46E5',
-    brand: 'Visa',
-    dueDate: 10,
-    institutionId: '',
+    institutionId: '', // Required field
+    dueDate: 10, // Required field
   });
   
   const activeCards = creditCards.filter(card => !card.archived);
@@ -86,17 +87,18 @@ export function Cards() {
   
   const handleOpenAddDialog = () => {
     setEditingCard(null);
+    // Initialize with default values for required fields
     setFormData({
       name: '',
       number: '',
-      institution: financialInstitutions.length > 0 ? financialInstitutions[0].id : '',
+      institution: '',
+      brand: 'Visa',
       limit: 0,
       closingDay: 1,
       dueDay: 10,
       color: '#4F46E5',
-      brand: 'Visa',
-      dueDate: 10,
       institutionId: financialInstitutions.length > 0 ? financialInstitutions[0].id : '',
+      dueDate: 10,
     });
     setIsDialogOpen(true);
   };
@@ -105,15 +107,15 @@ export function Cards() {
     setEditingCard(card);
     setFormData({
       name: card.name,
-      number: card.number,
-      institution: card.institution,
-      limit: card.limit,
-      closingDay: card.closingDay,
-      dueDay: card.dueDay,
-      color: card.color,
+      number: card.number || '',
+      institution: card.institution || '',
       brand: card.brand,
-      dueDate: card.dueDay,
-      institutionId: card.institution,
+      limit: card.limit,
+      closingDay: card.closingDay || 1,
+      dueDay: card.dueDay || card.dueDate,
+      color: card.color || '#4F46E5',
+      institutionId: card.institutionId,
+      dueDate: card.dueDate,
     });
     setIsDialogOpen(true);
   };
@@ -138,26 +140,20 @@ export function Cards() {
     }
   };
   
-  const handleSelectChange = (name: string, value: string) => {
-    if (name === 'institution') {
-      setFormData({ 
-        ...formData, 
-        [name]: value,
-        institutionId: value
-      });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
-  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const cardData = {
-      ...formData,
-      brand: formData.brand || 'Visa',
-      dueDate: formData.dueDay || 10,
-      institutionId: formData.institution
+      name: formData.name,
+      number: formData.number,
+      institution: formData.institution,
+      brand: formData.brand,
+      limit: formData.limit,
+      closingDay: formData.closingDay,
+      dueDay: formData.dueDay,
+      color: formData.color,
+      institutionId: formData.institutionId,
+      dueDate: formData.dueDate,
     };
     
     if (editingCard) {
@@ -180,39 +176,42 @@ export function Cards() {
     archiveCreditCard(id, archived);
   };
   
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
+  };
+  
   const handleNavigateToTransactions = (cardId: string) => {
     navigateToTransactions('all', undefined, cardId);
   };
   
-  const formatCardNumber = (number: string) => {
-    if (!number) return '';
-    
-    const last4 = number.slice(-4);
-    return `•••• ${last4}`;
-  };
-  
-  const getInstitutionById = (id: string) => {
-    return financialInstitutions.find(institution => institution.id === id);
+  const calculateUsedPercentage = (limit: number, used?: number) => {
+    if (!limit || !used) return 0;
+    const percentage = (used / limit) * 100;
+    return Math.min(percentage, 100); // Cap at 100%
   };
   
   const renderCardItem = (card: (typeof creditCards)[0]) => {
-    const institution = getInstitutionById(card.institution);
+    // Find the associated institution
+    const institution = financialInstitutions.find(i => i.id === card.institutionId);
+    
+    // Safely calculate used percentage
+    const usedPercentage = calculateUsedPercentage(card.limit, card.used);
     
     return (
       <Card key={card.id} className="overflow-hidden">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2" style={{ backgroundColor: `${card.color}10` }}>
           <div className="flex justify-between">
             <div className="flex items-center gap-3">
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${card.color}20` }}
+                style={{ backgroundColor: `${card.color}30` }}
               >
-                <CreditCard size={20} style={{ color: card.color }} />
+                <CreditCardIcon size={20} style={{ color: card.color }} />
               </div>
               <div>
                 <CardTitle className="text-lg">{card.name}</CardTitle>
                 <CardDescription>
-                  {institution?.name} - {formatCardNumber(card.number)}
+                  {card.brand} {card.number ? `•••• ${card.number.slice(-4)}` : ''}
                 </CardDescription>
               </div>
             </div>
@@ -253,43 +252,44 @@ export function Cards() {
             </DropdownMenu>
           </div>
         </CardHeader>
-        <CardContent>
+        
+        <CardContent className="pt-4">
           <div className="space-y-4">
-            <div className="flex justify-between">
-              <div>
+            <div>
+              <div className="flex justify-between mb-1">
                 <span className="text-sm text-muted-foreground">Limite</span>
-                <p className="text-xl font-semibold">{formatCurrency(card.limit)}</p>
+                <span className="text-sm font-medium">
+                  {card.used !== undefined ? (
+                    <>
+                      {formatCurrency(card.used || 0)} / {formatCurrency(card.limit)}
+                    </>
+                  ) : (
+                    formatCurrency(card.limit)
+                  )}
+                </span>
               </div>
-              
-              <div className="text-right">
-                <span className="text-sm text-muted-foreground">Utilizado</span>
-                <p className="text-xl font-semibold">{formatCurrency(card.used)}</p>
-              </div>
+              {card.used !== undefined && (
+                <Progress value={usedPercentage} />
+              )}
             </div>
             
-            <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
-              <div 
-                className="h-full transition-all duration-500 ease-out rounded-full"
-                style={{ 
-                  width: `${Math.min((card.used / card.limit) * 100, 100)}%`,
-                  backgroundColor: card.color,
-                }}
-              ></div>
-            </div>
-            
-            <div className="flex justify-between text-sm">
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span>Fechamento: dia {card.closingDay}</span>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground block">Banco</span>
+                <span>{institution?.name || card.institution || 'Não definido'}</span>
               </div>
-              
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span>Vencimento: dia {card.dueDay}</span>
+              <div>
+                <span className="text-muted-foreground block">Vencimento</span>
+                <span>Dia {card.dueDay || card.dueDate}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block">Fechamento</span>
+                <span>Dia {card.closingDay || 'Não definido'}</span>
               </div>
             </div>
           </div>
         </CardContent>
+        
         <CardFooter className="bg-muted/50 pt-2">
           <Button 
             variant="ghost" 
@@ -337,7 +337,7 @@ export function Cards() {
               activeCards.map(renderCardItem)
             ) : (
               <div className="col-span-full text-center p-12 border rounded-lg bg-muted/10">
-                <CreditCard size={48} className="mx-auto text-muted-foreground mb-4" />
+                <CreditCardIcon size={48} className="mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">Nenhum cartão de crédito</h3>
                 <p className="text-muted-foreground mb-4">
                   Adicione seus cartões de crédito para acompanhar seus gastos
@@ -396,32 +396,52 @@ export function Cards() {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="number">Número do Cartão</Label>
+                <Label htmlFor="number">Número (últimos 4 dígitos)</Label>
                 <Input 
                   id="number" 
                   name="number" 
                   value={formData.number} 
                   onChange={handleInputChange} 
-                  required 
-                  placeholder="**** **** **** ****"
+                  maxLength={4}
+                  placeholder="1234"
                 />
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="institution">Instituição</Label>
+                <Label htmlFor="institutionId">Instituição</Label>
                 <Select 
-                  value={formData.institution} 
-                  onValueChange={(value) => handleSelectChange('institution', value)}
+                  value={formData.institutionId} 
+                  onValueChange={(value) => handleSelectChange('institutionId', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma instituição" />
                   </SelectTrigger>
                   <SelectContent>
-                    {financialInstitutions.map(institution => (
+                    {financialInstitutions.map((institution) => (
                       <SelectItem key={institution.id} value={institution.id}>
                         {institution.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="brand">Bandeira</Label>
+                <Select 
+                  value={formData.brand} 
+                  onValueChange={(value) => handleSelectChange('brand', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma bandeira" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Visa">Visa</SelectItem>
+                    <SelectItem value="Mastercard">Mastercard</SelectItem>
+                    <SelectItem value="American Express">American Express</SelectItem>
+                    <SelectItem value="Elo">Elo</SelectItem>
+                    <SelectItem value="Hipercard">Hipercard</SelectItem>
+                    <SelectItem value="Outra">Outra</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
