@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -77,6 +76,9 @@ export function Cards() {
     closingDay: 1,
     dueDay: 10,
     color: '#4F46E5',
+    brand: 'Visa',
+    dueDate: 10,
+    institutionId: '',
   });
   
   const activeCards = creditCards.filter(card => !card.archived);
@@ -92,6 +94,9 @@ export function Cards() {
       closingDay: 1,
       dueDay: 10,
       color: '#4F46E5',
+      brand: 'Visa',
+      dueDate: 10,
+      institutionId: financialInstitutions.length > 0 ? financialInstitutions[0].id : '',
     });
     setIsDialogOpen(true);
   };
@@ -106,6 +111,9 @@ export function Cards() {
       closingDay: card.closingDay,
       dueDay: card.dueDay,
       color: card.color,
+      brand: card.brand,
+      dueDate: card.dueDay,
+      institutionId: card.institution,
     });
     setIsDialogOpen(true);
   };
@@ -131,16 +139,31 @@ export function Cards() {
   };
   
   const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
+    if (name === 'institution') {
+      setFormData({ 
+        ...formData, 
+        [name]: value,
+        institutionId: value
+      });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const cardData = {
+      ...formData,
+      brand: formData.brand || 'Visa',
+      dueDate: formData.dueDay || 10,
+      institutionId: formData.institution
+    };
+    
     if (editingCard) {
-      updateCreditCard(editingCard.id, formData);
+      updateCreditCard(editingCard.id, cardData);
     } else {
-      addCreditCard(formData);
+      addCreditCard(cardData);
     }
     
     handleCloseDialog();

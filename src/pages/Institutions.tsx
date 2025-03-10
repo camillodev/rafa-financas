@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -66,6 +65,9 @@ export function Institutions() {
     logoUrl: '',
     balance: 0,
     color: '#4F46E5',
+    icon: 'building',
+    currentBalance: 0,
+    isActive: true
   });
   
   const activeInstitutions = financialInstitutions.filter(institution => !institution.archived);
@@ -79,6 +81,9 @@ export function Institutions() {
       logoUrl: '',
       balance: 0,
       color: '#4F46E5',
+      icon: 'building',
+      currentBalance: 0,
+      isActive: true
     });
     setIsDialogOpen(true);
   };
@@ -91,6 +96,9 @@ export function Institutions() {
       logoUrl: institution.logoUrl,
       balance: institution.balance,
       color: institution.color,
+      icon: institution.icon,
+      currentBalance: institution.currentBalance,
+      isActive: institution.isActive
     });
     setIsDialogOpen(true);
   };
@@ -118,10 +126,17 @@ export function Institutions() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const institutionData = {
+      ...formData,
+      icon: formData.icon || 'building',
+      currentBalance: formData.balance || 0,
+      isActive: true
+    };
+    
     if (editingInstitution) {
-      updateFinancialInstitution(editingInstitution.id, formData);
+      updateFinancialInstitution(editingInstitution.id, institutionData);
     } else {
-      addFinancialInstitution(formData);
+      addFinancialInstitution(institutionData);
     }
     
     handleCloseDialog();
