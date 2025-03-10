@@ -53,6 +53,12 @@ export interface FinancialInstitution {
   icon: string;
   currentBalance: number;
   isActive: boolean;
+  // Added properties
+  type?: string;
+  logoUrl?: string;
+  balance?: number;
+  color?: string;
+  archived?: boolean;
 }
 
 export interface CreditCard {
@@ -62,4 +68,13 @@ export interface CreditCard {
   brand: string;
   dueDate: number; // Day of the month
   institutionId: string;
+  // Added properties
+  number?: string;
+  institution?: string;
+  closingDay?: number;
+  dueDay?: number;
+  color?: string;
+  used?: number;
+  archived?: boolean;
 }
+
