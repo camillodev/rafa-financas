@@ -14,6 +14,8 @@ import Goals from "./pages/Goals";
 import GoalDetail from "./pages/GoalDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Reports from "./pages/Reports";
+import Bills from "./pages/Bills";
 import { FinanceProvider } from "@/context/FinanceContext";
 
 // Create a client with default options
@@ -43,9 +45,19 @@ const App = () => (
               <Transactions />
             </FinanceProvider>
           } />
+          <Route path="/bills" element={
+            <FinanceProvider>
+              <Bills />
+            </FinanceProvider>
+          } />
           <Route path="/budgets" element={
             <FinanceProvider>
               <Budgets />
+            </FinanceProvider>
+          } />
+          <Route path="/reports" element={
+            <FinanceProvider>
+              <Reports />
             </FinanceProvider>
           } />
           <Route path="/categories" element={

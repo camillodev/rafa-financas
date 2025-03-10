@@ -12,7 +12,9 @@ import {
   BarChart3,
   Home,
   Landmark,
-  List
+  List,
+  FileBarChart,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -94,10 +96,24 @@ export function Sidebar() {
           isCollapsed={collapsed} 
         />
         <SidebarLink 
+          icon={<Receipt size={20} />} 
+          label="Contas a Pagar" 
+          href="/bills" 
+          active={location.pathname === '/bills'} 
+          isCollapsed={collapsed} 
+        />
+        <SidebarLink 
           icon={<BarChart3 size={20} />} 
           label="Orçamentos" 
           href="/budgets" 
           active={location.pathname === '/budgets'} 
+          isCollapsed={collapsed} 
+        />
+        <SidebarLink 
+          icon={<FileBarChart size={20} />} 
+          label="Relatórios" 
+          href="/reports" 
+          active={location.pathname === '/reports'} 
           isCollapsed={collapsed} 
         />
         <SidebarLink 
