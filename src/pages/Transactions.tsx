@@ -15,7 +15,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -66,6 +67,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Transaction, TransactionType } from '@/types/finance';
+import { toast } from "sonner";
 
 // Pagination constants
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -348,6 +350,50 @@ export function Transactions() {
       setIsDeleteDialogOpen(false);
       setEditingTransaction(null);
     }
+  };
+
+  const exportTransactions = () => {
+    // Get filtered transactions based on current filters
+    const dataToExport = filteredTransactions;
+    
+    // Create CSV content
+    let csvContent = 'Data,Data de Liquidação,Categoria,Subcategoria,Instituição,Tipo de Transação,Descrição,Valor,Status,Tipo\n';
+    
+    dataToExport.forEach(transaction => {
+      const row = [
+        transaction.date,
+        transaction.settlementDate || '',
+        transaction.category,
+        transaction.subcategory || '',
+        transaction.financialInstitution || '',
+        transaction.transactionType || '',
+        transaction.description,
+        transaction.amount,
+        transaction.status,
+        transaction.type
+      ].map(value => {
+        // Ensure strings are properly escaped for CSV
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',');
+      
+      csvContent += row + '\n';
+    });
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rafa-financas-transacoes-${format(currentDate, 'MMM-yyyy', { locale: ptBR })}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success("Transações exportadas com sucesso");
   };
 
   // Helper function to render pagination
@@ -713,6 +759,11 @@ export function Transactions() {
         <Button onClick={handleOpenAddDialog} className="gap-1">
           <Plus size={16} />
           <span>Nova Transação</span>
+        </Button>
+
+        {/* Export Button */}
+        <Button variant="outline" size="icon" onClick={exportTransactions} className="ml-2">
+          <Download className="h-4 w-4" />
         </Button>
       </div>
       

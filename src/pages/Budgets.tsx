@@ -1,8 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
-import { BarChart, Plus, Edit, Trash2, AlertTriangle, MoreHorizontal, Calendar, Coins, CopyIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  BarChart, Plus, Edit, Trash2, AlertTriangle, MoreHorizontal, Calendar, 
+  Coins, CopyIcon, ChevronLeft, ChevronRight, Download, Calculator
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -38,8 +40,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BudgetGoal } from '@/types/finance';
 import { toast } from "sonner";
-import { format, addYears, subYears } from 'date-fns';
+import { format, addYears, subYears, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 export function Budgets() {
   const { 
@@ -57,6 +60,7 @@ export function Budgets() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isReallocateDialogOpen, setIsReallocateDialogOpen] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [activeTab, setActiveTab] = useState("current");
   
   // Form state
@@ -70,6 +74,14 @@ export function Budgets() {
   const [reallocatedBudgets, setReallocatedBudgets] = useState<BudgetGoal[]>([]);
   const [unallocatedAmount, setUnallocatedAmount] = useState(0);
   
+  // Budget summary state
+  const [budgetSummary, setBudgetSummary] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    totalGoals: 0,
+    remaining: 0
+  });
+  
   // Initialize reallocation dialog data
   useEffect(() => {
     if (isReallocateDialogOpen) {
@@ -78,7 +90,23 @@ export function Budgets() {
       const totalBudget = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
       setUnallocatedAmount(0); // Start with no unallocated amount
     }
-  }, [isReallocateDialogOpen, budgetGoals]);
+    
+    // Calculate budget summary
+    const totalExpenses = budgetGoals
+      .filter(budget => categories.find(c => c.name === budget.category)?.type === 'expense')
+      .reduce((acc, budget) => acc + budget.amount, 0);
+      
+    const totalIncome = 10000; // This would come from income budgets in a real app
+    const totalGoals = 2000; // This would come from goals in a real app
+    
+    setBudgetSummary({
+      totalIncome,
+      totalExpenses,
+      totalGoals,
+      remaining: totalIncome - totalExpenses - totalGoals
+    });
+    
+  }, [isReallocateDialogOpen, budgetGoals, categories]);
   
   // Calculate daily and weekly remaining for each budget
   const calculateRemainingBudgets = () => {
@@ -238,9 +266,82 @@ export function Budgets() {
     );
   };
   
+  const handleNavigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prevMonth => {
+      if (direction === 'prev') {
+        if (prevMonth === 0) {
+          setCurrentYear(prevYear => prevYear - 1);
+          return 11;
+        }
+        return prevMonth - 1;
+      } else {
+        if (prevMonth === 11) {
+          setCurrentYear(prevYear => prevYear + 1);
+          return 0;
+        }
+        return prevMonth + 1;
+      }
+    });
+  };
+  
   const handleCopyPreviousMonth = () => {
     // Simulate copying from previous month
     toast.success("Orçamento do mês anterior copiado com sucesso");
+  };
+  
+  const exportBudgetData = () => {
+    let csvContent = '';
+    
+    if (activeTab === 'current') {
+      // Export current month budget data
+      csvContent = 'Categoria,Valor Orçado,Valor Gasto,Restante,Percentual Usado\n';
+      
+      calculatedBudgets.forEach(budget => {
+        const row = [
+          budget.category,
+          budget.amount,
+          budget.spent,
+          Math.max(budget.amount - budget.spent, 0),
+          budget.percentage
+        ].join(',');
+        
+        csvContent += row + '\n';
+      });
+    } else {
+      // Export annual budget data
+      csvContent = 'Categoria,' + annualData.months.join(',') + ',Total\n';
+      
+      Object.entries(annualData.categoryData).forEach(([category, values]) => {
+        const total = values.reduce((acc, value) => acc + value, 0);
+        const row = [category, ...values, total].join(',');
+        csvContent += row + '\n';
+      });
+      
+      // Add total row
+      const monthlyTotals = annualData.months.map((_, monthIndex) => {
+        return Object.values(annualData.categoryData).reduce(
+          (acc, values) => acc + values[monthIndex], 0
+        );
+      });
+      
+      const grandTotal = monthlyTotals.reduce((acc, value) => acc + value, 0);
+      csvContent += ['Total', ...monthlyTotals, grandTotal].join(',') + '\n';
+    }
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rafa-financas-orcamentos-${activeTab === 'current' ? 
+      format(new Date(currentYear, currentMonth), 'MMM-yyyy', { locale: ptBR }) : 
+      currentYear.toString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success("Orçamento exportado com sucesso");
   };
   
   return (
@@ -269,9 +370,13 @@ export function Budgets() {
                   <BarChart size={16} />
                   <span>Realocar Orçamentos</span>
                 </Button>
+                <Button onClick={exportBudgetData} variant="outline" className="gap-1">
+                  <Download size={16} />
+                  <span className="hidden sm:inline">Exportar</span>
+                </Button>
                 <Button onClick={handleOpenAddDialog} className="gap-1">
                   <Plus size={16} />
-                  <span>Novo Orçamento</span>
+                  <span className="hidden sm:inline">Novo Orçamento</span>
                 </Button>
               </>
             )}
@@ -284,15 +389,132 @@ export function Budgets() {
                 <Button variant="outline" size="icon" onClick={() => handleNavigateYear('next')}>
                   <ChevronRight size={16} />
                 </Button>
+                <Button onClick={exportBudgetData} variant="outline" className="gap-1 ml-4">
+                  <Download size={16} />
+                  <span className="hidden sm:inline">Exportar</span>
+                </Button>
               </div>
             )}
           </div>
         </div>
         
         <TabsContent value="current" className="space-y-6">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Alocação de Orçamento</CardTitle>
+              <CardDescription>
+                Distribuição dos seus recursos para o mês de {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: ptBR })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <Button variant="outline" onClick={() => handleNavigateMonth('prev')} size="sm">
+                    <ChevronLeft size={16} />
+                    <span className="ml-1">Mês anterior</span>
+                  </Button>
+                  <h3 className="text-lg font-medium text-center">
+                    {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())}
+                  </h3>
+                  <Button variant="outline" onClick={() => handleNavigateMonth('next')} size="sm">
+                    <span className="mr-1">Próximo mês</span>
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">Receita Total</p>
+                        <Badge variant="success">Receitas</Badge>
+                      </div>
+                      <p className="text-2xl font-bold text-finance-income mt-2">
+                        {formatCurrency(budgetSummary.totalIncome)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">Despesas</p>
+                        <Badge variant="destructive">Despesas</Badge>
+                      </div>
+                      <p className="text-2xl font-bold text-finance-expense mt-2">
+                        {formatCurrency(budgetSummary.totalExpenses)}
+                      </p>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {Math.round((budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100)}% da receita
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">Metas</p>
+                        <Badge className="bg-blue-500">Metas</Badge>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-500 mt-2">
+                        {formatCurrency(budgetSummary.totalGoals)}
+                      </p>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {Math.round((budgetSummary.totalGoals / budgetSummary.totalIncome) * 100)}% da receita
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">Não Alocado</p>
+                        <Button size="sm" variant="outline" className="h-6 px-2 py-0">
+                          <Calculator size={12} className="mr-1" />
+                          <span className="text-xs">Realocar</span>
+                        </Button>
+                      </div>
+                      <p className={`text-2xl font-bold mt-2 ${budgetSummary.remaining >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {formatCurrency(budgetSummary.remaining)}
+                      </p>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {Math.abs(Math.round((budgetSummary.remaining / budgetSummary.totalIncome) * 100))}% 
+                        {budgetSummary.remaining >= 0 ? ' disponível' : ' excedido'}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="mt-6 space-y-2">
+                  <div className="h-4 w-full bg-accent rounded-full overflow-hidden flex">
+                    <div 
+                      className="h-full bg-finance-expense"
+                      style={{ width: `${(budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100}%` }}
+                    ></div>
+                    <div 
+                      className="h-full bg-blue-500"
+                      style={{ width: `${(budgetSummary.totalGoals / budgetSummary.totalIncome) * 100}%` }}
+                    ></div>
+                    <div 
+                      className={`h-full ${budgetSummary.remaining >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                      style={{ 
+                        width: `${Math.min(Math.abs(budgetSummary.remaining) / budgetSummary.totalIncome * 100, 
+                          100 - (budgetSummary.totalExpenses + budgetSummary.totalGoals) / budgetSummary.totalIncome * 100)}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Despesas: {Math.round((budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100)}%</span>
+                    <span>Metas: {Math.round((budgetSummary.totalGoals / budgetSummary.totalIncome) * 100)}%</span>
+                    <span>Não Alocado: {Math.round((budgetSummary.remaining / budgetSummary.totalIncome) * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           <div className="rounded-xl border bg-card shadow-sm p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Budget Summary Card */}
               <Card>
                 <CardHeader>
                   <CardTitle>Visão Geral</CardTitle>
@@ -341,7 +563,6 @@ export function Budgets() {
                 </CardContent>
               </Card>
               
-              {/* Daily/Weekly Spending Card */}
               <Card>
                 <CardHeader>
                   <CardTitle>Limites Diários e Semanais</CardTitle>
@@ -418,7 +639,6 @@ export function Budgets() {
             
             <Separator />
             
-            {/* Budget Progress List */}
             <div className="space-y-6">
               <h3 className="text-lg font-medium">Progresso do Orçamento</h3>
               {calculatedBudgets.map((budget) => {
@@ -586,7 +806,6 @@ export function Budgets() {
         </TabsContent>
       </Tabs>
       
-      {/* Add/Edit Budget Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -671,7 +890,6 @@ export function Budgets() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -691,7 +909,6 @@ export function Budgets() {
         </DialogContent>
       </Dialog>
       
-      {/* Budget Reallocation Dialog */}
       <Dialog open={isReallocateDialogOpen} onOpenChange={setIsReallocateDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

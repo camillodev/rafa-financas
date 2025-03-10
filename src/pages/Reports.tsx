@@ -1,15 +1,19 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import MonthFilter from '@/components/ui/MonthFilter';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format, addMonths, subMonths, startOfMonth, startOfQuarter, startOfYear, endOfMonth, endOfQuarter, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Download, Filter } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 interface ChartDataItem {
   name: string;
@@ -39,8 +43,14 @@ const Reports = () => {
 
   const [activeReport, setActiveReport] = useState<string>('expenses-by-category');
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
+  
+  const [filters, setFilters] = useState({
+    minAmount: '',
+    maxAmount: '',
+    selectedCategories: [] as string[],
+    selectedInstitutions: [] as string[],
+  });
 
-  // Get period start and end dates based on period type
   const getPeriodDates = () => {
     const now = currentDate;
     let startDate, endDate;
@@ -76,17 +86,41 @@ const Reports = () => {
     return { startDate, endDate };
   };
 
-  // Filter transactions based on selected period
   const getFilteredTransactions = () => {
     const { startDate, endDate } = getPeriodDates();
     
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
-      return transactionDate >= startDate && transactionDate <= endDate;
+      
+      if (!(transactionDate >= startDate && transactionDate <= endDate)) {
+        return false;
+      }
+      
+      const minAmount = filters.minAmount ? parseFloat(filters.minAmount) : null;
+      const maxAmount = filters.maxAmount ? parseFloat(filters.maxAmount) : null;
+      
+      if (minAmount !== null && transaction.amount < minAmount) {
+        return false;
+      }
+      
+      if (maxAmount !== null && transaction.amount > maxAmount) {
+        return false;
+      }
+      
+      if (filters.selectedCategories.length > 0 && !filters.selectedCategories.includes(transaction.category)) {
+        return false;
+      }
+      
+      if (filters.selectedInstitutions.length > 0 && 
+          transaction.financialInstitution && 
+          !filters.selectedInstitutions.includes(transaction.financialInstitution)) {
+        return false;
+      }
+      
+      return true;
     });
   };
 
-  // Format period display text
   const formatPeriodText = () => {
     const now = currentDate;
     
@@ -109,7 +143,6 @@ const Reports = () => {
     }
   };
 
-  // Navigate through periods
   const navigateToPreviousPeriod = () => {
     switch (periodType) {
       case 'monthly':
@@ -148,7 +181,94 @@ const Reports = () => {
     }
   };
 
-  // Prepare data for different reports
+  const handleFilterChange = (name: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const toggleCategoryFilter = (category: string) => {
+    setFilters(prev => {
+      const currentSelected = [...prev.selectedCategories];
+      if (currentSelected.includes(category)) {
+        return { ...prev, selectedCategories: currentSelected.filter(c => c !== category) };
+      } else {
+        return { ...prev, selectedCategories: [...currentSelected, category] };
+      }
+    });
+  };
+
+  const toggleInstitutionFilter = (institution: string) => {
+    setFilters(prev => {
+      const currentSelected = [...prev.selectedInstitutions];
+      if (currentSelected.includes(institution)) {
+        return { ...prev, selectedInstitutions: currentSelected.filter(i => i !== institution) };
+      } else {
+        return { ...prev, selectedInstitutions: [...currentSelected, institution] };
+      }
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      minAmount: '',
+      maxAmount: '',
+      selectedCategories: [],
+      selectedInstitutions: [],
+    });
+    toast.success("Filtros limpos com sucesso");
+  };
+
+  const exportData = () => {
+    const filteredData = getFilteredTransactions();
+    let exportContent = '';
+    
+    if (activeReport === 'expenses-vs-income') {
+      const data = prepareExpensesVsIncome();
+      exportContent = 'Nome,Receitas,Despesas\n';
+      data.forEach(item => {
+        exportContent += `${item.name},${item.income},${item.expenses}\n`;
+      });
+    } else {
+      let data: ChartDataItem[];
+      
+      switch (activeReport) {
+        case 'expenses-by-category':
+          data = prepareExpensesByCategory();
+          break;
+        case 'expenses-by-account':
+          data = prepareExpensesByAccount();
+          break;
+        case 'income-by-category':
+          data = prepareIncomeByCategory();
+          break;
+        case 'income-by-account':
+          data = prepareIncomeByAccount();
+          break;
+        default:
+          data = [];
+      }
+      
+      exportContent = 'Nome,Valor\n';
+      data.forEach(item => {
+        exportContent += `${item.name},${item.value}\n`;
+      });
+    }
+    
+    const blob = new Blob([exportContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rafa-financas-${activeReport}-${formatPeriodText().replace(/ /g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success("Relatório exportado com sucesso");
+  };
+
   const prepareExpensesByCategory = (): ChartDataItem[] => {
     const filteredTransactions = getFilteredTransactions().filter(t => t.type === 'expense');
     
@@ -246,19 +366,16 @@ const Reports = () => {
     
     if (filteredTransactions.length === 0) return [];
 
-    // For monthly view, show daily data
     if (periodType === 'monthly') {
       const { startDate, endDate } = getPeriodDates();
       const daysInMonth = endDate.getDate();
       const dailyData: Record<string, { income: number, expenses: number }> = {};
 
-      // Initialize days
       for (let i = 1; i <= daysInMonth; i++) {
         const dayStr = i.toString();
         dailyData[dayStr] = { income: 0, expenses: 0 };
       }
 
-      // Populate data
       filteredTransactions.forEach(transaction => {
         const transactionDate = new Date(transaction.date);
         const day = transactionDate.getDate().toString();
@@ -277,7 +394,6 @@ const Reports = () => {
       })).sort((a, b) => parseInt(a.name) - parseInt(b.name));
     }
     
-    // For other views, aggregate by week, month, or quarter
     const aggregationKey = periodType === 'quarterly' ? 'month' : 
                            periodType === 'semiannual' ? 'month' : 
                            periodType === 'annual' ? 'month' : 'week';
@@ -289,11 +405,9 @@ const Reports = () => {
       let key;
       
       if (aggregationKey === 'week') {
-        // Group by week of month (1-5)
         const weekOfMonth = Math.ceil(transactionDate.getDate() / 7);
         key = `Semana ${weekOfMonth}`;
       } else {
-        // Group by month
         key = format(transactionDate, 'MMM', { locale: ptBR }).replace(/^\w/, c => c.toUpperCase());
       }
       
@@ -315,12 +429,10 @@ const Reports = () => {
     }));
   };
 
-  // Custom data formatter for tooltips
   const formatTooltipValue = (value: number) => {
     return formatCurrency(value);
   };
 
-  // Render appropriate chart based on selected report
   const renderReportContent = () => {
     switch (activeReport) {
       case 'expenses-by-category':
@@ -343,7 +455,6 @@ const Reports = () => {
     }
   };
 
-  // Render pie chart
   const renderPieChart = (data: ChartDataItem[], title: string) => {
     if (!data.length) {
       return (
@@ -407,7 +518,6 @@ const Reports = () => {
     );
   };
 
-  // Render comparison bar chart
   const renderComparisonChart = (data: ComparisonDataItem[], title: string) => {
     if (!data.length) {
       return (
@@ -418,7 +528,6 @@ const Reports = () => {
       );
     }
 
-    // Calculate totals
     const totalIncome = data.reduce((sum, item) => sum + item.income, 0);
     const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
     const netBalance = totalIncome - totalExpenses;
@@ -485,6 +594,94 @@ const Reports = () => {
                 <SelectItem value="annual">Anual</SelectItem>
               </SelectContent>
             </Select>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Filtros</h4>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="minAmount">Valor Mínimo</Label>
+                    <Input
+                      id="minAmount"
+                      placeholder="0,00"
+                      value={filters.minAmount}
+                      onChange={(e) => handleFilterChange('minAmount', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAmount">Valor Máximo</Label>
+                    <Input
+                      id="maxAmount"
+                      placeholder="0,00"
+                      value={filters.maxAmount}
+                      onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Categorias</Label>
+                    <div className="h-32 overflow-y-auto border rounded-md p-2">
+                      {categories.map(category => (
+                        <div key={category.id} className="flex items-center space-x-2 py-1">
+                          <Checkbox 
+                            id={`category-${category.id}`}
+                            checked={filters.selectedCategories.includes(category.name)}
+                            onCheckedChange={() => toggleCategoryFilter(category.name)}
+                          />
+                          <label 
+                            htmlFor={`category-${category.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {category.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Instituições</Label>
+                    <div className="h-32 overflow-y-auto border rounded-md p-2">
+                      {financialInstitutions.map(institution => (
+                        <div key={institution.id} className="flex items-center space-x-2 py-1">
+                          <Checkbox 
+                            id={`institution-${institution.id}`}
+                            checked={filters.selectedInstitutions.includes(institution.name)}
+                            onCheckedChange={() => toggleInstitutionFilter(institution.name)}
+                          />
+                          <label 
+                            htmlFor={`institution-${institution.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {institution.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      Limpar
+                    </Button>
+                    <Button size="sm" onClick={() => document.body.click()}>
+                      Aplicar
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            <Button variant="outline" size="icon" onClick={exportData}>
+              <Download className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -539,3 +736,4 @@ const Reports = () => {
 };
 
 export default Reports;
+
