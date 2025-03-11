@@ -1,4 +1,3 @@
-
 import { Transaction, Category, BudgetGoal, FinancialSummary, FinancialInstitution, CreditCard, Subcategory } from '../types/finance';
 
 // Categories
@@ -191,7 +190,6 @@ export const transactions: Transaction[] = [
     paymentMethod: 'Plano de Saúde',
     status: 'completed'
   },
-  // Adding more transactions for testing
   {
     id: 't11',
     amount: 1500,
@@ -256,13 +254,14 @@ export const transactions: Transaction[] = [
     id: 't16',
     amount: 400,
     type: 'expense',
-    category: 'Saúde',
+    category: 'Contas a Pagar',
     subcategory: 'Plano de Saúde',
     date: new Date(new Date().getFullYear(), new Date().getMonth(), 5),
+    dueDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15),
     description: 'Mensalidade Plano de Saúde',
     paymentMethod: 'Débito Automático',
     financialInstitution: 'Santander',
-    status: 'completed'
+    status: 'pending'
   },
   {
     id: 't17',
@@ -301,6 +300,7 @@ export const transactions: Transaction[] = [
     paymentMethod: 'Cartão de Crédito',
     financialInstitution: 'Banco do Brasil',
     transactionType: 'Credit Card',
+    card: 'cc2',
     status: 'pending'
   },
   {
@@ -357,9 +357,10 @@ export const transactions: Transaction[] = [
     id: 't24',
     amount: 2000,
     type: 'expense',
-    category: 'Moradia',
+    category: 'Contas a Pagar',
     subcategory: 'Condomínio',
     date: new Date(new Date().getFullYear(), new Date().getMonth(), 25),
+    dueDate: new Date(new Date().getFullYear(), new Date().getMonth(), 30),
     description: 'Condomínio Mensal',
     paymentMethod: 'Transferência Bancária',
     financialInstitution: 'Banco do Brasil',
@@ -370,9 +371,10 @@ export const transactions: Transaction[] = [
     id: 't25',
     amount: 100,
     type: 'expense',
-    category: 'Utilidades',
+    category: 'Contas a Pagar',
     subcategory: 'Água',
     date: new Date(new Date().getFullYear(), new Date().getMonth(), 28),
+    dueDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5),
     description: 'Conta de Água',
     paymentMethod: 'Débito Automático',
     financialInstitution: 'Banco do Brasil',
@@ -382,15 +384,15 @@ export const transactions: Transaction[] = [
 
 // Budget goals
 export const budgetGoals: BudgetGoal[] = [
-  { category: 'Moradia', amount: 2500, spent: 2500, period: 'monthly' },
-  { category: 'Alimentação', amount: 600, spent: 450, period: 'monthly' },
-  { category: 'Transporte', amount: 200, spent: 150, period: 'monthly' },
-  { category: 'Entretenimento', amount: 200, spent: 180, period: 'monthly' },
-  { category: 'Compras', amount: 300, spent: 250, period: 'monthly' },
-  { category: 'Utilidades', amount: 300, spent: 280, period: 'monthly' },
-  { category: 'Saúde', amount: 200, spent: 150, period: 'monthly' },
-  { category: 'Educação', amount: 100, spent: 0, period: 'monthly' },
-  { category: 'Assinaturas', amount: 50, spent: 25, period: 'monthly' },
+  { category: 'Moradia', amount: 2500, spent: 2500, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Alimentação', amount: 600, spent: 450, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Transporte', amount: 200, spent: 150, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Entretenimento', amount: 200, spent: 180, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Compras', amount: 300, spent: 250, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Utilidades', amount: 300, spent: 280, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Saúde', amount: 200, spent: 150, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Educação', amount: 100, spent: 0, period: 'monthly', date: new Date(2023, 7, 1) },
+  { category: 'Assinaturas', amount: 50, spent: 25, period: 'monthly', date: new Date(2023, 7, 1) },
 ];
 
 // Financial summary

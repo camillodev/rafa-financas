@@ -1,4 +1,3 @@
-
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -14,6 +13,8 @@ export interface Transaction {
   financialInstitution?: string;
   transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   status: 'completed' | 'pending';
+  dueDate?: Date; // Added dueDate property
+  card?: string; // Added card property for credit card transactions
 }
 
 export interface Category {
@@ -37,6 +38,7 @@ export interface BudgetGoal {
   amount: number;
   spent: number;
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  date?: Date; // Added date property for budget goals
 }
 
 export interface FinancialSummary {
@@ -53,7 +55,6 @@ export interface FinancialInstitution {
   icon: string;
   currentBalance: number;
   isActive: boolean;
-  // Added properties
   type?: string;
   logoUrl?: string;
   balance?: number;
@@ -68,7 +69,6 @@ export interface CreditCard {
   brand: string;
   dueDate: number; // Day of the month
   institutionId: string;
-  // Added properties
   number?: string;
   institution?: string;
   closingDay?: number;
@@ -78,7 +78,6 @@ export interface CreditCard {
   archived?: boolean;
 }
 
-// Add the GoalTransaction interface
 export interface GoalTransaction {
   id: string;
   date: Date;
@@ -87,7 +86,6 @@ export interface GoalTransaction {
   description: string;
 }
 
-// New type for goal modification log
 export interface GoalModification {
   id: string;
   goalId: string;

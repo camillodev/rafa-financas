@@ -24,7 +24,11 @@ export function UpcomingBills() {
       !isAfter(new Date(tx.dueDate), nextWeek) &&
       (!tx.status || tx.status !== 'completed')
     )
-    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .sort((a, b) => 
+      a.dueDate && b.dueDate 
+        ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime() 
+        : 0
+    )
     .slice(0, 3);
   
   const getBillStatus = (bill: typeof filteredTransactions[0]) => {
