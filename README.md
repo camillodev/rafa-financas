@@ -1,69 +1,122 @@
-# Welcome to your Lovable project
 
-## Project info
+# Rafa Finanças - Sistema de Gestão Financeira Pessoal
 
-**URL**: https://lovable.dev/projects/204318b0-10b9-4e1c-b662-99b612f82721
+![Rafa Finanças](public/og-image.png)
 
-## How can I edit this code?
+## 📋 Visão Geral
 
-There are several ways of editing your application.
+Rafa Finanças é uma aplicação web abrangente para gestão financeira pessoal desenvolvida com React, TypeScript e Tailwind CSS. A aplicação permite aos usuários gerenciar suas finanças, acompanhar despesas, criar orçamentos, estabelecer metas financeiras e visualizar relatórios detalhados.
 
-**Use Lovable**
+## ✨ Funcionalidades
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/204318b0-10b9-4e1c-b662-99b612f82721) and start prompting.
+- **Dashboard Interativo**: Visão geral das finanças com gráficos e indicadores
+- **Gerenciamento de Transações**: Registro e categorização de receitas e despesas
+- **Orçamentos**: Criação e acompanhamento de orçamentos mensais e anuais
+- **Contas a Pagar**: Controle de contas e pagamentos agendados
+- **Metas Financeiras**: Definição e acompanhamento de metas de economia
+- **Cartões de Crédito**: Gerenciamento de gastos com cartões
+- **Instituições Financeiras**: Integração com diferentes bancos e instituições
+- **Relatórios Personalizados**: Visualização de dados financeiros em diferentes formatos
+- **Temas Claro/Escuro**: Personalização da interface para diferentes preferências
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tecnologias
 
-**Use your preferred IDE**
+- [React](https://reactjs.org/) - Biblioteca JavaScript para construção de interfaces
+- [TypeScript](https://www.typescriptlang.org/) - Superset JavaScript tipado
+- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utilitário
+- [shadcn/ui](https://ui.shadcn.com/) - Componentes reutilizáveis construídos com Radix UI e Tailwind
+- [React Router](https://reactrouter.com/) - Roteamento para React
+- [Recharts](https://recharts.org/) - Biblioteca de gráficos para React
+- [date-fns](https://date-fns.org/) - Biblioteca JavaScript para manipulação de datas
+- [Lucide React](https://lucide.dev/) - Conjunto de ícones para React
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 📦 Instalação e Uso
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Pré-requisitos
+- Node.js (v16+)
+- npm ou yarn
 
-Follow these steps:
+### Instalação
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+# Clone o repositório
+git clone <URL_DO_REPOSITÓRIO>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Entre no diretório do projeto
+cd rafa-financas
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Instale as dependências
+npm install
+# ou
+yarn
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Inicie o servidor de desenvolvimento
 npm run dev
+# ou
+yarn dev
 ```
 
-**Edit a file directly in GitHub**
+O aplicativo será aberto no navegador em `http://localhost:5173` (ou a porta configurada pelo Vite).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📱 Responsividade
 
-**Use GitHub Codespaces**
+A aplicação foi desenvolvida seguindo os princípios de design responsivo, garantindo uma experiência consistente em:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Desktops e laptops
+- Tablets
+- Dispositivos móveis
 
-## What technologies are used for this project?
+## 🗄️ Estrutura do Projeto
 
-This project is built with .
+```
+src/
+├── components/         # Componentes reutilizáveis
+│   ├── dashboard/      # Componentes específicos do dashboard
+│   ├── layout/         # Componentes de layout (Sidebar, AppLayout)
+│   └── ui/             # Componentes de UI (shadcn/ui)
+├── context/            # Contextos React, incluindo FinanceContext
+├── data/               # Dados mockados para desenvolvimento
+├── hooks/              # Hooks personalizados
+├── lib/                # Utilitários e helpers
+├── pages/              # Componentes de página (rotas)
+└── types/              # Definições de tipos TypeScript
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔍 Páginas Principais
 
-## How can I deploy this project?
+- **Dashboard** (`/`): Visão geral das finanças
+- **Transações** (`/transactions`): Gerenciamento de transações
+- **Contas a Pagar** (`/bills`): Controle de contas e pagamentos
+- **Orçamentos** (`/budgets`): Planejamento e acompanhamento orçamentário
+- **Relatórios** (`/reports`): Relatórios e análises financeiras
+- **Categorias** (`/categories`): Gestão de categorias e subcategorias
+- **Instituições** (`/institutions`): Gerenciamento de instituições financeiras
+- **Cartões** (`/cards`): Controle de cartões de crédito
+- **Metas** (`/goals`): Definição e acompanhamento de metas financeiras
+- **Configurações** (`/settings`): Configurações da aplicação
 
-Simply open [Lovable](https://lovable.dev/projects/204318b0-10b9-4e1c-b662-99b612f82721) and click on Share -> Publish.
+## 🌙 Tema Escuro
 
-## I want to use a custom domain - is that possible?
+A aplicação suporta temas claro e escuro. O usuário pode alternar entre os temas através da página de configurações.
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 🚀 Próximos Passos
+
+- Implementação de backend real
+- Autenticação de usuários
+- Sincronização com contas bancárias reais
+- Aplicativo móvel correspondente
+- Funcionalidades de exportação de dados
+
+## 📄 Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.
+
+## 📞 Contato
+
+Para questões e suporte, entre em contato via [email@exemplo.com](mailto:email@exemplo.com).
+
+## 🙏 Agradecimentos
+
+- [shadcn/ui](https://ui.shadcn.com/) pelo conjunto de componentes
+- [Lucide](https://lucide.dev/) pelos ícones
+- Todos os contribuidores que ajudaram a tornar este projeto possível

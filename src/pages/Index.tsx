@@ -9,6 +9,14 @@ import TransactionList from '@/components/dashboard/TransactionList';
 import BudgetProgress from '@/components/dashboard/BudgetProgress';
 import MonthFilter from '@/components/ui/MonthFilter';
 import { useFinance } from '@/context/FinanceContext';
+import UpcomingBills from '@/components/dashboard/UpcomingBills';
+import SavingsGoals from '@/components/dashboard/SavingsGoals';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 const Index = () => {
   const { currentDate, navigateToPreviousMonth, navigateToNextMonth } = useFinance();
@@ -27,16 +35,30 @@ const Index = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
-          <ExpenseChart />
+          <Tabs defaultValue="expenses" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="expenses">Receitas vs Despesas</TabsTrigger>
+              <TabsTrigger value="categories">Despesas por Categoria</TabsTrigger>
+            </TabsList>
+            <TabsContent value="expenses">
+              <ExpenseChart />
+            </TabsContent>
+            <TabsContent value="categories">
+              <CategoryBreakdown />
+            </TabsContent>
+          </Tabs>
         </div>
         <div>
-          <CategoryBreakdown />
+          <SavingsGoals />
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TransactionList />
-        <BudgetProgress />
+        <div className="grid grid-cols-1 gap-6">
+          <BudgetProgress />
+          <UpcomingBills />
+        </div>
       </div>
     </AppLayout>
   );

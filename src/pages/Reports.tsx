@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import AppLayout from '@/components/layout/AppLayout';
@@ -24,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Tabs as ChartTypeTabs, TabsContent as ChartTypeTabsContent, TabsList as ChartTypeTabsList, TabsTrigger as ChartTypeTabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 interface ChartDataItem {
   name: string;
@@ -57,7 +57,7 @@ const Reports = () => {
   const {
     transactions,
     categories,
-    budgets,
+    budgetGoals,
     financialInstitutions,
     currentDate,
     setCurrentDate,
@@ -434,7 +434,7 @@ const Reports = () => {
     if (filteredExpenses.length === 0) return [];
 
     // Get the current month's budget or default to empty
-    const currentMonthBudgets = budgets.filter(b => {
+    const currentMonthBudgets = budgetGoals.filter(b => {
       const budgetDate = new Date(b.date);
       return budgetDate.getMonth() === currentDate.getMonth() && 
              budgetDate.getFullYear() === currentDate.getFullYear();

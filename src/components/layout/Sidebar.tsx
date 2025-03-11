@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -17,6 +17,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/use-theme';
 
 interface SidebarLinkProps {
   icon: React.ReactNode;
@@ -51,12 +52,14 @@ const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProp
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { theme } = useTheme();
   
   return (
     <div 
       className={cn(
-        "h-screen flex flex-col border-r transition-all duration-300 ease-in-out bg-white relative",
-        collapsed ? "w-16" : "w-64"
+        "h-screen flex flex-col border-r transition-all duration-300 ease-in-out relative",
+        collapsed ? "w-16" : "w-64",
+        "bg-background text-foreground"
       )}
     >
       <div className="flex items-center justify-between p-4">
