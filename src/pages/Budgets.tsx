@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label'; // Add this import
 import { BudgetCreationForm } from '@/components/budget/BudgetCreationForm';
 import { AnnualBudgetView } from '@/components/budget/AnnualBudgetView';
 

@@ -129,7 +129,12 @@ export function AnnualBudgetView({
   };
   
   const handleCellClick = (category: string, month: number, currentValue: number) => {
-    setCurrentEditCell({ category, month, currentValue });
+    // Fix: use direct object assignment instead of property that doesn't exist in type
+    setCurrentEditCell({
+      category,
+      month,
+      value: currentValue
+    });
     setEditValue(currentValue.toString());
     setIsEditingCell(true);
   };
