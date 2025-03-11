@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -21,15 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Tabs,
   TabsContent,
@@ -40,9 +32,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BudgetGoal } from '@/types/finance';
 import { toast } from "sonner";
-import { format, addYears, subYears, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { BudgetCreationForm } from '@/components/budget/BudgetCreationForm';
+import { AnnualBudgetView } from '@/components/budget/AnnualBudgetView';
 
 export function Budgets() {
   const { 
@@ -55,24 +49,14 @@ export function Budgets() {
     filteredTransactions 
   } = useFinance();
   
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetGoal | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isReallocateDialogOpen, setIsReallocateDialogOpen] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState("current");
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    category: '',
-    amount: 0,
-    period: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly'
-  });
-  
-  // Budget reallocation state
-  const [reallocatedBudgets, setReallocatedBudgets] = useState<BudgetGoal[]>([]);
-  const [unallocatedAmount, setUnallocatedAmount] = useState(0);
   
   // Budget summary state
   const [budgetSummary, setBudgetSummary] = useState({
@@ -82,22 +66,21 @@ export function Budgets() {
     remaining: 0
   });
   
-  // Initialize reallocation dialog data
+  // Update current date when month changes
   useEffect(() => {
-    if (isReallocateDialogOpen) {
-      setReallocatedBudgets([...budgetGoals]);
-      // Calculate total budget amount
-      const totalBudget = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
-      setUnallocatedAmount(0); // Start with no unallocated amount
-    }
-    
-    // Calculate budget summary
+    setCurrentDate(new Date(currentYear, currentMonth));
+  }, [currentYear, currentMonth]);
+  
+  // Calculate budget summary
+  useEffect(() => {
     const totalExpenses = budgetGoals
       .filter(budget => categories.find(c => c.name === budget.category)?.type === 'expense')
       .reduce((acc, budget) => acc + budget.amount, 0);
       
     const totalIncome = 10000; // This would come from income budgets in a real app
-    const totalGoals = 2000; // This would come from goals in a real app
+    const totalGoals = budgetGoals
+      .filter(budget => budget.category === 'Metas' || budget.category === 'Goals')
+      .reduce((acc, budget) => acc + budget.amount, 0);
     
     setBudgetSummary({
       totalIncome,
@@ -105,8 +88,7 @@ export function Budgets() {
       totalGoals,
       remaining: totalIncome - totalExpenses - totalGoals
     });
-    
-  }, [isReallocateDialogOpen, budgetGoals, categories]);
+  }, [budgetGoals, categories]);
   
   // Calculate daily and weekly remaining for each budget
   const calculateRemainingBudgets = () => {
@@ -115,122 +97,42 @@ export function Budgets() {
     const remainingDays = daysInMonth - currentDate.getDate() + 1;
     const remainingWeeks = Math.ceil(remainingDays / 7);
     
-    return budgetGoals.map((budget) => {
-      const remaining = budget.amount - budget.spent;
-      const dailyRemaining = remaining > 0 ? remaining / remainingDays : 0;
-      const weeklyRemaining = remaining > 0 ? remaining / remainingWeeks : 0;
-      const percentage = Math.round((budget.spent / budget.amount) * 100);
-      
-      return {
-        ...budget,
-        dailyRemaining,
-        weeklyRemaining,
-        percentage,
-        isOverBudget: percentage >= 100
-      };
-    });
+    return budgetGoals
+      .filter(budget => {
+        // Only show expense category budgets 
+        const category = categories.find(c => c.name === budget.category);
+        return category?.type === 'expense';
+      })
+      .map((budget) => {
+        const remaining = budget.amount - budget.spent;
+        const dailyRemaining = remaining > 0 ? remaining / remainingDays : 0;
+        const weeklyRemaining = remaining > 0 ? remaining / remainingWeeks : 0;
+        const percentage = Math.round((budget.spent / budget.amount) * 100);
+        
+        return {
+          ...budget,
+          dailyRemaining,
+          weeklyRemaining,
+          percentage,
+          isOverBudget: percentage >= 100
+        };
+      });
   };
   
   const calculatedBudgets = calculateRemainingBudgets();
   
-  // Mock annual data for the example
-  const generateAnnualData = () => {
-    const months = Array.from({ length: 12 }, (_, i) => 
-      format(new Date(currentYear, i, 1), 'MMM', { locale: ptBR })
-    );
-    
-    // Create a map of categories and their monthly values
-    const categoryData: Record<string, number[]> = {};
-    categories
-      .filter(cat => cat.type === 'expense')
-      .forEach(category => {
-        categoryData[category.name] = Array.from({ length: 12 }, () => 
-          Math.round(Math.random() * 5000)
-        );
-      });
-    
-    return { months, categoryData };
-  };
-  
-  const annualData = generateAnnualData();
-  
-  const handleOpenAddDialog = () => {
-    setEditingBudget(null);
-    setFormData({
-      category: categories.filter(cat => cat.type === 'expense')[0]?.name || '',
-      amount: 0,
-      period: 'monthly'
-    });
-    setIsDialogOpen(true);
+  const handleOpenCreateDialog = () => {
+    setIsCreateDialogOpen(true);
   };
   
   const handleOpenEditDialog = (budget: BudgetGoal) => {
     setEditingBudget(budget);
-    setFormData({
-      category: budget.category,
-      amount: budget.amount,
-      period: budget.period
-    });
-    setIsDialogOpen(true);
-  };
-  
-  const handleOpenReallocateDialog = () => {
-    setIsReallocateDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
   
   const handleDeleteDialog = (budget: BudgetGoal) => {
     setEditingBudget(budget);
     setIsDeleteDialogOpen(true);
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || 0 : value
-    }));
-  };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleReallocateInputChange = (categoryName: string, value: number) => {
-    const newBudgets = reallocatedBudgets.map(budget => 
-      budget.category === categoryName 
-        ? { ...budget, amount: value } 
-        : budget
-    );
-    
-    // Calculate new unallocated amount
-    const totalAllocated = newBudgets.reduce((acc, budget) => acc + budget.amount, 0);
-    const totalOriginal = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
-    
-    setUnallocatedAmount(totalOriginal - totalAllocated);
-    setReallocatedBudgets(newBudgets);
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const budgetData = {
-      category: formData.category,
-      amount: formData.amount,
-      period: formData.period,
-    };
-    
-    if (editingBudget) {
-      updateBudgetGoal(editingBudget.category, budgetData);
-      toast.success("Orçamento atualizado com sucesso");
-    } else {
-      addBudgetGoal(budgetData);
-      toast.success("Orçamento adicionado com sucesso");
-    }
-    
-    setIsDialogOpen(false);
   };
   
   const handleConfirmDelete = () => {
@@ -239,31 +141,6 @@ export function Budgets() {
       setIsDeleteDialogOpen(false);
       toast.success("Orçamento excluído com sucesso");
     }
-  };
-  
-  const handleSaveReallocation = () => {
-    // Check if all budget is allocated
-    if (Math.abs(unallocatedAmount) > 0.01) {
-      toast.error(`Há ${formatCurrency(unallocatedAmount)} não alocados. Por favor, distribua todo o orçamento disponível.`);
-      return;
-    }
-    
-    // Save the reallocated budgets
-    reallocatedBudgets.forEach(budget => {
-      const originalBudget = budgetGoals.find(b => b.category === budget.category);
-      if (originalBudget && originalBudget.amount !== budget.amount) {
-        updateBudgetGoal(budget.category, { amount: budget.amount });
-      }
-    });
-    
-    setIsReallocateDialogOpen(false);
-    toast.success("Orçamento realocado com sucesso");
-  };
-  
-  const handleNavigateYear = (direction: 'prev' | 'next') => {
-    setCurrentYear(prev => 
-      direction === 'prev' ? prev - 1 : prev + 1
-    );
   };
   
   const handleNavigateMonth = (direction: 'prev' | 'next') => {
@@ -289,6 +166,21 @@ export function Budgets() {
     toast.success("Orçamento do mês anterior copiado com sucesso");
   };
   
+  const handleSaveBudgets = (budgets: BudgetGoal[]) => {
+    // Clear existing budgets first
+    budgetGoals.forEach(budget => {
+      deleteBudgetGoal(budget.category);
+    });
+    
+    // Add all new budgets
+    budgets.forEach(budget => {
+      addBudgetGoal(budget);
+    });
+    
+    setIsCreateDialogOpen(false);
+    toast.success("Orçamento criado com sucesso");
+  };
+  
   const exportBudgetData = () => {
     let csvContent = '';
     
@@ -309,23 +201,19 @@ export function Budgets() {
       });
     } else {
       // Export annual budget data
-      csvContent = 'Categoria,' + annualData.months.join(',') + ',Total\n';
+      csvContent = 'Categoria,Jan,Fev,Mar,Abr,Mai,Jun,Jul,Ago,Set,Out,Nov,Dez,Total\n';
       
-      Object.entries(annualData.categoryData).forEach(([category, values]) => {
-        const total = values.reduce((acc, value) => acc + value, 0);
-        const row = [category, ...values, total].join(',');
-        csvContent += row + '\n';
-      });
+      // This is just a placeholder - in a real app you'd use actual data
+      const months = Array.from({ length: 12 });
       
-      // Add total row
-      const monthlyTotals = annualData.months.map((_, monthIndex) => {
-        return Object.values(annualData.categoryData).reduce(
-          (acc, values) => acc + values[monthIndex], 0
-        );
-      });
-      
-      const grandTotal = monthlyTotals.reduce((acc, value) => acc + value, 0);
-      csvContent += ['Total', ...monthlyTotals, grandTotal].join(',') + '\n';
+      categories
+        .filter(cat => cat.type === 'expense')
+        .forEach(category => {
+          const monthlyValues = months.map(() => Math.round(Math.random() * 5000));
+          const total = monthlyValues.reduce((acc, value) => acc + value, 0);
+          const row = [category.name, ...monthlyValues, total].join(',');
+          csvContent += row + '\n';
+        });
     }
     
     // Create and download file
@@ -366,34 +254,21 @@ export function Budgets() {
                   <CopyIcon size={16} />
                   <span>Copiar do Mês Anterior</span>
                 </Button>
-                <Button onClick={handleOpenReallocateDialog} variant="outline" className="gap-1">
-                  <BarChart size={16} />
-                  <span>Realocar Orçamentos</span>
-                </Button>
                 <Button onClick={exportBudgetData} variant="outline" className="gap-1">
                   <Download size={16} />
                   <span className="hidden sm:inline">Exportar</span>
                 </Button>
-                <Button onClick={handleOpenAddDialog} className="gap-1">
+                <Button onClick={handleOpenCreateDialog} className="gap-1">
                   <Plus size={16} />
                   <span className="hidden sm:inline">Novo Orçamento</span>
                 </Button>
               </>
             )}
             {activeTab === "annual" && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => handleNavigateYear('prev')}>
-                  <ChevronLeft size={16} />
-                </Button>
-                <span className="font-medium">{currentYear}</span>
-                <Button variant="outline" size="icon" onClick={() => handleNavigateYear('next')}>
-                  <ChevronRight size={16} />
-                </Button>
-                <Button onClick={exportBudgetData} variant="outline" className="gap-1 ml-4">
-                  <Download size={16} />
-                  <span className="hidden sm:inline">Exportar</span>
-                </Button>
-              </div>
+              <Button onClick={exportBudgetData} variant="outline" className="gap-1">
+                <Download size={16} />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
             )}
           </div>
         </div>
@@ -469,7 +344,7 @@ export function Budgets() {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <p className="text-sm font-medium">Não Alocado</p>
-                        <Button size="sm" variant="outline" className="h-6 px-2 py-0">
+                        <Button size="sm" variant="outline" className="h-6 px-2 py-0" onClick={handleOpenCreateDialog}>
                           <Calculator size={12} className="mr-1" />
                           <span className="text-xs">Realocar</span>
                         </Button>
@@ -724,14 +599,14 @@ export function Budgets() {
                 );
               })}
               
-              {budgetGoals.length === 0 && (
+              {calculatedBudgets.length === 0 && (
                 <div className="text-center py-12 border rounded-lg bg-muted/20">
                   <BarChart size={48} className="mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">Nenhum orçamento definido</h3>
                   <p className="text-muted-foreground mb-4">
                     Defina orçamentos para acompanhar seus gastos por categoria
                   </p>
-                  <Button onClick={handleOpenAddDialog}>
+                  <Button onClick={handleOpenCreateDialog}>
                     <Plus size={16} className="mr-2" />
                     Adicionar orçamento
                   </Button>
@@ -741,155 +616,92 @@ export function Budgets() {
           </div>
         </TabsContent>
         
-        <TabsContent value="annual" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Visão Anual de Orçamentos</CardTitle>
-              <CardDescription>
-                Visualize seus orçamentos ao longo do ano {currentYear}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[150px]">Categoria</TableHead>
-                      {annualData.months.map((month) => (
-                        <TableHead key={month} className="text-center">{month}</TableHead>
-                      ))}
-                      <TableHead className="text-center">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(annualData.categoryData).map(([category, values]) => {
-                      const total = values.reduce((acc, value) => acc + value, 0);
-                      return (
-                        <TableRow key={category}>
-                          <TableCell className="font-medium">{category}</TableCell>
-                          {values.map((value, index) => (
-                            <TableCell key={index} className="text-center">
-                              {formatCurrency(value)}
-                            </TableCell>
-                          ))}
-                          <TableCell className="text-center font-bold">
-                            {formatCurrency(total)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    <TableRow className="bg-muted/50">
-                      <TableCell className="font-bold">Total Mensal</TableCell>
-                      {annualData.months.map((_, monthIndex) => {
-                        const monthTotal = Object.values(annualData.categoryData).reduce(
-                          (acc, values) => acc + values[monthIndex], 0
-                        );
-                        return (
-                          <TableCell key={monthIndex} className="text-center font-bold">
-                            {formatCurrency(monthTotal)}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-center font-bold">
-                        {formatCurrency(
-                          Object.values(annualData.categoryData).reduce(
-                            (acc, values) => acc + values.reduce((sum, val) => sum + val, 0), 0
-                          )
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="annual">
+          <AnnualBudgetView 
+            formatCurrency={formatCurrency}
+            currentYear={currentYear}
+            onChangeYear={setCurrentYear}
+            onExportData={exportBudgetData}
+          />
         </TabsContent>
       </Tabs>
       
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+      {/* Budget Creation Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>{editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}</DialogTitle>
+            <DialogTitle>Criar Novo Orçamento</DialogTitle>
             <DialogDescription>
-              {editingBudget 
-                ? 'Edite os detalhes do orçamento para esta categoria.'
-                : 'Defina um novo limite de orçamento para uma categoria.'}
+              Defina o orçamento total e distribua entre as diferentes categorias
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">
-                  Categoria
-                </Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleSelectChange('category', value)}
-                  disabled={!!editingBudget}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .filter(cat => cat.type === 'expense')
-                      .map(category => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Valor Limite
-                </Label>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="period" className="text-right">
-                  Período
-                </Label>
-                <Select 
-                  value={formData.period} 
-                  onValueChange={(value) => handleSelectChange('period', value as 'daily' | 'weekly' | 'monthly' | 'yearly')}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Diário</SelectItem>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="monthly">Mensal</SelectItem>
-                    <SelectItem value="yearly">Anual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button type="submit">
-                {editingBudget ? 'Salvar Alterações' : 'Criar Orçamento'}
-              </Button>
-            </DialogFooter>
-          </form>
+          <BudgetCreationForm 
+            categories={categories}
+            formatCurrency={formatCurrency}
+            onSave={handleSaveBudgets}
+            currentDate={currentDate}
+            existingBudgets={budgetGoals}
+            onCancel={() => setIsCreateDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
       
+      {/* Edit Budget Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Orçamento</DialogTitle>
+            <DialogDescription>
+              Ajuste o valor do orçamento para {editingBudget?.category}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editAmount" className="text-right">
+                Valor Limite
+              </Label>
+              <input
+                id="editAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editingBudget?.amount}
+                onChange={(e) => {
+                  if (editingBudget) {
+                    setEditingBudget({
+                      ...editingBudget,
+                      amount: parseFloat(e.target.value) || 0
+                    });
+                  }
+                }}
+                className="col-span-3 h-10 rounded-md border border-input bg-background px-3 py-2"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (editingBudget) {
+                updateBudgetGoal(editingBudget.category, { 
+                  amount: editingBudget.amount,
+                  period: editingBudget.period 
+                });
+                setIsEditDialogOpen(false);
+                toast.success("Orçamento atualizado com sucesso");
+              }
+            }}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -904,67 +716,6 @@ export function Budgets() {
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete}>
               Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={isReallocateDialogOpen} onOpenChange={setIsReallocateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Realocar Orçamentos</DialogTitle>
-            <DialogDescription>
-              Distribua o valor total do orçamento entre as categorias de despesa.
-              Ajuste os valores para que não reste saldo não alocado.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="mb-4 flex justify-between items-center">
-              <span className="font-medium">Total do Orçamento:</span>
-              <span className="font-bold">
-                {formatCurrency(budgetGoals.reduce((acc, budget) => acc + budget.amount, 0))}
-              </span>
-            </div>
-            
-            <div className="mb-4 flex justify-between items-center">
-              <span className="font-medium">Não Alocado:</span>
-              <span className={`font-bold ${unallocatedAmount !== 0 ? 'text-destructive' : 'text-finance-income'}`}>
-                {formatCurrency(unallocatedAmount)}
-              </span>
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
-              {reallocatedBudgets.map((budget) => (
-                <div key={budget.category} className="grid grid-cols-3 gap-4 items-center">
-                  <div className="col-span-1 font-medium truncate" title={budget.category}>
-                    {budget.category}
-                  </div>
-                  <div className="col-span-1">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={budget.amount}
-                      onChange={(e) => handleReallocateInputChange(budget.category, parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="col-span-1 text-sm text-muted-foreground">
-                    Gasto: {formatCurrency(budget.spent)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsReallocateDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveReallocation} disabled={Math.abs(unallocatedAmount) > 0.01}>
-              Salvar Realocação
             </Button>
           </DialogFooter>
         </DialogContent>
