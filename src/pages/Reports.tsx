@@ -1,19 +1,29 @@
+
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, 
+  AreaChart, Area, ComposedChart 
+} from 'recharts';
 import { format, addMonths, subMonths, startOfMonth, startOfQuarter, startOfYear, endOfMonth, endOfQuarter, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Download, Filter } from 'lucide-react';
+import { 
+  AlertCircle, Download, Filter, BarChart3, PieChart as PieChartIcon, 
+  LineChart as LineChartIcon, Activity, Eye, EyeOff
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { Tabs as ChartTypeTabs, TabsContent as ChartTypeTabsContent, TabsList as ChartTypeTabsList, TabsTrigger as ChartTypeTabsTrigger } from "@/components/ui/tabs";
 
 interface ChartDataItem {
   name: string;
@@ -27,12 +37,27 @@ interface ComparisonDataItem {
   expenses: number;
 }
 
+interface BudgetVsActualItem {
+  name: string;
+  planned: number;
+  actual: number;
+}
+
+interface CreditCardExpensesItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
 type PeriodType = 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+type ChartType = 'bar' | 'pie' | 'line' | 'area' | 'composed';
+type TransactionStatus = 'all' | 'pending' | 'completed';
 
 const Reports = () => {
   const {
     transactions,
     categories,
+    budgets,
     financialInstitutions,
     currentDate,
     setCurrentDate,
@@ -43,12 +68,16 @@ const Reports = () => {
 
   const [activeReport, setActiveReport] = useState<string>('expenses-by-category');
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
+  const [chartType, setChartType] = useState<ChartType>('bar');
+  const [showLegend, setShowLegend] = useState(true);
   
   const [filters, setFilters] = useState({
     minAmount: '',
     maxAmount: '',
     selectedCategories: [] as string[],
+    selectedSubcategories: [] as string[],
     selectedInstitutions: [] as string[],
+    transactionStatus: 'all' as TransactionStatus,
   });
 
   const getPeriodDates = () => {
@@ -111,10 +140,22 @@ const Reports = () => {
         return false;
       }
       
+      if (filters.selectedSubcategories.length > 0 && 
+          transaction.subcategory && 
+          !filters.selectedSubcategories.includes(transaction.subcategory)) {
+        return false;
+      }
+      
       if (filters.selectedInstitutions.length > 0 && 
           transaction.financialInstitution && 
           !filters.selectedInstitutions.includes(transaction.financialInstitution)) {
         return false;
+      }
+      
+      if (filters.transactionStatus !== 'all') {
+        const isPending = transaction.status === 'pending';
+        if (filters.transactionStatus === 'pending' && !isPending) return false;
+        if (filters.transactionStatus === 'completed' && isPending) return false;
       }
       
       return true;
@@ -199,6 +240,17 @@ const Reports = () => {
     });
   };
 
+  const toggleSubcategoryFilter = (subcategory: string) => {
+    setFilters(prev => {
+      const currentSelected = [...prev.selectedSubcategories];
+      if (currentSelected.includes(subcategory)) {
+        return { ...prev, selectedSubcategories: currentSelected.filter(s => s !== subcategory) };
+      } else {
+        return { ...prev, selectedSubcategories: [...currentSelected, subcategory] };
+      }
+    });
+  };
+
   const toggleInstitutionFilter = (institution: string) => {
     setFilters(prev => {
       const currentSelected = [...prev.selectedInstitutions];
@@ -215,7 +267,9 @@ const Reports = () => {
       minAmount: '',
       maxAmount: '',
       selectedCategories: [],
+      selectedSubcategories: [],
       selectedInstitutions: [],
+      transactionStatus: 'all',
     });
     toast.success("Filtros limpos com sucesso");
   };
@@ -229,6 +283,18 @@ const Reports = () => {
       exportContent = 'Nome,Receitas,Despesas\n';
       data.forEach(item => {
         exportContent += `${item.name},${item.income},${item.expenses}\n`;
+      });
+    } else if (activeReport === 'budget-vs-actual') {
+      const data = prepareBudgetVsActual();
+      exportContent = 'Categoria,Planejado,Realizado\n';
+      data.forEach(item => {
+        exportContent += `${item.name},${item.planned},${item.actual}\n`;
+      });
+    } else if (activeReport === 'credit-card-expenses') {
+      const data = prepareCreditCardExpenses();
+      exportContent = 'Cartão,Valor\n';
+      data.forEach(item => {
+        exportContent += `${item.name},${item.value}\n`;
       });
     } else {
       let data: ChartDataItem[];
@@ -310,7 +376,7 @@ const Reports = () => {
       return {
         name: account,
         value: amount,
-        color: institution ? '#' + ((Math.random() * 0xffffff) << 0).toString(16).padStart(6, '0') : '#ccc',
+        color: institution?.color || '#' + ((Math.random() * 0xffffff) << 0).toString(16).padStart(6, '0'),
       };
     }).sort((a, b) => b.value - a.value);
   };
@@ -356,7 +422,75 @@ const Reports = () => {
       return {
         name: account,
         value: amount,
-        color: institution ? '#' + ((Math.random() * 0xffffff) << 0).toString(16).padStart(6, '0') : '#ccc',
+        color: institution?.color || '#' + ((Math.random() * 0xffffff) << 0).toString(16).padStart(6, '0'),
+      };
+    }).sort((a, b) => b.value - a.value);
+  };
+
+  const prepareBudgetVsActual = (): BudgetVsActualItem[] => {
+    const { startDate, endDate } = getPeriodDates();
+    const filteredExpenses = getFilteredTransactions().filter(t => t.type === 'expense');
+    
+    if (filteredExpenses.length === 0) return [];
+
+    // Get the current month's budget or default to empty
+    const currentMonthBudgets = budgets.filter(b => {
+      const budgetDate = new Date(b.date);
+      return budgetDate.getMonth() === currentDate.getMonth() && 
+             budgetDate.getFullYear() === currentDate.getFullYear();
+    });
+
+    // Aggregate expenses by category
+    const categoryExpenses: Record<string, number> = {};
+    filteredExpenses.forEach(transaction => {
+      const { category, amount } = transaction;
+      categoryExpenses[category] = (categoryExpenses[category] || 0) + amount;
+    });
+
+    // Combine with budget data
+    const result: BudgetVsActualItem[] = [];
+    
+    // First add categories that have both budget and expenses
+    categories
+      .filter(category => category.type === 'expense')
+      .forEach(category => {
+        const budgetItem = currentMonthBudgets.find(b => b.category === category.name);
+        const planned = budgetItem ? budgetItem.amount : 0;
+        const actual = categoryExpenses[category.name] || 0;
+        
+        result.push({
+          name: category.name,
+          planned,
+          actual
+        });
+      });
+
+    return result.sort((a, b) => b.actual - a.actual);
+  };
+
+  const prepareCreditCardExpenses = (): CreditCardExpensesItem[] => {
+    const filteredTransactions = getFilteredTransactions().filter(
+      t => t.type === 'expense' && t.paymentMethod === 'credit_card'
+    );
+    
+    if (filteredTransactions.length === 0) return [];
+
+    // Group by card
+    const cardExpenses: Record<string, number> = {};
+    
+    filteredTransactions.forEach(transaction => {
+      const card = transaction.card || 'Cartão não especificado';
+      cardExpenses[card] = (cardExpenses[card] || 0) + transaction.amount;
+    });
+
+    // Convert to chart format
+    return Object.entries(cardExpenses).map(([card, amount], index) => {
+      // Generate a distinct color for each card
+      const colors = ['#f44336', '#3f51b5', '#4caf50', '#ff9800', '#9c27b0', '#607d8b'];
+      return {
+        name: card,
+        value: amount,
+        color: colors[index % colors.length],
       };
     }).sort((a, b) => b.value - a.value);
   };
@@ -433,29 +567,7 @@ const Reports = () => {
     return formatCurrency(value);
   };
 
-  const renderReportContent = () => {
-    switch (activeReport) {
-      case 'expenses-by-category':
-        return renderPieChart(prepareExpensesByCategory(), 'Despesas por Categoria');
-      
-      case 'expenses-by-account':
-        return renderPieChart(prepareExpensesByAccount(), 'Despesas por Conta');
-      
-      case 'income-by-category':
-        return renderPieChart(prepareIncomeByCategory(), 'Receitas por Categoria');
-      
-      case 'income-by-account':
-        return renderPieChart(prepareIncomeByAccount(), 'Receitas por Conta');
-      
-      case 'expenses-vs-income':
-        return renderComparisonChart(prepareExpensesVsIncome(), 'Despesas vs. Receitas');
-      
-      default:
-        return <div className="p-8 text-center text-muted-foreground">Selecione um relatório</div>;
-    }
-  };
-
-  const renderPieChart = (data: ChartDataItem[], title: string) => {
+  const renderChartByType = (data: any[], type: ChartType, title: string, dataKeys: string[], colors: string[]) => {
     if (!data.length) {
       return (
         <div className="flex flex-col items-center justify-center h-60 p-8">
@@ -465,11 +577,9 @@ const Reports = () => {
       );
     }
 
-    return (
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium">{title}</h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    switch (type) {
+      case 'pie':
+        return (
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -480,101 +590,559 @@ const Reports = () => {
                   labelLine={false}
                   outerRadius={80}
                   fill="#8884d8"
-                  dataKey="value"
+                  dataKey={dataKeys[0]}
+                  nameKey="name"
                   label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                 >
                   {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={colors[index % colors.length] || entry.color || colors[0]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={formatTooltipValue} />
-                <Legend />
+                {showLegend && <Legend />}
               </PieChart>
             </ResponsiveContainer>
           </div>
-          
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Detalhamento</h4>
-            <div className="space-y-3">
-              {data.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span>{item.name}</span>
-                  </div>
-                  <span className="font-medium">{formatCurrency(item.value)}</span>
-                </div>
-              ))}
+        );
+      
+      case 'line':
+        return (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={formatTooltipValue} />
+                {showLegend && <Legend />}
+                {dataKeys.map((key, index) => (
+                  <Line 
+                    key={key} 
+                    type="monotone" 
+                    dataKey={key} 
+                    stroke={colors[index % colors.length]}
+                    activeDot={{ r: 8 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      
+      case 'area':
+        return (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={formatTooltipValue} />
+                {showLegend && <Legend />}
+                {dataKeys.map((key, index) => (
+                  <Area 
+                    key={key} 
+                    type="monotone" 
+                    dataKey={key} 
+                    fill={colors[index % colors.length]}
+                    stroke={colors[index % colors.length]}
+                  />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      
+      case 'composed':
+        return (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={formatTooltipValue} />
+                {showLegend && <Legend />}
+                {dataKeys.map((key, index) => (
+                  index === 0 ? (
+                    <Bar 
+                      key={key} 
+                      dataKey={key} 
+                      fill={colors[index % colors.length]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                  ) : (
+                    <Line 
+                      key={key} 
+                      type="monotone" 
+                      dataKey={key} 
+                      stroke={colors[index % colors.length]}
+                      strokeWidth={2}
+                    />
+                  )
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      
+      default: // 'bar'
+        return (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip formatter={formatTooltipValue} />
+                {showLegend && <Legend />}
+                {dataKeys.map((key, index) => (
+                  <Bar 
+                    key={key} 
+                    dataKey={key} 
+                    fill={colors[index % colors.length]}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+    }
+  };
+
+  const renderReportContent = () => {
+    switch (activeReport) {
+      case 'expenses-by-category': {
+        const data = prepareExpensesByCategory();
+        const colors = data.map(item => item.color);
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Despesas por Categoria</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="pie"><PieChartIcon className="h-4 w-4 mr-2" />Pizza</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
             </div>
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between font-medium">
-                <span>Total</span>
-                <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderChartByType(data, chartType, "Despesas por Categoria", ['value'], colors)}
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Detalhamento</h4>
+                <div className="space-y-3">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderComparisonChart = (data: ComparisonDataItem[], title: string) => {
-    if (!data.length) {
-      return (
-        <div className="flex flex-col items-center justify-center h-60 p-8">
-          <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground text-center">Não há dados para exibir neste período.</p>
-        </div>
-      );
+        );
+      }
+      
+      case 'expenses-by-account': {
+        const data = prepareExpensesByAccount();
+        const colors = data.map(item => item.color);
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Despesas por Conta</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="pie"><PieChartIcon className="h-4 w-4 mr-2" />Pizza</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderChartByType(data, chartType, "Despesas por Conta", ['value'], colors)}
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Detalhamento</h4>
+                <div className="space-y-3">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      case 'income-by-category': {
+        const data = prepareIncomeByCategory();
+        const colors = data.map(item => item.color);
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Receitas por Categoria</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="pie"><PieChartIcon className="h-4 w-4 mr-2" />Pizza</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderChartByType(data, chartType, "Receitas por Categoria", ['value'], colors)}
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Detalhamento</h4>
+                <div className="space-y-3">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      case 'income-by-account': {
+        const data = prepareIncomeByAccount();
+        const colors = data.map(item => item.color);
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Receitas por Conta</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="pie"><PieChartIcon className="h-4 w-4 mr-2" />Pizza</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderChartByType(data, chartType, "Receitas por Conta", ['value'], colors)}
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Detalhamento</h4>
+                <div className="space-y-3">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      case 'expenses-vs-income': {
+        const data = prepareExpensesVsIncome();
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Despesas vs. Receitas</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            
+            {renderChartByType(
+              data, 
+              chartType, 
+              "Despesas vs. Receitas", 
+              ['income', 'expenses'],
+              ['#4ade80', '#f43f5e']
+            )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Total de Receitas</p>
+                  <p className="text-xl font-semibold text-green-500">
+                    {formatCurrency(data.reduce((sum, item) => sum + item.income, 0))}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Total de Despesas</p>
+                  <p className="text-xl font-semibold text-red-500">
+                    {formatCurrency(data.reduce((sum, item) => sum + item.expenses, 0))}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Saldo</p>
+                  <p className={`text-xl font-semibold ${
+                    data.reduce((sum, item) => sum + item.income, 0) >= 
+                    data.reduce((sum, item) => sum + item.expenses, 0) 
+                      ? 'text-green-500' 
+                      : 'text-red-500'
+                  }`}>
+                    {formatCurrency(
+                      data.reduce((sum, item) => sum + item.income, 0) - 
+                      data.reduce((sum, item) => sum + item.expenses, 0)
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+      }
+      
+      case 'budget-vs-actual': {
+        const data = prepareBudgetVsActual();
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Despesas: Planejado vs. Realizado</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            
+            {renderChartByType(
+              data, 
+              chartType, 
+              "Planejado vs. Realizado", 
+              ['planned', 'actual'],
+              ['#a78bfa', '#f97316']
+            )}
+            
+            <div className="mt-6">
+              <h4 className="text-sm font-medium mb-3">Detalhamento por Categoria</h4>
+              <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                {data.map((item, index) => (
+                  <Card key={index} className="p-3">
+                    <div className="flex flex-col">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">{item.name}</span>
+                        <Badge variant={item.actual <= item.planned ? "success" : "destructive"}>
+                          {item.actual <= item.planned ? "Dentro do orçamento" : "Acima do orçamento"}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Planejado</p>
+                          <p className="font-medium">{formatCurrency(item.planned)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Realizado</p>
+                          <p className="font-medium">{formatCurrency(item.actual)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">Diferença</p>
+                        <p className={`font-medium ${
+                          item.planned - item.actual >= 0 ? 'text-green-500' : 'text-red-500'
+                        }`}>
+                          {formatCurrency(item.planned - item.actual)}
+                          {item.planned > 0 && (
+                            <span className="text-xs ml-1">
+                              ({Math.round((item.actual / item.planned) * 100)}%)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      case 'credit-card-expenses': {
+        const data = prepareCreditCardExpenses();
+        const colors = data.map(item => item.color);
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Despesas com Cartão de Crédito</h3>
+            <div className="mb-4">
+              <ChartTypeTabs value={chartType} onValueChange={value => setChartType(value as ChartType)}>
+                <ChartTypeTabsList className="grid grid-cols-5 w-full max-w-md mx-auto">
+                  <ChartTypeTabsTrigger value="bar"><BarChart3 className="h-4 w-4 mr-2" />Barras</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="pie"><PieChartIcon className="h-4 w-4 mr-2" />Pizza</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="line"><LineChartIcon className="h-4 w-4 mr-2" />Linha</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="area"><Activity className="h-4 w-4 mr-2" />Área</ChartTypeTabsTrigger>
+                  <ChartTypeTabsTrigger value="composed">Comp.</ChartTypeTabsTrigger>
+                </ChartTypeTabsList>
+              </ChartTypeTabs>
+            </div>
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center">
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(!showLegend)}>
+                  {showLegend ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showLegend ? "Ocultar Legenda" : "Mostrar Legenda"}
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {renderChartByType(data, chartType, "Despesas por Cartão", ['value'], colors)}
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Detalhamento</h4>
+                <div className="space-y-3">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-medium">
+                    <span>Total</span>
+                    <span>{formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      default:
+        return <div className="p-8 text-center text-muted-foreground">Selecione um relatório</div>;
     }
-
-    const totalIncome = data.reduce((sum, item) => sum + item.income, 0);
-    const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
-    const netBalance = totalIncome - totalExpenses;
-
-    return (
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium">{title}</h3>
-        
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={formatTooltipValue} />
-              <Legend />
-              <Bar dataKey="income" name="Receitas" fill="#4ade80" />
-              <Bar dataKey="expenses" name="Despesas" fill="#f43f5e" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total de Receitas</p>
-              <p className="text-xl font-semibold text-green-500">{formatCurrency(totalIncome)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total de Despesas</p>
-              <p className="text-xl font-semibold text-red-500">{formatCurrency(totalExpenses)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Saldo</p>
-              <p className={`text-xl font-semibold ${netBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {formatCurrency(netBalance)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
   };
+
+  // Create lists of expense and income categories
+  const expenseCategories = categories.filter(c => c.type === 'expense');
+  const incomeCategories = categories.filter(c => c.type === 'income');
+  
+  // Get all subcategories from transactions
+  const subcategories = React.useMemo(() => {
+    const uniqueSubcategories = new Set<string>();
+    transactions.forEach(tx => {
+      if (tx.subcategory) {
+        uniqueSubcategories.add(tx.subcategory);
+      }
+    });
+    return Array.from(uniqueSubcategories);
+  }, [transactions]);
 
   return (
     <AppLayout>
@@ -626,10 +1194,27 @@ const Reports = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Categorias</Label>
+                    <Label>Status da Transação</Label>
+                    <Select 
+                      value={filters.transactionStatus} 
+                      onValueChange={(value) => handleFilterChange('transactionStatus', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="pending">Pendentes</SelectItem>
+                        <SelectItem value="completed">Concluídos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Categorias de Despesas</Label>
                     <div className="h-32 overflow-y-auto border rounded-md p-2">
-                      {categories.map(category => (
-                        <div key={category.id} className="flex items-center space-x-2 py-1">
+                      {expenseCategories.map(category => (
+                        <div key={`expense-${category.id}`} className="flex items-center space-x-2 py-1">
                           <Checkbox 
                             id={`category-${category.id}`}
                             checked={filters.selectedCategories.includes(category.name)}
@@ -640,6 +1225,48 @@ const Reports = () => {
                             className="text-sm cursor-pointer"
                           >
                             {category.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Categorias de Receitas</Label>
+                    <div className="h-32 overflow-y-auto border rounded-md p-2">
+                      {incomeCategories.map(category => (
+                        <div key={`income-${category.id}`} className="flex items-center space-x-2 py-1">
+                          <Checkbox 
+                            id={`category-income-${category.id}`}
+                            checked={filters.selectedCategories.includes(category.name)}
+                            onCheckedChange={() => toggleCategoryFilter(category.name)}
+                          />
+                          <label 
+                            htmlFor={`category-income-${category.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {category.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Subcategorias</Label>
+                    <div className="h-32 overflow-y-auto border rounded-md p-2">
+                      {subcategories.map((subcategory, index) => (
+                        <div key={`subcategory-${index}`} className="flex items-center space-x-2 py-1">
+                          <Checkbox 
+                            id={`subcategory-${index}`}
+                            checked={filters.selectedSubcategories.includes(subcategory)}
+                            onCheckedChange={() => toggleSubcategoryFilter(subcategory)}
+                          />
+                          <label 
+                            htmlFor={`subcategory-${index}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {subcategory}
                           </label>
                         </div>
                       ))}
@@ -706,7 +1333,7 @@ const Reports = () => {
         <Card>
           <CardContent className="p-6">
             <Tabs value={activeReport} onValueChange={setActiveReport}>
-              <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-6">
+              <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 mb-6">
                 <TabsTrigger value="expenses-by-category">
                   Despesas por Categoria
                 </TabsTrigger>
@@ -720,7 +1347,13 @@ const Reports = () => {
                   Receitas por Conta
                 </TabsTrigger>
                 <TabsTrigger value="expenses-vs-income">
-                  Despesas vs. Receitas
+                  Receitas vs Despesas
+                </TabsTrigger>
+                <TabsTrigger value="budget-vs-actual">
+                  Planejado vs Realizado
+                </TabsTrigger>
+                <TabsTrigger value="credit-card-expenses">
+                  Despesas com Cartão
                 </TabsTrigger>
               </TabsList>
 
@@ -736,4 +1369,3 @@ const Reports = () => {
 };
 
 export default Reports;
-
