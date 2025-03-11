@@ -13,8 +13,8 @@ export interface Transaction {
   financialInstitution?: string;
   transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   status: 'completed' | 'pending';
-  dueDate?: Date; // Added dueDate property
-  card?: string; // Added card property for credit card transactions
+  dueDate?: Date;
+  card?: string;
 }
 
 export interface Category {
@@ -38,7 +38,7 @@ export interface BudgetGoal {
   amount: number;
   spent: number;
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  date?: Date; // Added date property for budget goals
+  date?: Date;
 }
 
 export interface FinancialSummary {
@@ -67,7 +67,7 @@ export interface CreditCard {
   name: string;
   limit: number;
   brand: string;
-  dueDate: number; // Day of the month
+  dueDate: number;
   institutionId: string;
   number?: string;
   institution?: string;

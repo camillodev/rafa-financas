@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, AlertCircle, ArrowRight, Check, Clock } from 'lucide-react';
+import { Calendar, AlertCircle, Check, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,7 +55,7 @@ export function UpcomingBills() {
           className="text-sm text-primary hover:underline flex items-center gap-1"
           onClick={handleNavigateToBills}
         >
-          Ver Todas <ArrowRight size={16} />
+          Ver Todas
         </button>
       </CardHeader>
       <CardContent>

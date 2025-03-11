@@ -34,8 +34,8 @@ const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProp
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 group",
         active 
-          ? "bg-primary/10 text-primary font-medium" 
-          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          ? "bg-sidebar-accent text-sidebar-primary font-medium" 
+          : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50"
       )}
     >
       <div className="text-current">{icon}</div>
@@ -59,21 +59,21 @@ export function Sidebar() {
       className={cn(
         "h-screen flex flex-col border-r transition-all duration-300 ease-in-out relative",
         collapsed ? "w-16" : "w-64",
-        "bg-background text-foreground"
+        "bg-sidebar text-sidebar-foreground border-sidebar-border"
       )}
     >
       <div className="flex items-center justify-between p-4">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <Home className="text-primary h-6 w-6" />
-            <span className="font-medium text-lg">Rafa Finanças</span>
+            <Home className="text-sidebar-primary h-6 w-6" />
+            <span className="font-medium text-lg text-sidebar-foreground">Rafa Finanças</span>
           </div>
         )}
-        {collapsed && <Home className="text-primary h-6 w-6 mx-auto" />}
+        {collapsed && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
         
         <button
           onClick={() => setCollapsed(prev => !prev)}
-          className="p-1 rounded-full hover:bg-accent transition-colors absolute -right-3 top-6 bg-background border"
+          className="p-1 rounded-full hover:bg-sidebar-accent transition-colors absolute -right-3 top-6 bg-background border"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />

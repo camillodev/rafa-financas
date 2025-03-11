@@ -33,7 +33,7 @@ const Index = () => {
       
       <BalanceCard />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
         <div className="lg:col-span-2">
           <Tabs defaultValue="expenses" className="w-full">
             <TabsList className="mb-4">
@@ -53,9 +53,9 @@ const Index = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <TransactionList />
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:gap-6">
           <BudgetProgress />
           <UpcomingBills />
         </div>
