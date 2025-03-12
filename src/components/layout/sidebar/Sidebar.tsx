@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarLink } from './SidebarLink';
+import { MobileToggle } from './MobileToggle';
 import { sidebarLinks, settingsLink } from './sidebarConfig';
 
 export function Sidebar() {
@@ -27,40 +28,24 @@ export function Sidebar() {
     }
   }, [location, isMobile]);
 
-  useEffect(() => {
-    // Handle body scroll when mobile menu is open
-    if (isMobile) {
-      if (mobileOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [mobileOpen, isMobile]);
-
   const handleLinkClick = () => {
     if (isMobile && mobileOpen) {
       setMobileOpen(false);
     }
   };
-
-  const toggleMobileMenu = () => {
-    setMobileOpen(!mobileOpen);
-  };
   
   return (
     <>
+      {isMobile && (
+        <MobileToggle onClick={() => setMobileOpen(!mobileOpen)} />
+      )}
+    
       <div 
         className={cn(
-          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out",
+          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out z-40",
           collapsed ? "w-16" : "w-64",
-          isMobile && "fixed top-0 bottom-0 left-0",
-          isMobile && !mobileOpen && "-translate-x-full",
-          isMobile && "z-40 shadow-lg",
+          isMobile && !mobileOpen && "w-0 -translate-x-full opacity-0",
+          isMobile && mobileOpen && "fixed left-0 top-0 w-64 shadow-xl",
           "bg-sidebar-background dark:bg-sidebar-background text-sidebar-foreground border-sidebar-border"
         )}
       >
