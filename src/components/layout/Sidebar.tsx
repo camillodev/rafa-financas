@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarLinkProps {
   icon: React.ReactNode;
@@ -58,16 +57,14 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { theme } = useTheme();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
-  // Auto-collapse on mobile
   useEffect(() => {
     if (isMobile) {
       setCollapsed(true);
     }
   }, [isMobile]);
 
-  // Close mobile sidebar when route changes
   useEffect(() => {
     if (isMobile && mobileOpen) {
       setMobileOpen(false);
@@ -82,7 +79,6 @@ export function Sidebar() {
   
   return (
     <>
-      {/* Mobile menu button */}
       {isMobile && (
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -220,7 +216,6 @@ export function Sidebar() {
         </div>
       </div>
       
-      {/* Overlay for mobile */}
       {isMobile && mobileOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-30"
