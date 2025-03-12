@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarLink } from './SidebarLink';
-import { MobileToggle } from './MobileToggle';
 import { sidebarLinks, settingsLink } from './sidebarConfig';
 
 export function Sidebar() {
@@ -28,6 +27,21 @@ export function Sidebar() {
     }
   }, [location, isMobile]);
 
+  useEffect(() => {
+    // Handle body scroll when mobile menu is open
+    if (isMobile) {
+      if (mobileOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen, isMobile]);
+
   const handleLinkClick = () => {
     if (isMobile && mobileOpen) {
       setMobileOpen(false);
@@ -36,10 +50,6 @@ export function Sidebar() {
   
   return (
     <>
-      {isMobile && (
-        <MobileToggle onClick={() => setMobileOpen(!mobileOpen)} />
-      )}
-    
       <div 
         className={cn(
           "h-screen flex flex-col border-r transition-all duration-300 ease-in-out z-40",

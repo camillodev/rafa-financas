@@ -10,7 +10,7 @@ export const MobileToggle = ({ onClick }: MobileToggleProps) => {
   return (
     <button
       onClick={onClick}
-      className="fixed z-50 top-4 left-4 p-2 bg-background rounded-md border shadow-sm"
+      className="p-2 rounded-md hover:bg-accent"
       aria-label="Toggle menu"
     >
       <Menu size={20} className="text-foreground" />
