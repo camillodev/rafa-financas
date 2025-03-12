@@ -46,7 +46,7 @@ export function Sidebar() {
           collapsed ? "w-16" : "w-64",
           isMobile && !mobileOpen && "w-0 -translate-x-full opacity-0",
           isMobile && mobileOpen && "fixed left-0 top-0 w-64 shadow-xl",
-          "bg-sidebar-background text-sidebar-foreground border-sidebar-border"
+          "bg-sidebar-background dark:bg-sidebar-background text-sidebar-foreground border-sidebar-border"
         )}
       >
         <div className="flex items-center justify-between p-4">
