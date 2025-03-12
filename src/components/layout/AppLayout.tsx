@@ -1,5 +1,5 @@
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Sidebar } from './sidebar/Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { cn } from '@/lib/utils';
@@ -12,12 +12,17 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, className }: AppLayoutProps) {
   const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
+  
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+  };
   
   return (
     <div className="flex min-h-screen bg-accent/40">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        {isMobile && <MobileHeader />}
+      <div className="flex-1 flex flex-col w-full">
+        <MobileHeader menuOpen={menuOpen} toggleMenu={toggleMenu} />
         <main className={cn(
           "flex-1 overflow-x-hidden pb-6",
           className

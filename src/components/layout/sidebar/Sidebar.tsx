@@ -47,15 +47,20 @@ export function Sidebar() {
       setMobileOpen(false);
     }
   };
+
+  const toggleMobileMenu = () => {
+    setMobileOpen(!mobileOpen);
+  };
   
   return (
     <>
       <div 
         className={cn(
-          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out z-40",
+          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out",
           collapsed ? "w-16" : "w-64",
-          isMobile && !mobileOpen && "w-0 -translate-x-full opacity-0",
-          isMobile && mobileOpen && "fixed left-0 top-0 w-64 shadow-xl",
+          isMobile && "fixed top-0 bottom-0 left-0",
+          isMobile && !mobileOpen && "-translate-x-full",
+          isMobile && "z-40 shadow-lg",
           "bg-sidebar-background dark:bg-sidebar-background text-sidebar-foreground border-sidebar-border"
         )}
       >

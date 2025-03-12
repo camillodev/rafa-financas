@@ -1,19 +1,24 @@
 
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 interface MobileToggleProps {
   onClick: () => void;
+  isOpen?: boolean;
 }
 
-export const MobileToggle = ({ onClick }: MobileToggleProps) => {
+export const MobileToggle = ({ onClick, isOpen }: MobileToggleProps) => {
   return (
     <button
       onClick={onClick}
-      className="p-2 rounded-md hover:bg-accent"
-      aria-label="Toggle menu"
+      className="p-2 rounded-md hover:bg-accent transition-colors"
+      aria-label={isOpen ? "Close menu" : "Open menu"}
     >
-      <Menu size={20} className="text-foreground" />
+      {isOpen ? (
+        <X size={20} className="text-foreground" />
+      ) : (
+        <Menu size={20} className="text-foreground" />
+      )}
     </button>
   );
 };
