@@ -33,12 +33,12 @@ const Index = () => {
       
       <BalanceCard />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="lg:col-span-3 xl:col-span-2">
           <Tabs defaultValue="expenses" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="expenses">Receitas vs Despesas</TabsTrigger>
-              <TabsTrigger value="categories">Despesas por Categoria</TabsTrigger>
+            <TabsList className="mb-4 overflow-x-auto max-w-full flex-nowrap w-auto">
+              <TabsTrigger value="expenses" className="flex-shrink-0">Receitas vs Despesas</TabsTrigger>
+              <TabsTrigger value="categories" className="flex-shrink-0">Despesas por Categoria</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses">
               <ExpenseChart />
@@ -48,7 +48,7 @@ const Index = () => {
             </TabsContent>
           </Tabs>
         </div>
-        <div>
+        <div className="lg:col-span-3 xl:col-span-1">
           <SavingsGoals />
         </div>
       </div>

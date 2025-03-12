@@ -14,10 +14,12 @@ import {
   Landmark,
   List,
   FileBarChart,
-  Receipt
+  Receipt,
+  Menu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
+import { useMobile } from '@/hooks/use-mobile';
 
 interface SidebarLinkProps {
   icon: React.ReactNode;
@@ -25,9 +27,10 @@ interface SidebarLinkProps {
   href: string;
   active?: boolean;
   isCollapsed?: boolean;
+  onClick?: () => void;
 }
 
-const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProps) => {
+const SidebarLink = ({ icon, label, href, active, isCollapsed, onClick }: SidebarLinkProps) => {
   return (
     <Link
       to={href}
@@ -37,6 +40,7 @@ const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProp
           ? "bg-sidebar-accent text-sidebar-primary font-medium" 
           : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50"
       )}
+      onClick={onClick}
     >
       <div className="text-current">{icon}</div>
       {!isCollapsed && <span className="text-sm">{label}</span>}
@@ -51,114 +55,179 @@ const SidebarLink = ({ icon, label, href, active, isCollapsed }: SidebarLinkProp
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { theme } = useTheme();
+  const isMobile = useMobile();
+  
+  // Auto-collapse on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile]);
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    if (isMobile && mobileOpen) {
+      setMobileOpen(false);
+    }
+  }, [location, isMobile]);
+
+  const handleLinkClick = () => {
+    if (isMobile && mobileOpen) {
+      setMobileOpen(false);
+    }
+  };
   
   return (
-    <div 
-      className={cn(
-        "h-screen flex flex-col border-r transition-all duration-300 ease-in-out relative",
-        collapsed ? "w-16" : "w-64",
-        "bg-sidebar text-sidebar-foreground border-sidebar-border"
-      )}
-    >
-      <div className="flex items-center justify-between p-4">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <Home className="text-sidebar-primary h-6 w-6" />
-            <span className="font-medium text-lg text-sidebar-foreground">Rafa Finanças</span>
-          </div>
-        )}
-        {collapsed && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
-        
+    <>
+      {/* Mobile menu button */}
+      {isMobile && (
         <button
-          onClick={() => setCollapsed(prev => !prev)}
-          className="p-1 rounded-full hover:bg-sidebar-accent transition-colors absolute -right-3 top-6 bg-background border"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="fixed z-50 top-4 left-4 p-2 bg-background rounded-md border shadow-sm"
         >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
+          <Menu size={20} className="text-foreground" />
         </button>
+      )}
+    
+      <div 
+        className={cn(
+          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out z-40",
+          collapsed ? "w-16" : "w-64",
+          isMobile && !mobileOpen && "w-0 -translate-x-full opacity-0",
+          isMobile && mobileOpen && "fixed left-0 top-0 w-64 shadow-xl",
+          "bg-sidebar-background text-sidebar-foreground border-sidebar-border"
+        )}
+      >
+        <div className="flex items-center justify-between p-4">
+          {(!collapsed || (isMobile && mobileOpen)) && (
+            <div className="flex items-center gap-2">
+              <Home className="text-sidebar-primary h-6 w-6" />
+              <span className="font-medium text-lg text-sidebar-foreground">Rafa Finanças</span>
+            </div>
+          )}
+          {collapsed && !isMobile && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
+          
+          {!isMobile && (
+            <button
+              onClick={() => setCollapsed(prev => !prev)}
+              className="p-1 rounded-full hover:bg-sidebar-accent transition-colors absolute -right-3 top-6 bg-background border"
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          
+          {isMobile && mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="p-1 rounded-full hover:bg-sidebar-accent transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        
+        <div className="mt-6 flex flex-col gap-1 px-3 overflow-y-auto">
+          <SidebarLink 
+            icon={<LayoutDashboard size={20} />} 
+            label="Dashboard" 
+            href="/" 
+            active={location.pathname === '/'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<ArrowRightLeft size={20} />} 
+            label="Transações" 
+            href="/transactions" 
+            active={location.pathname === '/transactions'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<Receipt size={20} />} 
+            label="Contas a Pagar" 
+            href="/bills" 
+            active={location.pathname === '/bills'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<BarChart3 size={20} />} 
+            label="Orçamentos" 
+            href="/budgets" 
+            active={location.pathname === '/budgets'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<FileBarChart size={20} />} 
+            label="Relatórios" 
+            href="/reports" 
+            active={location.pathname === '/reports'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<List size={20} />} 
+            label="Categorias" 
+            href="/categories" 
+            active={location.pathname === '/categories'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<Landmark size={20} />} 
+            label="Instituições" 
+            href="/institutions" 
+            active={location.pathname === '/institutions'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<CreditCard size={20} />} 
+            label="Cartões" 
+            href="/cards" 
+            active={location.pathname === '/cards'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+          <SidebarLink 
+            icon={<Target size={20} />} 
+            label="Metas" 
+            href="/goals" 
+            active={location.pathname === '/goals'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+        </div>
+        
+        <div className="mt-auto px-3 mb-6">
+          <SidebarLink 
+            icon={<Settings size={20} />} 
+            label="Configurações" 
+            href="/settings" 
+            active={location.pathname === '/settings'} 
+            isCollapsed={collapsed && !mobileOpen} 
+            onClick={handleLinkClick}
+          />
+        </div>
       </div>
       
-      <div className="mt-6 flex flex-col gap-1 px-3">
-        <SidebarLink 
-          icon={<LayoutDashboard size={20} />} 
-          label="Dashboard" 
-          href="/" 
-          active={location.pathname === '/'} 
-          isCollapsed={collapsed} 
+      {/* Overlay for mobile */}
+      {isMobile && mobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={() => setMobileOpen(false)}
         />
-        <SidebarLink 
-          icon={<ArrowRightLeft size={20} />} 
-          label="Transações" 
-          href="/transactions" 
-          active={location.pathname === '/transactions'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<Receipt size={20} />} 
-          label="Contas a Pagar" 
-          href="/bills" 
-          active={location.pathname === '/bills'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<BarChart3 size={20} />} 
-          label="Orçamentos" 
-          href="/budgets" 
-          active={location.pathname === '/budgets'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<FileBarChart size={20} />} 
-          label="Relatórios" 
-          href="/reports" 
-          active={location.pathname === '/reports'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<List size={20} />} 
-          label="Categorias" 
-          href="/categories" 
-          active={location.pathname === '/categories'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<Landmark size={20} />} 
-          label="Instituições" 
-          href="/institutions" 
-          active={location.pathname === '/institutions'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<CreditCard size={20} />} 
-          label="Cartões" 
-          href="/cards" 
-          active={location.pathname === '/cards'} 
-          isCollapsed={collapsed} 
-        />
-        <SidebarLink 
-          icon={<Target size={20} />} 
-          label="Metas" 
-          href="/goals" 
-          active={location.pathname === '/goals'} 
-          isCollapsed={collapsed} 
-        />
-      </div>
-      
-      <div className="mt-auto px-3 mb-6">
-        <SidebarLink 
-          icon={<Settings size={20} />} 
-          label="Configurações" 
-          href="/settings" 
-          active={location.pathname === '/settings'} 
-          isCollapsed={collapsed} 
-        />
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 

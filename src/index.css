@@ -93,12 +93,13 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-tap-highlight-color: transparent;
   }
   
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   
   ::-webkit-scrollbar-track {
@@ -111,6 +112,50 @@
   
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
+  }
+  
+  /* Touch-friendly sizing for small screens */
+  @media (max-width: 640px) {
+    button, 
+    .btn, 
+    [role="button"],
+    input, 
+    select, 
+    a {
+      min-height: 40px;
+      min-width: 40px;
+    }
+    
+    .input-group {
+      @apply flex-wrap;
+    }
+    
+    /* Increase tap target size for interactive elements */
+    .tap-target {
+      @apply min-h-[44px] min-w-[44px];
+    }
+  }
+  
+  /* Prevent text from overlapping in charts */
+  .recharts-text.recharts-label {
+    @apply text-xs;
+  }
+  
+  /* Responsive typography */
+  h1 {
+    @apply text-2xl sm:text-3xl;
+  }
+  
+  h2 {
+    @apply text-xl sm:text-2xl;
+  }
+  
+  h3 {
+    @apply text-lg sm:text-xl;
+  }
+  
+  p, li {
+    @apply text-sm sm:text-base;
   }
   
   /* Animations */
@@ -183,6 +228,16 @@
   color: hsl(var(--card-foreground)) !important;
 }
 
+/* Responsive charts */
+.recharts-responsive-container {
+  @apply max-w-full overflow-hidden;
+}
+
+.recharts-wrapper, 
+.recharts-surface {
+  @apply max-w-full;
+}
+
 /* Theme transition */
 html.dark {
   color-scheme: dark;
@@ -197,5 +252,28 @@ html.dark {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
+  }
+}
+
+/* Better mobile tables */
+.mobile-table-container {
+  @apply w-full overflow-x-auto -mx-4 px-4;
+}
+
+@media (max-width: 640px) {
+  .mobile-card-list .card-item {
+    @apply flex flex-col p-3 border rounded-lg mb-2;
+  }
+  
+  .mobile-card-list .card-item-row {
+    @apply flex justify-between items-center py-1;
+  }
+  
+  .mobile-card-list .card-label {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  .mobile-card-list .card-value {
+    @apply text-sm font-medium;
   }
 }
