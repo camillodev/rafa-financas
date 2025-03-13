@@ -7,13 +7,7 @@ interface MobileToggleProps {
 }
 
 export const MobileToggle = ({ onClick }: MobileToggleProps) => {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed z-50 top-4 left-4 p-2 bg-background rounded-md border shadow-sm"
-      aria-label="Toggle menu"
-    >
-      <Menu size={20} className="text-foreground" />
-    </button>
-  );
+  // Este componente está sendo substituído pelo MobileHeader
+  // Mantido para compatibilidade, mas não renderiza nada
+  return null;
 };

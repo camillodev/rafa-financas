@@ -17,7 +17,7 @@ export function AppLayout({ children, className }: AppLayoutProps) {
       <Sidebar />
       <main className={cn(
         "flex-1 overflow-x-hidden pb-6", 
-        isMobile && "pt-16", // Add padding top on mobile to account for the toggle button
+        isMobile && "pt-16", // Add padding top on mobile to account for the fixed header
         className
       )}>
         <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-6">

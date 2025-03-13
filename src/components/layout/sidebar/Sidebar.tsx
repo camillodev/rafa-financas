@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarLink } from './SidebarLink';
-import { MobileToggle } from './MobileToggle';
+import { MobileHeader } from '../header/MobileHeader';
 import { sidebarLinks, settingsLink } from './sidebarConfig';
 
 export function Sidebar() {
@@ -34,21 +34,27 @@ export function Sidebar() {
     }
   };
   
+  const toggleMobileMenu = () => {
+    setMobileOpen(!mobileOpen);
+  };
+  
   return (
     <>
       {isMobile && (
-        <MobileToggle onClick={() => setMobileOpen(!mobileOpen)} />
+        <MobileHeader onMenuClick={toggleMobileMenu} />
       )}
     
       <div 
         className={cn(
-          "h-screen flex flex-col border-r transition-all duration-300 ease-in-out z-40",
+          "h-screen flex flex-col transition-all duration-300 ease-in-out z-40",
           collapsed ? "w-16" : "w-64",
-          isMobile && !mobileOpen && "w-0 -translate-x-full opacity-0",
-          isMobile && mobileOpen && "fixed left-0 top-0 w-64 shadow-xl",
-          "bg-sidebar-background dark:bg-sidebar-background text-sidebar-foreground border-sidebar-border"
+          isMobile && !mobileOpen && "w-0 -translate-x-full",
+          isMobile && mobileOpen && "fixed left-0 top-0 w-full max-w-[280px] shadow-xl",
+          "bg-sidebar-background dark:bg-sidebar-background border-sidebar-border",
+          isMobile && "border-r-0 pt-14" // Add padding top for mobile header
         )}
       >
+        {/* Header with logo */}
         <div className="flex items-center justify-between p-4">
           {(!collapsed || (isMobile && mobileOpen)) && (
             <div className="flex items-center gap-2">
@@ -58,6 +64,18 @@ export function Sidebar() {
           )}
           {collapsed && !isMobile && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
           
+          {/* Close button for mobile */}
+          {isMobile && mobileOpen && (
+            <button
+              onClick={toggleMobileMenu}
+              className="p-1 rounded-full hover:bg-sidebar-accent transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5 text-sidebar-foreground" />
+            </button>
+          )}
+          
+          {/* Collapse toggle for desktop */}
           {!isMobile && (
             <button
               onClick={() => setCollapsed(prev => !prev)}
@@ -72,7 +90,8 @@ export function Sidebar() {
           )}
         </div>
         
-        <div className="mt-6 flex flex-col gap-1 px-3 overflow-y-auto">
+        {/* Navigation links */}
+        <div className="mt-6 flex flex-col gap-1 px-3 overflow-y-auto flex-1">
           {sidebarLinks.map((link) => (
             <SidebarLink
               key={link.href}
@@ -86,7 +105,8 @@ export function Sidebar() {
           ))}
         </div>
         
-        <div className="mt-auto px-3 mb-6">
+        {/* Settings link at the bottom */}
+        <div className="px-3 mb-6 mt-auto">
           <SidebarLink
             icon={<settingsLink.icon size={20} />}
             label={settingsLink.label}
@@ -98,10 +118,12 @@ export function Sidebar() {
         </div>
       </div>
       
+      {/* Overlay for mobile */}
       {isMobile && mobileOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-30"
-          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
+          onClick={toggleMobileMenu}
+          aria-hidden="true"
         />
       )}
     </>
