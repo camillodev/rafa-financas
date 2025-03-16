@@ -226,21 +226,43 @@ export const SplitBillsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Bills CRUD
   const addBill = (bill: Omit<SplitBill, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // Ensure all participant shares have the required properties
+    const validatedParticipants: SplitBillParticipantShare[] = bill.participants.map(p => ({
+      participantId: p.participantId, // This must be provided
+      isIncluded: p.isIncluded,
+      amount: p.amount,
+      percentage: p.percentage,
+      weight: p.weight,
+    }));
+
     const newBill = {
       ...bill,
       id: Date.now().toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      participants: validatedParticipants,
     };
+    
     setBills([...bills, newBill]);
     toast.success('Conta adicionada com sucesso');
   };
 
   const updateBill = (bill: SplitBill) => {
+    // Ensure all participant shares have the required properties
+    const validatedParticipants: SplitBillParticipantShare[] = bill.participants.map(p => ({
+      participantId: p.participantId, // This must be provided
+      isIncluded: p.isIncluded,
+      amount: p.amount,
+      percentage: p.percentage,
+      weight: p.weight,
+    }));
+
     const updatedBill = {
       ...bill,
       updatedAt: new Date(),
+      participants: validatedParticipants,
     };
+    
     setBills(bills.map(b => b.id === bill.id ? updatedBill : b));
     toast.success('Conta atualizada com sucesso');
   };

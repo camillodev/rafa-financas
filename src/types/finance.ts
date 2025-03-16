@@ -117,7 +117,7 @@ export interface SplitBillGroup {
 export type SplitBillDivisionMethod = 'equal' | 'fixed' | 'percentage' | 'weight';
 
 export interface SplitBillParticipantShare {
-  participantId: string;
+  participantId: string; // This is indeed required, not optional
   amount?: number;
   percentage?: number;
   weight?: number;

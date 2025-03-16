@@ -32,6 +32,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SplitBillParticipantShare } from '@/types/finance';
 
 const billFormSchema = z.object({
   name: z.string().min(3, {
@@ -128,6 +129,15 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
   }, [watchGroupId, currentTab, groups, participants, form]);
 
   const onSubmit = (data: BillFormValues) => {
+    // Ensure all participant shares have required properties before submitting
+    const validParticipants: SplitBillParticipantShare[] = data.participants.map(p => ({
+      participantId: p.participantId, // Make sure this is always set
+      isIncluded: p.isIncluded,
+      amount: p.amount,
+      percentage: p.percentage,
+      weight: p.weight,
+    }));
+
     addBill({
       name: data.name,
       totalAmount: data.totalAmount,
@@ -135,7 +145,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
       category: data.category,
       divisionMethod: data.divisionMethod,
       groupId: currentTab === 'group' ? data.groupId : undefined,
-      participants: data.participants,
+      participants: validParticipants,
       status: 'active',
     });
     
