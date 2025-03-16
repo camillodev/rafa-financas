@@ -114,6 +114,7 @@ export function Sidebar() {
               active={location.pathname === link.href}
               isCollapsed={collapsed && !mobileOpen}
               onClick={handleLinkClick}
+              submenu={link.submenu}
             />
           ))}
         </div>

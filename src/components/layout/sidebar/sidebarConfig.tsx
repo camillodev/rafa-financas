@@ -9,7 +9,12 @@ import {
   Landmark,
   List,
   FileBarChart,
-  Receipt
+  Receipt,
+  Split,
+  Home,
+  PieChart,
+  Users,
+  History
 } from 'lucide-react';
 
 export const sidebarLinks = [
@@ -57,6 +62,33 @@ export const sidebarLinks = [
     icon: Target, 
     label: "Metas", 
     href: "/goals" 
+  },
+  {
+    icon: Split,
+    label: "Dividir Contas",
+    href: "/split-bills",
+    submenu: [
+      {
+        icon: Home,
+        label: "Início",
+        href: "/split-bills"
+      },
+      {
+        icon: Users,
+        label: "Grupos",
+        href: "/split-bills/groups"
+      },
+      {
+        icon: PieChart,
+        label: "Relatórios",
+        href: "/split-bills/reports"
+      },
+      {
+        icon: History,
+        label: "Histórico",
+        href: "/split-bills/history"
+      }
+    ]
   }
 ];
 

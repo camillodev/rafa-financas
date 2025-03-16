@@ -1,3 +1,4 @@
+
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -95,4 +96,54 @@ export interface GoalModification {
   previousValue?: number | string;
   newValue?: number | string;
   amount?: number;
+}
+
+// Novas interfaces para a funcionalidade "Dividir Contas"
+export interface SplitBillParticipant {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface SplitBillGroup {
+  id: string;
+  name: string;
+  participants: SplitBillParticipant[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type SplitBillDivisionMethod = 'equal' | 'fixed' | 'percentage' | 'weight';
+
+export interface SplitBillParticipantShare {
+  participantId: string;
+  amount?: number;
+  percentage?: number;
+  weight?: number;
+  isIncluded: boolean;
+}
+
+export interface SplitBill {
+  id: string;
+  name: string;
+  totalAmount: number;
+  category?: string;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  receiptImageUrl?: string;
+  divisionMethod: SplitBillDivisionMethod;
+  participants: SplitBillParticipantShare[];
+  groupId?: string;
+  status: 'active' | 'completed';
+}
+
+export interface SplitBillPayment {
+  id: string;
+  splitBillId: string;
+  participantId: string;
+  amount: number;
+  date: Date;
+  notes?: string;
 }
