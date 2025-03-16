@@ -3,7 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { SignIn, SignUp, SignedIn, SignedOut } from "@clerk/clerk-react";
 import Index from "./pages/Index";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
@@ -18,6 +19,8 @@ import Reports from "./pages/Reports";
 import Bills from "./pages/Bills";
 import { FinanceProvider } from "@/context/FinanceContext";
 import { ThemeProvider } from "@/hooks/use-theme";
+import SignInPage from "./pages/SignInPage";
+import SignUpPage from "./pages/SignUpPage";
 
 // Create a client with default options
 const queryClient = new QueryClient({
@@ -37,60 +40,141 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="/sign-up" element={<SignUpPage />} />
+            
+            {/* Protected routes */}
             <Route path="/" element={
-              <FinanceProvider>
-                <Index />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Index />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/transactions" element={
-              <FinanceProvider>
-                <Transactions />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Transactions />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/bills" element={
-              <FinanceProvider>
-                <Bills />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Bills />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/budgets" element={
-              <FinanceProvider>
-                <Budgets />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Budgets />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/reports" element={
-              <FinanceProvider>
-                <Reports />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Reports />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/categories" element={
-              <FinanceProvider>
-                <Categories />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Categories />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/institutions" element={
-              <FinanceProvider>
-                <Institutions />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Institutions />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/cards" element={
-              <FinanceProvider>
-                <Cards />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Cards />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/goals" element={
-              <FinanceProvider>
-                <Goals />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Goals />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/goals/:id" element={
-              <FinanceProvider>
-                <GoalDetail />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <GoalDetail />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="/settings" element={
-              <FinanceProvider>
-                <Settings />
-              </FinanceProvider>
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <Settings />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
             } />
             <Route path="*" element={<NotFound />} />
           </Routes>

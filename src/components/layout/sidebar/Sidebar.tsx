@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarLink } from './SidebarLink';
 import { MobileHeader } from '../header/MobileHeader';
 import { sidebarLinks, settingsLink } from './sidebarConfig';
+import { UserButton } from '@clerk/clerk-react';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -59,7 +60,7 @@ export function Sidebar() {
           {(!collapsed || (isMobile && mobileOpen)) && (
             <div className="flex items-center gap-2">
               <Home className="text-sidebar-primary h-6 w-6" />
-              <span className="font-medium text-lg text-sidebar-foreground">Rafa Finanças</span>
+              <span className="font-medium text-lg text-sidebar-foreground">Riqueza em Dia</span>
             </div>
           )}
           {collapsed && !isMobile && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
@@ -87,6 +88,18 @@ export function Sidebar() {
                 <ChevronLeft className="h-4 w-4" />
               )}
             </button>
+          )}
+        </div>
+        
+        {/* User profile button at top */}
+        <div className="px-4 py-2 flex justify-center items-center border-b border-sidebar-border">
+          {!collapsed || (isMobile && mobileOpen) ? (
+            <div className="w-full flex items-center justify-between">
+              <span className="text-sm text-sidebar-foreground">Minha conta</span>
+              <UserButton afterSignOutUrl="/sign-in" />
+            </div>
+          ) : (
+            <UserButton afterSignOutUrl="/sign-in" />
           )}
         </div>
         

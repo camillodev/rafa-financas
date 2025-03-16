@@ -28,7 +28,7 @@ export const MobileHeader = ({ onMenuClick, title }: MobileHeaderProps) => {
     if (path === '/goals') return 'Metas';
     if (path === '/settings') return 'Configurações';
     
-    return 'Rafa Finanças';
+    return 'Riqueza em Dia';
   };
 
   return (
