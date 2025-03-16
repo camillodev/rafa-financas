@@ -93,7 +93,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
       divisionMethod: 'equal',
       groupId: '',
       participants: participants.map(p => ({
-        participantId: p.id,
+        participantId: p.id,  // This is now always required and non-optional
         isIncluded: false,
         amount: 0,
         percentage: 0,
@@ -115,7 +115,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
         const updatedParticipants = participants.map(p => {
           const isInGroup = group.participants.some(gp => gp.id === p.id);
           return {
-            participantId: p.id,
+            participantId: p.id,  // This is now always required and non-optional
             isIncluded: isInGroup,
             amount: 0,
             percentage: 0,
