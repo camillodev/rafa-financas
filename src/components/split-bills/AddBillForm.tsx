@@ -375,7 +375,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
 
             <ScrollArea className="h-[300px] border rounded-md p-4">
               <div className="space-y-4">
-                {watchParticipants.map((participant, index) => {
+                {form.watch('participants').map((participant, index) => {
                   const participantInfo = participants.find(p => p.id === participant.participantId);
                   if (!participantInfo) return null;
 
@@ -404,16 +404,16 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
 
                         {participant.isIncluded && (
                           <div className="text-sm">
-                            {watchDivisionMethod === 'equal' && (
+                            {form.watch('divisionMethod') === 'equal' && (
                               <span>R$ {equalShare.toFixed(2).replace('.', ',')}</span>
                             )}
                           </div>
                         )}
                       </div>
 
-                      {participant.isIncluded && watchDivisionMethod !== 'equal' && (
+                      {participant.isIncluded && form.watch('divisionMethod') !== 'equal' && (
                         <div className="mt-2 pl-6">
-                          {watchDivisionMethod === 'fixed' && (
+                          {form.watch('divisionMethod') === 'fixed' && (
                             <FormField
                               control={form.control}
                               name={`participants.${index}.amount`}
@@ -446,7 +446,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
                             />
                           )}
 
-                          {watchDivisionMethod === 'percentage' && (
+                          {form.watch('divisionMethod') === 'percentage' && (
                             <FormField
                               control={form.control}
                               name={`participants.${index}.percentage`}
@@ -481,7 +481,7 @@ export const AddBillForm: React.FC<AddBillFormProps> = ({ onSuccess }) => {
                             />
                           )}
 
-                          {watchDivisionMethod === 'weight' && (
+                          {form.watch('divisionMethod') === 'weight' && (
                             <FormField
                               control={form.control}
                               name={`participants.${index}.weight`}
