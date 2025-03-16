@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Plus, X, Upload, Camera } from 'lucide-react';
+import { CalendarIcon, Plus, X, Upload, Camera, Check } from 'lucide-react';
 
 import { useSplitBills } from '@/context/SplitBillsContext';
 import { SplitBillParticipantShare, SplitBillParticipant } from '@/types/finance';
