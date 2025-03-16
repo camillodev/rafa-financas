@@ -14,20 +14,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#9966FF', '#FF6B6B'];
 
 const SplitBillsReportsContent = () => {
   const { bills, groups, participants, getParticipantById } = useSplitBills();
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: subMonths(new Date(), 3),
     to: new Date(),
   });
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
 
-  // Filter bills by date range and selected group
+  // Filter bills safely by date range and selected group
   const filteredBills = bills.filter(bill => {
-    const inDateRange = bill.date >= dateRange.from && bill.date <= dateRange.to;
+    // Handle date filtering safely
+    const inDateRange = dateRange.from && dateRange.to 
+      ? bill.date >= dateRange.from && bill.date <= dateRange.to
+      : dateRange.from
+        ? bill.date >= dateRange.from
+        : true;
+    
     const inSelectedGroup = selectedGroup === 'all' || bill.groupId === selectedGroup;
     return inDateRange && inSelectedGroup;
   });
@@ -150,7 +157,15 @@ const SplitBillsReportsContent = () => {
                 <Calendar
                   mode="range"
                   selected={dateRange}
-                  onSelect={(range) => range && setDateRange(range)}
+                  onSelect={(range) => {
+                    if (range) {
+                      // Make sure we have both from and to to avoid type issues
+                      setDateRange({
+                        from: range.from,
+                        to: range.to || range.from
+                      });
+                    }
+                  }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />

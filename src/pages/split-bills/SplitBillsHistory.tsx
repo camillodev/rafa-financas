@@ -22,12 +22,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { DateRange } from 'react-day-picker';
 
 const SplitBillsHistoryContent = () => {
   const { bills, getParticipantById } = useSplitBills();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: subMonths(new Date(), 3),
     to: new Date(),
   });
@@ -36,7 +37,13 @@ const SplitBillsHistoryContent = () => {
   const filteredBills = bills.filter(bill => {
     const matchesSearch = bill.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || bill.status === statusFilter;
-    const inDateRange = bill.date >= dateRange.from && bill.date <= dateRange.to;
+    
+    // Handle date filtering safely
+    const inDateRange = dateRange.from && dateRange.to 
+      ? bill.date >= dateRange.from && bill.date <= dateRange.to
+      : dateRange.from
+        ? bill.date >= dateRange.from
+        : true;
     
     return matchesSearch && matchesStatus && inDateRange;
   });
@@ -96,7 +103,15 @@ const SplitBillsHistoryContent = () => {
             <Calendar
               mode="range"
               selected={dateRange}
-              onSelect={(range) => range && setDateRange(range)}
+              onSelect={(range) => {
+                if (range) {
+                  // Make sure we have both from and to to avoid type issues
+                  setDateRange({
+                    from: range.from,
+                    to: range.to || range.from
+                  });
+                }
+              }}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />
