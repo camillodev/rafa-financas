@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,6 +47,13 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const expenseSchema = z.object({
   name: z.string().min(2, {
@@ -155,6 +163,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
 
   // Manipular a seleção de participantes
   const toggleParticipant = (participantId: string) => {
+    console.log("Toggling participant:", participantId);
     setSelectedParticipants(prev => {
       if (prev.includes(participantId)) {
         return prev.filter(id => id !== participantId);
@@ -166,6 +175,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
 
   // Manipular a seleção de grupos (adiciona todos os participantes do grupo)
   const toggleGroup = (groupId: string) => {
+    console.log("Toggling group:", groupId);
     const group = groups.find(g => g.id === groupId);
     if (!group) return;
 
@@ -268,7 +278,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
       name: data.name,
       totalAmount: data.totalAmount,
       date: data.date,
-      category: data.category,
+      category: data.category || 'Outros',
       divisionMethod: data.divisionMethod,
       participants: validParticipants,
       status: 'active',
@@ -318,6 +328,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
       .slice(0, 2);
   };
 
+  // Console log para depuração
+  console.log('Current step:', currentStep);
+  console.log('Selected participants:', selectedParticipants);
+  console.log('Filtered participants:', filteredParticipants);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -329,104 +344,114 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
 
         {currentStep === 'select-participants' ? (
           <div className="space-y-4">
-            <Command className="rounded-lg border shadow-md">
+            <div className="rounded-lg border shadow-md">
               <CommandInput 
                 placeholder="Buscar contatos ou grupos..." 
                 value={searchTerm}
                 onValueChange={setSearchTerm}
               />
-              <CommandList>
-                <CommandEmpty>
-                  {showAddParticipant ? (
-                    <div className="flex items-center space-x-2 p-2">
-                      <Input
-                        placeholder="Nome do novo contato"
-                        value={newParticipantName}
-                        onChange={(e) => setNewParticipantName(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button size="sm" onClick={addNewParticipant}>
-                        Adicionar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => setShowAddParticipant(false)}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="p-2 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Nenhum resultado encontrado.
-                      </p>
-                      <Button 
-                        variant="link" 
-                        className="mt-1"
-                        onClick={() => setShowAddParticipant(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> 
-                        Adicionar novo contato
-                      </Button>
-                    </div>
-                  )}
-                </CommandEmpty>
-
-                {filteredGroups.length > 0 && (
-                  <CommandGroup heading="Grupos">
-                    {filteredGroups.map(group => {
-                      const groupParticipantIds = group.participants.map(p => p.id);
-                      const allSelected = groupParticipantIds.every(id => selectedParticipants.includes(id));
-                      const someSelected = groupParticipantIds.some(id => selectedParticipants.includes(id));
-                      
-                      return (
-                        <CommandItem 
-                          key={group.id}
-                          onSelect={() => toggleGroup(group.id)}
-                          className="flex items-center space-x-2"
+              <div className="max-h-[300px] overflow-y-auto p-1">
+                {filteredGroups.length === 0 && filteredParticipants.length === 0 ? (
+                  <div className="p-2 text-center">
+                    {showAddParticipant ? (
+                      <div className="flex items-center space-x-2 p-2">
+                        <Input
+                          placeholder="Nome do novo contato"
+                          value={newParticipantName}
+                          onChange={(e) => setNewParticipantName(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={addNewParticipant}>
+                          Adicionar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setShowAddParticipant(false)}
                         >
-                          <div className={`w-5 h-5 rounded flex items-center justify-center 
-                            ${allSelected ? 'bg-primary text-primary-foreground' : 'border'}`}
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Nenhum resultado encontrado.
+                        </p>
+                        <Button 
+                          variant="link" 
+                          className="mt-1"
+                          onClick={() => setShowAddParticipant(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> 
+                          Adicionar novo contato
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {filteredGroups.length > 0 && (
+                      <div>
+                        <div className="py-1.5 px-2 text-sm font-semibold">Grupos</div>
+                        {filteredGroups.map(group => {
+                          const groupParticipantIds = group.participants.map(p => p.id);
+                          const allSelected = groupParticipantIds.every(id => selectedParticipants.includes(id));
+                          const someSelected = groupParticipantIds.some(id => selectedParticipants.includes(id));
+                          
+                          return (
+                            <div
+                              key={group.id}
+                              onClick={() => toggleGroup(group.id)}
+                              className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                            >
+                              <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                <div className={`w-3.5 h-3.5 rounded flex items-center justify-center 
+                                  ${allSelected ? 'bg-primary text-primary-foreground' : 'border'}`}
+                                >
+                                  {allSelected && <Check className="h-3 w-3" />}
+                                  {someSelected && !allSelected && <div className="w-2 h-2 bg-primary rounded-full"></div>}
+                                </div>
+                              </span>
+                              <span>{group.name}</span>
+                              <Badge className="ml-auto" variant="outline">
+                                {group.participants.length} {group.participants.length === 1 ? 'pessoa' : 'pessoas'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {filteredParticipants.length > 0 && (
+                      <div>
+                        <div className="py-1.5 px-2 text-sm font-semibold">Contatos</div>
+                        {filteredParticipants.map(participant => (
+                          <div
+                            key={participant.id}
+                            onClick={() => toggleParticipant(participant.id)}
+                            className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
                           >
-                            {allSelected && <Check className="h-3 w-3" />}
-                            {someSelected && !allSelected && <div className="w-2 h-2 bg-primary rounded-full"></div>}
+                            <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                              <div className={`w-3.5 h-3.5 rounded flex items-center justify-center 
+                                ${selectedParticipants.includes(participant.id) ? 'bg-primary text-primary-foreground' : 'border'}`}
+                              >
+                                {selectedParticipants.includes(participant.id) && <Check className="h-3 w-3" />}
+                              </div>
+                            </span>
+                            <Avatar className="h-8 w-8 mr-2">
+                              <AvatarFallback className="text-xs bg-muted">
+                                {getInitials(participant.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{participant.name}</span>
                           </div>
-                          <span>{group.name}</span>
-                          <Badge className="ml-auto" variant="outline">
-                            {group.participants.length} {group.participants.length === 1 ? 'pessoa' : 'pessoas'}
-                          </Badge>
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
-
-                {filteredParticipants.length > 0 && (
-                  <CommandGroup heading="Contatos">
-                    {filteredParticipants.map(participant => (
-                      <CommandItem 
-                        key={participant.id}
-                        onSelect={() => toggleParticipant(participant.id)}
-                        className="flex items-center space-x-2"
-                      >
-                        <div className={`w-5 h-5 rounded flex items-center justify-center 
-                          ${selectedParticipants.includes(participant.id) ? 'bg-primary text-primary-foreground' : 'border'}`}
-                        >
-                          {selectedParticipants.includes(participant.id) && <Check className="h-3 w-3" />}
-                        </div>
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs bg-muted">
-                            {getInitials(participant.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{participant.name}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
+              </div>
+            </div>
 
             {selectedParticipants.length > 0 && (
               <div className="pt-4">
@@ -443,7 +468,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
                           variant="ghost"
                           size="icon"
                           className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => toggleParticipant(id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleParticipant(id);
+                          }}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -558,16 +586,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
                     <FormItem>
                       <FormLabel>Categoria</FormLabel>
                       <FormControl>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          {...field}
-                        >
-                          {categories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -582,21 +612,23 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClos
                   <FormItem>
                     <FormLabel>Pago por</FormLabel>
                     <FormControl>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        {...field}
-                      >
-                        <option value="1">Você</option>
-                        {selectedParticipants.map(id => {
-                          const participant = participants.find(p => p.id === id);
-                          if (!participant || participant.id === '1') return null; // Não listar "Você" duas vezes
-                          return (
-                            <option key={participant.id} value={participant.id}>
-                              {participant.name}
-                            </option>
-                          );
-                        })}
-                      </select>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione quem pagou" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Você</SelectItem>
+                          {selectedParticipants.map(id => {
+                            const participant = participants.find(p => p.id === id);
+                            if (!participant || participant.id === '1') return null; // Não listar "Você" duas vezes
+                            return (
+                              <SelectItem key={participant.id} value={participant.id}>
+                                {participant.name}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
