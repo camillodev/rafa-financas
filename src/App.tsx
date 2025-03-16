@@ -22,6 +22,14 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 
+// Split Bills pages
+import SplitBillsHome from "./pages/split-bills/SplitBillsHome";
+import SplitBillsGroups from "./pages/split-bills/SplitBillsGroups";
+import SplitBillsReports from "./pages/split-bills/SplitBillsReports";
+import SplitBillsHistory from "./pages/split-bills/SplitBillsHistory";
+import SplitBillDetail from "./pages/split-bills/SplitBillDetail";
+import SplitBillGroupDetail from "./pages/split-bills/SplitBillGroupDetail";
+
 // Create a client with default options
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -176,6 +184,81 @@ const App = () => (
                 </SignedOut>
               </>
             } />
+            
+            {/* Split Bills Routes */}
+            <Route path="/split-bills" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillsHome />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            <Route path="/split-bills/groups" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillsGroups />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            <Route path="/split-bills/groups/:id" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillGroupDetail />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            <Route path="/split-bills/reports" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillsReports />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            <Route path="/split-bills/history" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillsHistory />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            <Route path="/split-bills/:id" element={
+              <>
+                <SignedIn>
+                  <FinanceProvider>
+                    <SplitBillDetail />
+                  </FinanceProvider>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace />
+                </SignedOut>
+              </>
+            } />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
