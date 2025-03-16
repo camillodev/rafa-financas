@@ -108,7 +108,7 @@ export function Sidebar() {
           {sidebarLinks.map((link) => (
             <SidebarLink
               key={link.href}
-              icon={<link.icon size={20} />}
+              icon={link.icon}
               label={link.label}
               href={link.href}
               active={location.pathname === link.href}
@@ -122,7 +122,7 @@ export function Sidebar() {
         {/* Settings link at the bottom */}
         <div className="px-3 mb-6 mt-auto">
           <SidebarLink
-            icon={<settingsLink.icon size={20} />}
+            icon={settingsLink.icon}
             label={settingsLink.label}
             href={settingsLink.href}
             active={location.pathname === settingsLink.href}
