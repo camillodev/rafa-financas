@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, addDays, subDays, subMonths } from 'date-fns';
@@ -8,6 +9,8 @@ import { format, addDays, subDays, subMonths } from 'date-fns';
  */
 export async function generateMockData(userId: string) {
   try {
+    console.log('Generating mock data for user:', userId);
+    
     // Create categories if they don't exist
     await createMockCategories(userId);
     
@@ -29,6 +32,7 @@ export async function generateMockData(userId: string) {
     // Create bills
     await createMockBills(userId);
     
+    console.log('Mock data generation completed');
     return true;
   } catch (error) {
     console.error('Error generating mock data:', error);
@@ -42,58 +46,91 @@ export async function generateMockData(userId: string) {
  */
 export async function clearMockData(userId: string) {
   try {
+    console.log('Clearing mock data for user:', userId);
+    
     // Remove data in the correct order to avoid foreign key constraints
     
     // First, remove bill payments
-    await supabase
+    const { error: billPaymentsError } = await supabase
       .from('bill_payments')
       .delete()
       .eq('user_id', userId);
+      
+    if (billPaymentsError) {
+      console.error('Error deleting bill payments:', billPaymentsError);
+    }
     
     // Remove transactions
-    await supabase
+    const { error: transactionsError } = await supabase
       .from('transactions')
       .delete()
       .eq('user_id', userId);
+      
+    if (transactionsError) {
+      console.error('Error deleting transactions:', transactionsError);
+    }
     
     // Remove bills
-    await supabase
+    const { error: billsError } = await supabase
       .from('bills')
       .delete()
       .eq('user_id', userId);
+      
+    if (billsError) {
+      console.error('Error deleting bills:', billsError);
+    }
     
     // Remove goal contributions
-    await supabase
+    const { error: goalContributionsError } = await supabase
       .from('goal_contributions')
       .delete()
       .eq('user_id', userId);
+      
+    if (goalContributionsError) {
+      console.error('Error deleting goal contributions:', goalContributionsError);
+    }
     
     // Remove goals
-    await supabase
+    const { error: goalsError } = await supabase
       .from('goals')
       .delete()
       .eq('user_id', userId);
+      
+    if (goalsError) {
+      console.error('Error deleting goals:', goalsError);
+    }
     
     // Remove budgets
-    await supabase
+    const { error: budgetsError } = await supabase
       .from('budgets')
       .delete()
       .eq('user_id', userId);
+      
+    if (budgetsError) {
+      console.error('Error deleting budgets:', budgetsError);
+    }
     
     // Remove credit cards
-    await supabase
+    const { error: creditCardsError } = await supabase
       .from('credit_cards')
       .delete()
       .eq('user_id', userId);
+      
+    if (creditCardsError) {
+      console.error('Error deleting credit cards:', creditCardsError);
+    }
     
     // Remove institutions
-    await supabase
+    const { error: institutionsError } = await supabase
       .from('institutions')
       .delete()
       .eq('user_id', userId);
+      
+    if (institutionsError) {
+      console.error('Error deleting institutions:', institutionsError);
+    }
     
-    // Keep categories as they're shared
-    
+    console.log('Mock data clearing completed');
     return true;
   } catch (error) {
     console.error('Error clearing mock data:', error);
@@ -104,12 +141,19 @@ export async function clearMockData(userId: string) {
 // Helper functions for creating different types of mock data
 
 async function createMockCategories(userId: string) {
+  console.log('Creating mock categories');
+  
   // Check if categories already exist
-  const { data: existingCategories } = await supabase
+  const { data: existingCategories, error: checkError } = await supabase
     .from('categories')
     .select('id')
     .eq('user_id', userId)
     .limit(1);
+  
+  if (checkError) {
+    console.error('Error checking existing categories:', checkError);
+    throw checkError;
+  }
   
   if (existingCategories && existingCategories.length > 0) {
     console.log('Categories already exist, skipping creation');
@@ -147,10 +191,19 @@ async function createMockCategories(userId: string) {
   ];
   
   // Insert all categories
-  await supabase.from('categories').insert([...incomeCategories, ...expenseCategories, ...goalCategories]);
+  const { error: insertError } = await supabase
+    .from('categories')
+    .insert([...incomeCategories, ...expenseCategories, ...goalCategories]);
+    
+  if (insertError) {
+    console.error('Error inserting categories:', insertError);
+    throw insertError;
+  }
 }
 
 async function createMockInstitutions(userId: string) {
+  console.log('Creating mock institutions');
+  
   const institutions = [
     { name: 'Banco do Brasil', type: 'bank', logo: 'bank-bb', current_balance: 5000, user_id: userId },
     { name: 'Nubank', type: 'bank', logo: 'bank-nubank', current_balance: 3500, user_id: userId },
@@ -158,7 +211,14 @@ async function createMockInstitutions(userId: string) {
     { name: 'Caixa', type: 'bank', logo: 'bank-caixa', current_balance: 1800, user_id: userId }
   ];
   
-  await supabase.from('institutions').upsert(institutions, { onConflict: 'name,user_id' });
+  const { error } = await supabase
+    .from('institutions')
+    .upsert(institutions, { onConflict: 'name,user_id' });
+    
+  if (error) {
+    console.error('Error inserting institutions:', error);
+    throw error;
+  }
   
   return await supabase
     .from('institutions')
@@ -167,11 +227,18 @@ async function createMockInstitutions(userId: string) {
 }
 
 async function createMockCreditCards(userId: string) {
+  console.log('Creating mock credit cards');
+  
   // Get institutions
-  const { data: institutions } = await supabase
+  const { data: institutions, error: fetchError } = await supabase
     .from('institutions')
     .select('id')
     .eq('user_id', userId);
+  
+  if (fetchError) {
+    console.error('Error fetching institutions:', fetchError);
+    throw fetchError;
+  }
   
   if (!institutions || institutions.length === 0) {
     throw new Error('No institutions found for user');
@@ -199,35 +266,58 @@ async function createMockCreditCards(userId: string) {
     }
   ];
   
-  await supabase.from('credit_cards').upsert(creditCards, { onConflict: 'name,user_id' });
+  const { error } = await supabase
+    .from('credit_cards')
+    .upsert(creditCards, { onConflict: 'name,user_id' });
+    
+  if (error) {
+    console.error('Error inserting credit cards:', error);
+    throw error;
+  }
 }
 
 async function createMockTransactions(userId: string) {
+  console.log('Creating mock transactions');
+  
   // Get categories
-  const { data: categories } = await supabase
+  const { data: categories, error: categoriesError } = await supabase
     .from('categories')
     .select('id, name, type')
     .eq('user_id', userId);
+  
+  if (categoriesError) {
+    console.error('Error fetching categories:', categoriesError);
+    throw categoriesError;
+  }
   
   if (!categories || categories.length === 0) {
     throw new Error('No categories found');
   }
   
   // Get institutions
-  const { data: institutions } = await supabase
+  const { data: institutions, error: institutionsError } = await supabase
     .from('institutions')
     .select('id, name')
     .eq('user_id', userId);
+  
+  if (institutionsError) {
+    console.error('Error fetching institutions:', institutionsError);
+    throw institutionsError;
+  }
   
   if (!institutions || institutions.length === 0) {
     throw new Error('No institutions found');
   }
   
   // Get credit cards
-  const { data: creditCards } = await supabase
+  const { data: creditCards, error: cardsError } = await supabase
     .from('credit_cards')
     .select('id, name')
     .eq('user_id', userId);
+    
+  if (cardsError) {
+    console.error('Error fetching credit cards:', cardsError);
+  }
   
   // Filter categories by type
   const incomeCategories = categories.filter(c => c.type === 'income');
@@ -343,17 +433,31 @@ async function createMockTransactions(userId: string) {
   const batchSize = 50;
   for (let i = 0; i < transactions.length; i += batchSize) {
     const batch = transactions.slice(i, i + batchSize);
-    await supabase.from('transactions').insert(batch);
+    const { error } = await supabase
+      .from('transactions')
+      .insert(batch);
+      
+    if (error) {
+      console.error(`Error inserting batch ${i}-${i+batchSize}:`, error);
+      throw error;
+    }
   }
 }
 
 async function createMockBudgets(userId: string) {
+  console.log('Creating mock budgets');
+  
   // Get expense categories
-  const { data: categories } = await supabase
+  const { data: categories, error: fetchError } = await supabase
     .from('categories')
     .select('id, name')
     .eq('type', 'expense')
     .eq('user_id', userId);
+  
+  if (fetchError) {
+    console.error('Error fetching expense categories:', fetchError);
+    throw fetchError;
+  }
   
   if (!categories || categories.length === 0) {
     throw new Error('No expense categories found');
@@ -383,18 +487,33 @@ async function createMockBudgets(userId: string) {
     user_id: userId
   }));
   
-  await supabase.from('budgets').upsert(budgets, { onConflict: 'category_id,month,year,user_id' });
+  const { error } = await supabase
+    .from('budgets')
+    .upsert(budgets, { onConflict: 'category_id,month,year,user_id' });
+    
+  if (error) {
+    console.error('Error inserting budgets:', error);
+    throw error;
+  }
 }
 
 async function createMockGoals(userId: string) {
+  console.log('Creating mock goals');
+  
   // Get goal categories
-  const { data: categories } = await supabase
+  const { data: categories, error: fetchError } = await supabase
     .from('categories')
     .select('id, name')
     .eq('type', 'goal')
     .eq('user_id', userId);
   
+  if (fetchError) {
+    console.error('Error fetching goal categories:', fetchError);
+    throw fetchError;
+  }
+  
   if (!categories || categories.length === 0) {
+    console.log('No goal categories found, skipping goal creation');
     return; // Skip if no goal categories
   }
   
@@ -463,27 +582,45 @@ async function createMockGoals(userId: string) {
       }
     }
     
-    await supabase.from('goal_contributions').insert(contributions);
+    const { error: contributionsError } = await supabase
+      .from('goal_contributions')
+      .insert(contributions);
+      
+    if (contributionsError) {
+      console.error('Error creating goal contributions:', contributionsError);
+    }
   }
 }
 
 async function createMockBills(userId: string) {
+  console.log('Creating mock bills');
+  
   // Get categories
-  const { data: categories } = await supabase
+  const { data: categories, error: categoriesError } = await supabase
     .from('categories')
     .select('id, name')
     .eq('type', 'expense')
     .eq('user_id', userId);
+  
+  if (categoriesError) {
+    console.error('Error fetching expense categories:', categoriesError);
+    throw categoriesError;
+  }
   
   if (!categories || categories.length === 0) {
     throw new Error('No expense categories found');
   }
   
   // Get institutions
-  const { data: institutions } = await supabase
+  const { data: institutions, error: institutionsError } = await supabase
     .from('institutions')
     .select('id')
     .eq('user_id', userId);
+  
+  if (institutionsError) {
+    console.error('Error fetching institutions:', institutionsError);
+    throw institutionsError;
+  }
   
   if (!institutions || institutions.length === 0) {
     throw new Error('No institutions found');
@@ -537,13 +674,25 @@ async function createMockBills(userId: string) {
     }
   ];
   
-  await supabase.from('bills').upsert(bills, { onConflict: 'description,user_id' });
+  const { error } = await supabase
+    .from('bills')
+    .upsert(bills, { onConflict: 'description,user_id' });
+    
+  if (error) {
+    console.error('Error inserting bills:', error);
+    throw error;
+  }
   
   // Add some bill payments
-  const { data: insertedBills } = await supabase
+  const { data: insertedBills, error: billsError } = await supabase
     .from('bills')
     .select('id, amount, due_day')
     .eq('user_id', userId);
+  
+  if (billsError) {
+    console.error('Error fetching inserted bills:', billsError);
+    return;
+  }
   
   if (insertedBills && insertedBills.length > 0) {
     const currentDate = new Date();
@@ -585,6 +734,12 @@ async function createMockBills(userId: string) {
       });
     }
     
-    await supabase.from('bill_payments').upsert(billPayments);
+    const { error: paymentsError } = await supabase
+      .from('bill_payments')
+      .upsert(billPayments);
+      
+    if (paymentsError) {
+      console.error('Error creating bill payments:', paymentsError);
+    }
   }
 }
