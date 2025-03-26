@@ -113,12 +113,12 @@ export function Budgets() {
         const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
         
         return {
+          id: budget.id, // Ensure id is included
           category: budget.categories.name,
           amount: Number(budget.amount),
           spent: spent,
-          period: 'monthly',
-          categoryId: budget.category_id,
-          id: budget.id
+          period: 'monthly' as const, // Use const assertion to ensure correct type
+          categoryId: budget.category_id
         };
       });
     },
@@ -198,7 +198,7 @@ export function Budgets() {
   };
   
   const handleConfirmDelete = async () => {
-    if (editingBudget) {
+    if (editingBudget?.id) {
       try {
         const { error } = await supabase
           .from('budgets')
@@ -419,120 +419,6 @@ export function Budgets() {
         </div>
         
         <TabsContent value="current" className="space-y-6">
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Alocação de Orçamento</CardTitle>
-              <CardDescription>
-                Distribuição dos seus recursos para o mês de {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: ptBR })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <Button variant="outline" onClick={() => handleNavigateMonth('prev')} size="sm">
-                    <ChevronLeft size={16} />
-                    <span className="ml-1">Mês anterior</span>
-                  </Button>
-                  <h3 className="text-lg font-medium text-center">
-                    {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())}
-                  </h3>
-                  <Button variant="outline" onClick={() => handleNavigateMonth('next')} size="sm">
-                    <span className="mr-1">Próximo mês</span>
-                    <ChevronRight size={16} />
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">Receita Total</p>
-                        <Badge variant="success">Receitas</Badge>
-                      </div>
-                      <p className="text-2xl font-bold text-finance-income mt-2">
-                        {formatCurrency(budgetSummary.totalIncome)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">Despesas</p>
-                        <Badge variant="destructive">Despesas</Badge>
-                      </div>
-                      <p className="text-2xl font-bold text-finance-expense mt-2">
-                        {formatCurrency(budgetSummary.totalExpenses)}
-                      </p>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {Math.round((budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100)}% da receita
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">Metas</p>
-                        <Badge className="bg-blue-500">Metas</Badge>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-500 mt-2">
-                        {formatCurrency(budgetSummary.totalGoals)}
-                      </p>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {Math.round((budgetSummary.totalGoals / budgetSummary.totalIncome) * 100)}% da receita
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">Não Alocado</p>
-                        <Button size="sm" variant="outline" className="h-6 px-2 py-0" onClick={handleOpenCreateDialog}>
-                          <Calculator size={12} className="mr-1" />
-                          <span className="text-xs">Realocar</span>
-                        </Button>
-                      </div>
-                      <p className={`text-2xl font-bold mt-2 ${budgetSummary.remaining >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {formatCurrency(budgetSummary.remaining)}
-                      </p>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {Math.abs(Math.round((budgetSummary.remaining / budgetSummary.totalIncome) * 100))}% 
-                        {budgetSummary.remaining >= 0 ? ' disponível' : ' excedido'}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <div className="mt-6 space-y-2">
-                  <div className="h-4 w-full bg-accent rounded-full overflow-hidden flex">
-                    <div 
-                      className="h-full bg-finance-expense"
-                      style={{ width: `${(budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100}%` }}
-                    ></div>
-                    <div 
-                      className="h-full bg-blue-500"
-                      style={{ width: `${(budgetSummary.totalGoals / budgetSummary.totalIncome) * 100}%` }}
-                    ></div>
-                    <div 
-                      className={`h-full ${budgetSummary.remaining >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
-                      style={{ 
-                        width: `${Math.min(Math.abs(budgetSummary.remaining) / budgetSummary.totalIncome * 100, 
-                          100 - (budgetSummary.totalExpenses + budgetSummary.totalGoals) / budgetSummary.totalIncome * 100)}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Despesas: {Math.round((budgetSummary.totalExpenses / budgetSummary.totalIncome) * 100)}%</span>
-                    <span>Metas: {Math.round((budgetSummary.totalGoals / budgetSummary.totalIncome) * 100)}%</span>
-                    <span>Não Alocado: {Math.round((budgetSummary.remaining / budgetSummary.totalIncome) * 100)}%</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
           <div className="rounded-xl border bg-card shadow-sm p-6 space-y-6">
             <h3 className="text-lg font-medium">Progresso do Orçamento</h3>
             {isLoadingBudgets ? (
@@ -543,7 +429,7 @@ export function Budgets() {
               <>
                 {calculatedBudgets.map((budget) => {
                   return (
-                    <div key={budget.categoryId || budget.category} className="space-y-2">
+                    <div key={budget.id || budget.category} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -607,12 +493,6 @@ export function Budgets() {
                             {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
                           </span>
                         </div>
-                        {budget.percentage < 100 && (
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>Limite diário: {formatCurrency(budget.dailyRemaining)}</span>
-                            <span>Limite semanal: {formatCurrency(budget.weeklyRemaining)}</span>
-                          </div>
-                        )}
                         {budget.percentage >= 100 && (
                           <div className="flex items-center gap-1 text-xs text-destructive mt-1">
                             <AlertTriangle size={12} />
@@ -712,7 +592,7 @@ export function Budgets() {
               Cancelar
             </Button>
             <Button onClick={async () => {
-              if (editingBudget) {
+              if (editingBudget?.id) {
                 try {
                   const { error } = await supabase
                     .from('budgets')

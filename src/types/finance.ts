@@ -35,7 +35,9 @@ export interface Subcategory {
 }
 
 export interface BudgetGoal {
+  id?: string;          // Added id property
   category: string;
+  categoryId?: string;  // Added categoryId property
   amount: number;
   spent: number;
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
