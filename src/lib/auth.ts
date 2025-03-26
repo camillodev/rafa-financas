@@ -18,7 +18,9 @@ export function useAuth() {
     const getSupabaseToken = async () => {
       try {
         // Use the JWT template for Supabase - fixes the TypeScript error
-        const token = await user.getToken({ template: 'supabase' });
+        const token = await (user as any).getToken({ template: 'supabase' }) as string;
+
+
         setSupabaseToken(token);
         
         // Set the token in Supabase
