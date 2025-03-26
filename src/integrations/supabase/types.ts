@@ -377,6 +377,236 @@ export type Database = {
         }
         Relationships: []
       }
+      split_bill_groups: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      split_bill_participants: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          group_id: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_bill_participants_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "split_bill_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_bill_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          id: string
+          notes: string | null
+          participant_id: string | null
+          split_bill_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          participant_id?: string | null
+          split_bill_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          participant_id?: string | null
+          split_bill_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_bill_payments_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "split_bill_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bill_payments_split_bill_id_fkey"
+            columns: ["split_bill_id"]
+            isOneToOne: false
+            referencedRelation: "split_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_bill_shares: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          id: string
+          is_included: boolean | null
+          participant_id: string | null
+          percentage: number | null
+          split_bill_id: string | null
+          updated_at: string | null
+          user_id: string | null
+          weight: number | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          is_included?: boolean | null
+          participant_id?: string | null
+          percentage?: number | null
+          split_bill_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          weight?: number | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          is_included?: boolean | null
+          participant_id?: string | null
+          percentage?: number | null
+          split_bill_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_bill_shares_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "split_bill_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bill_shares_split_bill_id_fkey"
+            columns: ["split_bill_id"]
+            isOneToOne: false
+            referencedRelation: "split_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_bills: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          date: string
+          division_method: string
+          group_id: string | null
+          id: string
+          name: string
+          receipt_image_url: string | null
+          status: string
+          total_amount: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          date: string
+          division_method?: string
+          group_id?: string | null
+          id?: string
+          name: string
+          receipt_image_url?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          date?: string
+          division_method?: string
+          group_id?: string | null
+          id?: string
+          name?: string
+          receipt_image_url?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_bills_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bills_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "split_bill_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
