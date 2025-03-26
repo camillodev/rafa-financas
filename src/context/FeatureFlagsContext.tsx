@@ -16,37 +16,53 @@ interface FeatureFlags {
 interface FeatureFlagsContextType {
   features: FeatureFlags;
   isFeatureEnabled: (featureKey: FeatureKey) => boolean;
-  toggleFeature: (featureKey: FeatureKey) => void;
-  enableFeature: (featureKey: FeatureKey) => void;
-  disableFeature: (featureKey: FeatureKey) => void;
 }
 
 // Create the context
 const FeatureFlagsContext = createContext<FeatureFlagsContextType | undefined>(undefined);
 
-// Default feature flags (all enabled by default)
-const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  bills: true,
-  budgets: true,
-  reports: true,
-  cards: true,
-  goals: true,
-  splitBills: true,
+// Helper function to get environment variable with boolean conversion
+const getEnvFlag = (key: string, defaultValue: boolean): boolean => {
+  const envKey = `VITE_FEATURE_${key.toUpperCase()}`;
+  const envValue = import.meta.env[envKey];
+  if (envValue === undefined) return defaultValue;
+  return envValue === 'true';
 };
 
-// Local storage key
+// Default feature flags from environment variables
+const getDefaultFeatureFlags = (): FeatureFlags => ({
+  bills: getEnvFlag('bills', true),
+  budgets: getEnvFlag('budgets', true),
+  reports: getEnvFlag('reports', true),
+  cards: getEnvFlag('cards', true),
+  goals: getEnvFlag('goals', true),
+  splitBills: getEnvFlag('splitBills', true),
+});
+
+// Local storage key for development override
 const FEATURE_FLAGS_STORAGE_KEY = 'rafa-financas-feature-flags';
 
+// Check if we're in development mode
+const isDevelopment = import.meta.env.MODE === 'development';
+
 export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
-  // Initialize state from localStorage or defaults
+  // Initialize state from environment variables or localStorage in development
   const [features, setFeatures] = useState<FeatureFlags>(() => {
-    const savedFlags = localStorage.getItem(FEATURE_FLAGS_STORAGE_KEY);
-    return savedFlags ? JSON.parse(savedFlags) : DEFAULT_FEATURE_FLAGS;
+    // In development, we can override with localStorage
+    if (isDevelopment) {
+      const savedFlags = localStorage.getItem(FEATURE_FLAGS_STORAGE_KEY);
+      return savedFlags ? JSON.parse(savedFlags) : getDefaultFeatureFlags();
+    }
+
+    // In production, always use environment variables
+    return getDefaultFeatureFlags();
   });
 
-  // Save to localStorage whenever features change
+  // Save to localStorage in development mode
   useEffect(() => {
-    localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(features));
+    if (isDevelopment) {
+      localStorage.setItem(FEATURE_FLAGS_STORAGE_KEY, JSON.stringify(features));
+    }
   }, [features]);
 
   // Check if a feature is enabled
@@ -54,40 +70,51 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
     return features[featureKey] ?? false;
   };
 
-  // Toggle a feature on or off
+  // Toggle a feature on or off - only exposed in development
   const toggleFeature = (featureKey: FeatureKey): void => {
+    if (!isDevelopment) return;
+
     setFeatures(prev => ({
       ...prev,
       [featureKey]: !prev[featureKey]
     }));
   };
 
-  // Enable a specific feature
+  // Enable a specific feature - only exposed in development
   const enableFeature = (featureKey: FeatureKey): void => {
+    if (!isDevelopment) return;
+
     setFeatures(prev => ({
       ...prev,
       [featureKey]: true
     }));
   };
 
-  // Disable a specific feature
+  // Disable a specific feature - only exposed in development
   const disableFeature = (featureKey: FeatureKey): void => {
+    if (!isDevelopment) return;
+
     setFeatures(prev => ({
       ...prev,
       [featureKey]: false
     }));
   };
 
-  const value = {
+  // Create the context value based on environment
+  const contextValue: any = {
     features,
     isFeatureEnabled,
-    toggleFeature,
-    enableFeature,
-    disableFeature
   };
 
+  // Only expose admin methods in development
+  if (isDevelopment) {
+    contextValue.toggleFeature = toggleFeature;
+    contextValue.enableFeature = enableFeature;
+    contextValue.disableFeature = disableFeature;
+  }
+
   return (
-    <FeatureFlagsContext.Provider value={value}>
+    <FeatureFlagsContext.Provider value={contextValue}>
       {children}
     </FeatureFlagsContext.Provider>
   );

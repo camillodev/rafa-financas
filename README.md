@@ -29,124 +29,86 @@ Rafa Finanças é uma aplicação web abrangente para gestão financeira pessoal
 - [date-fns](https://date-fns.org/) - Biblioteca JavaScript para manipulação de datas
 - [Lucide React](https://lucide.dev/) - Conjunto de ícones para React
 
-## 🚩 Feature Flags
+## 🚩 Feature Flags (Bandeiras de Funcionalidades)
 
-O sistema de Feature Flags permite ativar ou desativar funcionalidades específicas da aplicação sem necessidade de modificar ou reimplantar o código. Isso é útil para testes A/B, lançamentos graduais, ou personalização da experiência do usuário.
+O sistema utiliza feature flags baseadas em ambiente (environment-based feature flags) para controlar quais funcionalidades estão disponíveis em diferentes ambientes de implantação (desenvolvimento, homologação, produção). Isso permite:
 
-### Como Funciona
+- Desativar funcionalidades específicas em produção enquanto estão em desenvolvimento
+- Implementar lançamentos graduais de novas funcionalidades
+- Testar diferentes configurações sem alterar o código
 
-- As feature flags são armazenadas no localStorage para persistência
-- O controle de features é centralizado em um contexto React
-- Usuários podem habilitar/desabilitar funcionalidades na página de configurações
-- Os componentes da interface e rotas verificam as flags para determinar o comportamento
+### Feature Flags Disponíveis
 
-### Feature Flags Atuais
+- `VITE_FEATURE_BILLS` - Contas a Pagar
+- `VITE_FEATURE_BUDGETS` - Orçamentos
+- `VITE_FEATURE_REPORTS` - Relatórios
+- `VITE_FEATURE_CARDS` - Cartões
+- `VITE_FEATURE_GOALS` - Metas
+- `VITE_FEATURE_SPLITBILLS` - Dividir Contas
 
-- `bills` - Contas a Pagar
-- `budgets` - Orçamentos
-- `reports` - Relatórios
-- `cards` - Cartões
-- `goals` - Metas
-- `splitBills` - Dividir Contas
+### Configuração de Feature Flags
 
-### Adicionando Novas Feature Flags
+As feature flags são configuradas através de variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto (baseado no `.env.example`) e defina os valores:
 
-1. **Adicione a chave da feature no tipo `FeatureKey`**:
-
-```typescript
-// src/context/FeatureFlagsContext.tsx
-export type FeatureKey =
-  | 'bills'
-  | 'budgets' 
-  | 'reports'
-  | 'cards'
-  | 'goals'
-  | 'splitBills'
-  | 'novaFeature'; // Adicione sua nova feature aqui
+```
+# Feature Flags (true para ativar, false para desativar)
+VITE_FEATURE_BILLS=true
+VITE_FEATURE_BUDGETS=true
+VITE_FEATURE_REPORTS=true
+VITE_FEATURE_CARDS=true
+VITE_FEATURE_GOALS=true
+VITE_FEATURE_SPLITBILLS=true
 ```
 
-2. **Adicione o valor padrão (habilitado ou desabilitado)**:
+### Como Adicionar Novas Feature Flags
 
-```typescript
-// src/context/FeatureFlagsContext.tsx
-const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  bills: true,
-  budgets: true,
-  reports: true,
-  cards: true,
-  goals: true,
-  splitBills: true,
-  novaFeature: false, // Adicione com o valor padrão desejado
-};
-```
+1. **Adicione a nova variável de ambiente**:
+   - Adicione a variável ao arquivo `.env.example`
+   - Adicione a mesma variável ao seu arquivo `.env` local
 
-3. **Adicione na página de configurações**:
+2. **Atualize o tipo FeatureKey**:
+   ```typescript
+   // src/context/FeatureFlagsContext.tsx
+   export type FeatureKey = 
+     | 'bills' 
+     | 'budgets' 
+     // ... outras flags existentes
+     | 'novaFeature'; // Adicione sua nova feature aqui
+   ```
 
-```typescript
-// src/pages/Settings.tsx
-const featureDetails = {
-  // Features existentes...
-  novaFeature: {
-    label: "Nova Funcionalidade",
-    description: "Descrição da nova funcionalidade",
-    icon: <MinhaIcon className="h-4 w-4 mr-2" />
-  },
-};
-```
+3. **Adicione ao método getDefaultFeatureFlags**:
+   ```typescript
+   // src/context/FeatureFlagsContext.tsx
+   const getDefaultFeatureFlags = (): FeatureFlags => ({
+     bills: getEnvFlag('bills', true),
+     // ... outras flags existentes
+     novaFeature: getEnvFlag('novaFeature', false), // Padrão desativado
+   });
+   ```
 
-### Proteção de Rotas com Feature Flags
+4. **Proteja as rotas ou componentes com a nova feature flag**:
+   ```tsx
+   import { useFeatureFlags } from '@/context/FeatureFlagsContext';
+   
+   function MinhaFuncionalidade() {
+     const { isFeatureEnabled } = useFeatureFlags();
+     
+     if (!isFeatureEnabled('novaFeature')) {
+       return null; // Ou algum fallback
+     }
+     
+     return <MeuComponente />;
+   }
+   ```
 
-Para proteger uma rota com feature flag, utilize o componente `FeatureRoute`:
+### Modo de Desenvolvimento
 
-```jsx
-<Route path="/minha-nova-rota" element={
-  <>
-    <SignedIn>
-      <FinanceProvider>
-        <FeatureRoute featureKey="novaFeature" element={<MinhaNovaPage />} />
-      </FinanceProvider>
-    </SignedIn>
-    <SignedOut>
-      <Navigate to="/sign-in" replace />
-    </SignedOut>
-  </>
-} />
-```
+No ambiente de desenvolvimento, você pode:
+- Ver o painel de Feature Flags na página de Configurações
+- Ativar/desativar features localmente para teste (estas mudanças são armazenadas no localStorage)
+- Verificar o comportamento da aplicação com diferentes configurações de features
 
-### Adicionando ao Menu de Navegação
-
-Para adicionar uma nova funcionalidade ao menu lateral, atualize o arquivo `sidebarConfig.tsx`:
-
-```typescript
-// src/components/layout/sidebar/sidebarConfig.tsx
-export const sidebarLinks = [
-  // Outros links...
-  { 
-    icon: <MinhaIcon size={20} />, 
-    label: "Nova Funcionalidade", 
-    href: "/minha-nova-rota",
-    featureFlag: 'novaFeature' as FeatureKey
-  },
-];
-```
-
-### Verificando Feature Flags em Componentes
-
-Para verificar se uma feature está habilitada dentro de qualquer componente:
-
-```typescript
-import { useFeatureFlags } from '@/context/FeatureFlagsContext';
-
-function MeuComponente() {
-  const { isFeatureEnabled } = useFeatureFlags();
-  
-  if (isFeatureEnabled('novaFeature')) {
-    return <p>Funcionalidade disponível!</p>;
-  }
-  
-  return <p>Funcionalidade não disponível.</p>;
-}
-```
+**Nota**: Em ambientes de produção, as feature flags são controladas exclusivamente por variáveis de ambiente, e a interface de controle não é exibida.
 
 ## 📦 Instalação e Uso
 
