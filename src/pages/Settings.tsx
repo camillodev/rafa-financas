@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useTheme } from '@/hooks/use-theme';
@@ -14,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Moon, Sun, Monitor, Database, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,7 +22,7 @@ import { generateMockData, clearMockData } from '@/services/mockDataService';
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
-  const { isSupabaseReady, user } = useAuth();
+  const { isSupabaseReady, user, supabase } = useAuth();
   const [mockDataEnabled, setMockDataEnabled] = useState(false);
   const [isGeneratingData, setIsGeneratingData] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
@@ -54,7 +52,7 @@ const Settings = () => {
 
     setIsGeneratingData(true);
     try {
-      await generateMockData(user.id);
+      await generateMockData(user.id, supabase);
       toast.success('Dados de exemplo gerados com sucesso');
     } catch (error) {
       console.error('Error generating mock data:', error);
@@ -72,7 +70,7 @@ const Settings = () => {
 
     setIsClearingData(true);
     try {
-      await clearMockData(user.id);
+      await clearMockData(user.id, supabase);
       toast.success('Dados removidos com sucesso');
     } catch (error) {
       console.error('Error clearing mock data:', error);

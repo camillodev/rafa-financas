@@ -1,36 +1,52 @@
-
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as defaultSupabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, addDays, subDays, subMonths } from 'date-fns';
+import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+
+/**
+ * Maps a Clerk user ID to a format compatible with the database
+ * This helps handle cases where the database expects UUIDs but Clerk provides string IDs
+ * @param userId Clerk user ID
+ */
+function mapUserId(userId: string): string {
+  // If using RLS policies with string IDs, just return the original ID
+  return userId;
+
+  // If DB requires UUID format, you'd need to hash or map the Clerk ID to a valid UUID
+  // For example: return hashStringToUUID(userId);
+}
 
 /**
  * Generates mock data for the application
  * @param userId The user ID to associate with the mock data
+ * @param supabase Custom Supabase client with authentication
  */
-export async function generateMockData(userId: string) {
+export async function generateMockData(userId: string, supabase: SupabaseClient<Database> = defaultSupabase) {
   try {
-    console.log('Generating mock data for user:', userId);
+    const dbUserId = mapUserId(userId);
+    console.log('Generating mock data for user:', dbUserId);
     
     // Create categories if they don't exist
-    await createMockCategories(userId);
+    await createMockCategories(dbUserId, supabase);
     
     // Create financial institutions
-    await createMockInstitutions(userId);
+    await createMockInstitutions(dbUserId, supabase);
     
     // Create credit cards
-    await createMockCreditCards(userId);
+    await createMockCreditCards(dbUserId, supabase);
     
     // Create transactions
-    await createMockTransactions(userId);
+    await createMockTransactions(dbUserId, supabase);
     
     // Create budgets
-    await createMockBudgets(userId);
+    await createMockBudgets(dbUserId, supabase);
     
     // Create goals
-    await createMockGoals(userId);
+    await createMockGoals(dbUserId, supabase);
     
     // Create bills
-    await createMockBills(userId);
+    await createMockBills(dbUserId, supabase);
     
     console.log('Mock data generation completed');
     return true;
@@ -43,10 +59,12 @@ export async function generateMockData(userId: string) {
 /**
  * Clears all mock data for a user
  * @param userId The user ID whose data should be cleared
+ * @param supabase Custom Supabase client with authentication
  */
-export async function clearMockData(userId: string) {
+export async function clearMockData(userId: string, supabase: SupabaseClient<Database> = defaultSupabase) {
   try {
-    console.log('Clearing mock data for user:', userId);
+    const dbUserId = mapUserId(userId);
+    console.log('Clearing mock data for user:', dbUserId);
     
     // Remove data in the correct order to avoid foreign key constraints
     
@@ -54,7 +72,7 @@ export async function clearMockData(userId: string) {
     const { error: billPaymentsError } = await supabase
       .from('bill_payments')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (billPaymentsError) {
       console.error('Error deleting bill payments:', billPaymentsError);
@@ -64,7 +82,7 @@ export async function clearMockData(userId: string) {
     const { error: transactionsError } = await supabase
       .from('transactions')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (transactionsError) {
       console.error('Error deleting transactions:', transactionsError);
@@ -74,7 +92,7 @@ export async function clearMockData(userId: string) {
     const { error: billsError } = await supabase
       .from('bills')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (billsError) {
       console.error('Error deleting bills:', billsError);
@@ -84,7 +102,7 @@ export async function clearMockData(userId: string) {
     const { error: goalContributionsError } = await supabase
       .from('goal_contributions')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (goalContributionsError) {
       console.error('Error deleting goal contributions:', goalContributionsError);
@@ -94,7 +112,7 @@ export async function clearMockData(userId: string) {
     const { error: goalsError } = await supabase
       .from('goals')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (goalsError) {
       console.error('Error deleting goals:', goalsError);
@@ -104,7 +122,7 @@ export async function clearMockData(userId: string) {
     const { error: budgetsError } = await supabase
       .from('budgets')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (budgetsError) {
       console.error('Error deleting budgets:', budgetsError);
@@ -114,7 +132,7 @@ export async function clearMockData(userId: string) {
     const { error: creditCardsError } = await supabase
       .from('credit_cards')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (creditCardsError) {
       console.error('Error deleting credit cards:', creditCardsError);
@@ -124,7 +142,7 @@ export async function clearMockData(userId: string) {
     const { error: institutionsError } = await supabase
       .from('institutions')
       .delete()
-      .eq('user_id', userId);
+      .eq('user_id', dbUserId);
       
     if (institutionsError) {
       console.error('Error deleting institutions:', institutionsError);
@@ -140,7 +158,7 @@ export async function clearMockData(userId: string) {
 
 // Helper functions for creating different types of mock data
 
-async function createMockCategories(userId: string) {
+async function createMockCategories(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock categories');
   
   // Check if categories already exist
@@ -201,7 +219,7 @@ async function createMockCategories(userId: string) {
   }
 }
 
-async function createMockInstitutions(userId: string) {
+async function createMockInstitutions(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock institutions');
   
   const institutions = [
@@ -214,19 +232,14 @@ async function createMockInstitutions(userId: string) {
   const { error } = await supabase
     .from('institutions')
     .upsert(institutions, { onConflict: 'name,user_id' });
-    
-  if (error) {
-    console.error('Error inserting institutions:', error);
-    throw error;
-  }
-  
+
   return await supabase
     .from('institutions')
     .select('*')
     .eq('user_id', userId);
 }
 
-async function createMockCreditCards(userId: string) {
+async function createMockCreditCards(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock credit cards');
   
   // Get institutions
@@ -276,7 +289,7 @@ async function createMockCreditCards(userId: string) {
   }
 }
 
-async function createMockTransactions(userId: string) {
+async function createMockTransactions(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock transactions');
   
   // Get categories
@@ -444,7 +457,7 @@ async function createMockTransactions(userId: string) {
   }
 }
 
-async function createMockBudgets(userId: string) {
+async function createMockBudgets(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock budgets');
   
   // Get expense categories
@@ -497,7 +510,7 @@ async function createMockBudgets(userId: string) {
   }
 }
 
-async function createMockGoals(userId: string) {
+async function createMockGoals(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock goals');
   
   // Get goal categories
@@ -592,7 +605,7 @@ async function createMockGoals(userId: string) {
   }
 }
 
-async function createMockBills(userId: string) {
+async function createMockBills(userId: string, supabase: SupabaseClient<Database>) {
   console.log('Creating mock bills');
   
   // Get categories
