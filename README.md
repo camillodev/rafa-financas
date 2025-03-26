@@ -41,10 +41,13 @@ O sistema utiliza feature flags baseadas em ambiente (environment-based feature 
 
 - `VITE_FEATURE_BILLS` - Contas a Pagar
 - `VITE_FEATURE_BUDGETS` - Orçamentos
-- `VITE_FEATURE_REPORTS` - Relatórios
 - `VITE_FEATURE_CARDS` - Cartões
 - `VITE_FEATURE_GOALS` - Metas
 - `VITE_FEATURE_SPLITBILLS` - Dividir Contas
+
+> **Nota**: A funcionalidade de Relatórios está sempre disponível, mas certos relatórios específicos dependem de outras feature flags:
+> - "Planejado vs Realizado" só estará disponível se `VITE_FEATURE_BUDGETS` estiver ativado
+> - "Despesas por Cartão" só estará disponível se `VITE_FEATURE_CARDS` estiver ativado
 
 ### Configuração de Feature Flags
 

@@ -116,12 +116,11 @@ const App = () => (
                   </SignedOut>
                 </>
               } />
-              {/* Reports - Feature Flagged */}
               <Route path="/reports" element={
                 <>
                   <SignedIn>
                     <FinanceProvider>
-                      <FeatureRoute featureKey="reports" element={<Reports />} />
+                      <Reports />
                     </FinanceProvider>
                   </SignedIn>
                   <SignedOut>

@@ -44,8 +44,7 @@ export const sidebarLinks = [
   { 
     icon: <FileBarChart size={20} />, 
     label: "Relatórios", 
-    href: "/reports",
-    featureFlag: 'reports' as FeatureKey
+    href: "/reports"
   },
   { 
     icon: <List size={20} />, 

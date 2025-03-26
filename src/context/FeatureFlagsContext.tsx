@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 export type FeatureKey =
   | 'bills'
   | 'budgets'
-  | 'reports'
   | 'cards'
   | 'goals'
   | 'splitBills';
@@ -33,7 +32,6 @@ const getEnvFlag = (key: string, defaultValue: boolean): boolean => {
 const getDefaultFeatureFlags = (): FeatureFlags => ({
   bills: getEnvFlag('bills', true),
   budgets: getEnvFlag('budgets', true),
-  reports: getEnvFlag('reports', true),
   cards: getEnvFlag('cards', true),
   goals: getEnvFlag('goals', true),
   splitBills: getEnvFlag('splitBills', true),
