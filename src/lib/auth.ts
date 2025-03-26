@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser, isSignedIn  } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useAuth() {
@@ -18,6 +18,9 @@ export function useAuth() {
     const getSupabaseToken = async () => {
       try {
         // Use the JWT template for Supabase - fixes the TypeScript error
+        if(isSignedIn ) {
+
+   
         const token = await (user as any).getToken({ template: 'supabase' }) as string;
 
 
@@ -35,6 +38,7 @@ export function useAuth() {
         }
         
         setIsSupabaseReady(true);
+      }
       } catch (error) {
         console.error('Error getting Supabase token:', error);
       }
