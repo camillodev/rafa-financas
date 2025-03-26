@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Sun, Monitor, Database, Trash2 } from 'lucide-react';
+import { Moon, Sun, Monitor, Database, Trash2, Layers, Receipt, PieChart, CreditCard, Target, Split } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateMockData, clearMockData } from '@/services/mockDataService';
+import { useFeatureFlags, FeatureKey } from '@/context/FeatureFlagsContext';
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -26,6 +27,7 @@ const Settings = () => {
   const [mockDataEnabled, setMockDataEnabled] = useState(false);
   const [isGeneratingData, setIsGeneratingData] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
+  const { features, toggleFeature } = useFeatureFlags();
 
   // Load the mock data preference from localStorage
   useEffect(() => {
@@ -80,6 +82,40 @@ const Settings = () => {
     }
   };
 
+  // Map of feature keys to their display names and icons
+  const featureDetails = {
+    bills: {
+      label: "Contas a Pagar",
+      description: "Gerenciamento de contas e pagamentos",
+      icon: <Receipt className="h-4 w-4 mr-2" />
+    },
+    budgets: {
+      label: "Orçamentos",
+      description: "Planejamento de orçamentos mensais",
+      icon: <Layers className="h-4 w-4 mr-2" />
+    },
+    reports: {
+      label: "Relatórios",
+      description: "Relatórios e análises financeiras",
+      icon: <PieChart className="h-4 w-4 mr-2" />
+    },
+    cards: {
+      label: "Cartões",
+      description: "Gerenciamento de cartões de crédito",
+      icon: <CreditCard className="h-4 w-4 mr-2" />
+    },
+    goals: {
+      label: "Metas",
+      description: "Definição e acompanhamento de metas financeiras",
+      icon: <Target className="h-4 w-4 mr-2" />
+    },
+    splitBills: {
+      label: "Dividir Contas",
+      description: "Divisão de contas entre amigos e grupos",
+      icon: <Split className="h-4 w-4 mr-2" />
+    },
+  };
+
   return (
     <AppLayout>
       <div className="mb-8">
@@ -90,6 +126,37 @@ const Settings = () => {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Funcionalidades</CardTitle>
+            <CardDescription>
+              Ative ou desative funcionalidades específicas do aplicativo
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.entries(featureDetails).map(([key, details]) => (
+              <div key={key} className="flex items-center justify-between">
+                <div className="flex items-start flex-col space-y-1">
+                  <div className="flex items-center">
+                    {details.icon}
+                    <Label htmlFor={`feature-${key}`} className="font-medium">
+                      {details.label}
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-6">
+                    {details.description}
+                  </p>
+                </div>
+                <Switch
+                  id={`feature-${key}`}
+                  checked={features[key]}
+                  onCheckedChange={() => toggleFeature(key as FeatureKey)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Tema</CardTitle>
