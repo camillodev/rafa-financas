@@ -9,44 +9,31 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      storage: localStorage
+    }
+  }
+);
 
 // Add auth listener and session management
 export const initSupabaseAuth = () => {
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
+    (event, session) => {
       // Update session state when auth state changes
-      console.log("Auth state changed", session);
+      console.log("Auth state changed", event, session);
     }
   );
 
   return subscription;
 };
 
-// Auth helper functions
-export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  
-  return { data, error };
-};
-
-export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  
-  return { data, error };
-};
-
-export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  return { error };
-};
-
+// Auth helper functions - these will be replaced by Clerk
 export const getSession = async () => {
   const { data, error } = await supabase.auth.getSession();
   return { data, error };
