@@ -18,9 +18,6 @@ export function useAuth() {
     const getSupabaseToken = async () => {
       try {
         // Use the JWT template for Supabase - fixes the TypeScript error
-        if(isSignedIn ) {
-
-   
         const token = await getToken({ template: 'supabase' });
 
 
@@ -38,7 +35,6 @@ export function useAuth() {
         }
         
         setIsSupabaseReady(true);
-      }
       } catch (error) {
         console.error('Error getting Supabase token:', error);
       }
