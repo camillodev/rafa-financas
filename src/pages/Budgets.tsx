@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
 import { 
-  BarChart, Plus, Edit, Trash2, AlertTriangle, MoreHorizontal, Calendar, 
-  Coins, CopyIcon, ChevronLeft, ChevronRight, Download, Calculator
+  BarChart, Plus, Edit, Trash2, AlertTriangle, MoreHorizontal,
+  CopyIcon, ChevronLeft, ChevronRight, Download, Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -29,27 +29,25 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BudgetGoal } from '@/types/finance';
-import { toast } from "sonner";
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label'; // Add this import
+import { toast } from "sonner";
 import { BudgetCreationForm } from '@/components/budget/BudgetCreationForm';
 import { AnnualBudgetView } from '@/components/budget/AnnualBudgetView';
+import { BudgetGoal } from '@/types/finance';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export function Budgets() {
   const { 
-    budgetGoals, 
     categories, 
-    formatCurrency, 
-    addBudgetGoal, 
-    updateBudgetGoal, 
-    deleteBudgetGoal, 
+    formatCurrency,
     filteredTransactions 
   } = useFinance();
   
+  const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetGoal | null>(null);
@@ -67,6 +65,66 @@ export function Budgets() {
     remaining: 0
   });
   
+  // Fetch budget data from Supabase
+  const { data: budgetGoals = [], isLoading: isLoadingBudgets } = useQuery({
+    queryKey: ['budgets', currentYear, currentMonth + 1],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budgets')
+        .select(`
+          id,
+          amount,
+          category_id,
+          month,
+          year,
+          categories (
+            name,
+            type,
+            color,
+            icon
+          )
+        `)
+        .eq('month', currentMonth + 1)
+        .eq('year', currentYear);
+      
+      if (error) {
+        console.error('Error fetching budgets:', error);
+        throw error;
+      }
+      
+      // Calculate spent amounts for each budget
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('amount, category_id, date')
+        .gte('date', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`)
+        .lt('date', `${currentMonth === 11 ? currentYear + 1 : currentYear}-${String(currentMonth === 11 ? 1 : currentMonth + 2).padStart(2, '0')}-01`)
+        .eq('transaction_type', 'expense');
+      
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+      }
+      
+      // Transform the data to match the BudgetGoal type
+      return (data || []).map(budget => {
+        const categoryTransactions = transactions ? transactions.filter(
+          t => t.category_id === budget.category_id
+        ) : [];
+        
+        const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+        
+        return {
+          category: budget.categories.name,
+          amount: Number(budget.amount),
+          spent: spent,
+          period: 'monthly',
+          categoryId: budget.category_id,
+          id: budget.id
+        };
+      });
+    },
+    enabled: !!supabase
+  });
+  
   // Update current date when month changes
   useEffect(() => {
     setCurrentDate(new Date(currentYear, currentMonth));
@@ -75,7 +133,10 @@ export function Budgets() {
   // Calculate budget summary
   useEffect(() => {
     const totalExpenses = budgetGoals
-      .filter(budget => categories.find(c => c.name === budget.category)?.type === 'expense')
+      .filter(budget => {
+        const category = categories.find(c => c.name === budget.category);
+        return category?.type === 'expense';
+      })
       .reduce((acc, budget) => acc + budget.amount, 0);
       
     const totalIncome = 10000; // This would come from income budgets in a real app
@@ -136,11 +197,23 @@ export function Budgets() {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (editingBudget) {
-      deleteBudgetGoal(editingBudget.category);
-      setIsDeleteDialogOpen(false);
-      toast.success("Orçamento excluído com sucesso");
+      try {
+        const { error } = await supabase
+          .from('budgets')
+          .delete()
+          .eq('id', editingBudget.id);
+        
+        if (error) throw error;
+        
+        queryClient.invalidateQueries({ queryKey: ['budgets'] });
+        setIsDeleteDialogOpen(false);
+        toast.success("Orçamento excluído com sucesso");
+      } catch (error) {
+        console.error('Error deleting budget:', error);
+        toast.error("Erro ao excluir orçamento");
+      }
     }
   };
   
@@ -162,24 +235,95 @@ export function Budgets() {
     });
   };
   
-  const handleCopyPreviousMonth = () => {
-    // Simulate copying from previous month
-    toast.success("Orçamento do mês anterior copiado com sucesso");
+  const handleCopyPreviousMonth = async () => {
+    try {
+      // Get previous month budgets
+      const prevMonth = currentMonth === 0 ? 12 : currentMonth;
+      const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+      
+      const { data: previousBudgets, error } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('month', prevMonth)
+        .eq('year', prevYear);
+      
+      if (error) throw error;
+      
+      // Delete current month budgets first
+      const { error: deleteError } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('month', currentMonth + 1)
+        .eq('year', currentYear);
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert previous month budgets as current month budgets
+      if (previousBudgets && previousBudgets.length > 0) {
+        const newBudgets = previousBudgets.map(budget => ({
+          category_id: budget.category_id,
+          amount: budget.amount,
+          month: currentMonth + 1,
+          year: currentYear,
+          user_id: budget.user_id
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('budgets')
+          .insert(newBudgets);
+        
+        if (insertError) throw insertError;
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      toast.success("Orçamento do mês anterior copiado com sucesso");
+    } catch (error) {
+      console.error('Error copying previous month budgets:', error);
+      toast.error("Erro ao copiar orçamento do mês anterior");
+    }
   };
   
-  const handleSaveBudgets = (budgets: BudgetGoal[]) => {
-    // Clear existing budgets first
-    budgetGoals.forEach(budget => {
-      deleteBudgetGoal(budget.category);
-    });
-    
-    // Add all new budgets
-    budgets.forEach(budget => {
-      addBudgetGoal(budget);
-    });
-    
-    setIsCreateDialogOpen(false);
-    toast.success("Orçamento criado com sucesso");
+  const handleSaveBudgets = async (budgets: BudgetGoal[]) => {
+    try {
+      // First, get the category IDs for each budget
+      const budgetsWithCategoryIds = budgets.map(budget => {
+        const category = categories.find(c => c.name === budget.category);
+        return {
+          ...budget,
+          categoryId: category?.id || budget.categoryId
+        };
+      });
+      
+      // Delete all existing budgets for the current month/year
+      const { error: deleteError } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('month', currentMonth + 1)
+        .eq('year', currentYear);
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert the new budgets
+      const supabaseBudgets = budgetsWithCategoryIds.map(budget => ({
+        category_id: budget.categoryId,
+        amount: budget.amount,
+        month: currentMonth + 1,
+        year: currentYear
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('budgets')
+        .insert(supabaseBudgets);
+      
+      if (insertError) throw insertError;
+      
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      setIsCreateDialogOpen(false);
+      toast.success("Orçamento criado com sucesso");
+    } catch (error) {
+      console.error('Error saving budgets:', error);
+      toast.error("Erro ao salvar orçamentos");
+    }
   };
   
   const exportBudgetData = () => {
@@ -390,230 +534,111 @@ export function Budgets() {
           </Card>
           
           <div className="rounded-xl border bg-card shadow-sm p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Visão Geral</CardTitle>
-                  <CardDescription>Resumo dos seus orçamentos mensais</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span>Total Orçado:</span>
-                      <span className="font-semibold">
-                        {formatCurrency(budgetGoals.reduce((acc, budget) => acc + budget.amount, 0))}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Gasto:</span>
-                      <span className="font-semibold text-finance-expense">
-                        {formatCurrency(budgetGoals.reduce((acc, budget) => acc + budget.spent, 0))}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Restante:</span>
-                      <span className="font-semibold text-finance-income">
-                        {formatCurrency(
-                          budgetGoals.reduce((acc, budget) => acc + Math.max(budget.amount - budget.spent, 0), 0)
-                        )}
-                      </span>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Categorias com alerta:</span>
-                        <span className="font-semibold">
-                          {calculatedBudgets.filter(b => b.percentage >= 80 && b.percentage < 100).length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Categorias acima do orçamento:</span>
-                        <span className="font-semibold text-destructive">
-                          {calculatedBudgets.filter(b => b.percentage >= 100).length}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Limites Diários e Semanais</CardTitle>
-                  <CardDescription>
-                    Quanto você ainda pode gastar para seguir seu orçamento
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {calculatedBudgets
-                      .filter(budget => budget.percentage < 100 && budget.percentage >= 50)
-                      .sort((a, b) => b.percentage - a.percentage)
-                      .slice(0, 3)
-                      .map((budget) => (
-                        <div key={budget.category} className="space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">{budget.category}</span>
-                            <span className={`text-sm ${budget.percentage >= 80 ? 'text-finance-expense' : ''}`}>
-                              {budget.percentage}% usado
-                            </span>
+            <h3 className="text-lg font-medium">Progresso do Orçamento</h3>
+            {isLoadingBudgets ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <>
+                {calculatedBudgets.map((budget) => {
+                  return (
+                    <div key={budget.categoryId || budget.category} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <BarChart size={18} className="text-primary" />
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar size={14} />
-                              <span>Diário:</span>
-                            </div>
-                            <span className="font-medium">{formatCurrency(budget.dailyRemaining)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar size={14} />
-                              <span>Semanal:</span>
-                            </div>
-                            <span className="font-medium">{formatCurrency(budget.weeklyRemaining)}</span>
-                          </div>
-                          <Separator className="my-1" />
+                          <span className="font-medium">{budget.category}</span>
                         </div>
-                      ))}
-                    
-                    {calculatedBudgets.filter(budget => budget.percentage < 100 && budget.percentage >= 50).length === 0 && (
-                      <div className="text-center py-4 text-muted-foreground">
-                        <Coins size={24} className="mx-auto mb-2" />
-                        <p>Seus orçamentos estão em bom estado!</p>
-                      </div>
-                    )}
-                    
-                    {calculatedBudgets.filter(budget => budget.percentage >= 100).length > 0 && (
-                      <>
-                        <Separator />
-                        <div className="rounded-md border-destructive border bg-destructive/10 p-3">
-                          <div className="flex gap-2 items-center">
-                            <AlertTriangle className="text-destructive h-5 w-5" />
-                            <p className="text-sm font-medium">Orçamentos ultrapassados</p>
-                          </div>
-                          <ul className="mt-2 space-y-1 text-sm pl-6 list-disc">
-                            {calculatedBudgets
-                              .filter(budget => budget.percentage >= 100)
-                              .map(budget => (
-                                <li key={budget.category}>
-                                  <span className="font-medium">{budget.category}</span> - Excedido em{' '}
-                                  <span className="text-destructive font-medium">
-                                    {formatCurrency(budget.spent - budget.amount)}
-                                  </span>
-                                </li>
-                              ))}
-                          </ul>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium">Progresso do Orçamento</h3>
-              {calculatedBudgets.map((budget) => {
-                return (
-                  <div key={budget.category} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <BarChart size={18} className="text-primary" />
-                        </div>
-                        <span className="font-medium">{budget.category}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">
-                          <span 
-                            className={`font-medium ${
-                              budget.percentage > 100 
-                                ? 'text-destructive' 
-                                : budget.percentage > 80 
-                                  ? 'text-finance-expense' 
-                                  : 'text-foreground'
-                            }`}
-                          >
-                            {formatCurrency(budget.spent)}
-                          </span>
-                          <span className="text-muted-foreground"> / {formatCurrency(budget.amount)}</span>
-                        </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal size={16} className="text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEditDialog(budget)}>
-                              <Edit size={16} className="mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteDialog(budget)} 
-                              className="text-destructive"
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">
+                            <span 
+                              className={`font-medium ${
+                                budget.percentage > 100 
+                                  ? 'text-destructive' 
+                                  : budget.percentage > 80 
+                                    ? 'text-finance-expense' 
+                                    : 'text-foreground'
+                              }`}
                             >
-                              <Trash2 size={16} className="mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              {formatCurrency(budget.spent)}
+                            </span>
+                            <span className="text-muted-foreground"> / {formatCurrency(budget.amount)}</span>
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal size={16} className="text-muted-foreground" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenEditDialog(budget)}>
+                                <Edit size={16} className="mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteDialog(budget)} 
+                                className="text-destructive"
+                              >
+                                <Trash2 size={16} className="mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-500 ease-out rounded-full ${
+                              budget.percentage >= 100 
+                                ? 'bg-destructive' 
+                                : budget.percentage >= 80 
+                                  ? 'bg-finance-expense' 
+                                  : 'bg-primary'
+                            }`}
+                            style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{budget.percentage}% usado</span>
+                          <span>
+                            {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
+                          </span>
+                        </div>
+                        {budget.percentage < 100 && (
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            <span>Limite diário: {formatCurrency(budget.dailyRemaining)}</span>
+                            <span>Limite semanal: {formatCurrency(budget.weeklyRemaining)}</span>
+                          </div>
+                        )}
+                        {budget.percentage >= 100 && (
+                          <div className="flex items-center gap-1 text-xs text-destructive mt-1">
+                            <AlertTriangle size={12} />
+                            <span>Orçamento excedido em {formatCurrency(budget.spent - budget.amount)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-500 ease-out rounded-full ${
-                            budget.percentage >= 100 
-                              ? 'bg-destructive' 
-                              : budget.percentage >= 80 
-                                ? 'bg-finance-expense' 
-                                : 'bg-primary'
-                          }`}
-                          style={{ width: `${Math.min(budget.percentage, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{budget.percentage}% usado</span>
-                        <span>
-                          {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
-                        </span>
-                      </div>
-                      {budget.percentage < 100 && (
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>Limite diário: {formatCurrency(budget.dailyRemaining)}</span>
-                          <span>Limite semanal: {formatCurrency(budget.weeklyRemaining)}</span>
-                        </div>
-                      )}
-                      {budget.percentage >= 100 && (
-                        <div className="flex items-center gap-1 text-xs text-destructive mt-1">
-                          <AlertTriangle size={12} />
-                          <span>Orçamento excedido em {formatCurrency(budget.spent - budget.amount)}</span>
-                        </div>
-                      )}
-                    </div>
+                  );
+                })}
+                
+                {calculatedBudgets.length === 0 && (
+                  <div className="text-center py-12 border rounded-lg bg-muted/20">
+                    <BarChart size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Nenhum orçamento definido</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Defina orçamentos para acompanhar seus gastos por categoria
+                    </p>
+                    <Button onClick={handleOpenCreateDialog}>
+                      <Plus size={16} className="mr-2" />
+                      Adicionar orçamento
+                    </Button>
                   </div>
-                );
-              })}
-              
-              {calculatedBudgets.length === 0 && (
-                <div className="text-center py-12 border rounded-lg bg-muted/20">
-                  <BarChart size={48} className="mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhum orçamento definido</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Defina orçamentos para acompanhar seus gastos por categoria
-                  </p>
-                  <Button onClick={handleOpenCreateDialog}>
-                    <Plus size={16} className="mr-2" />
-                    Adicionar orçamento
-                  </Button>
-                </div>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
         </TabsContent>
         
@@ -686,14 +711,23 @@ export function Budgets() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               if (editingBudget) {
-                updateBudgetGoal(editingBudget.category, { 
-                  amount: editingBudget.amount,
-                  period: editingBudget.period 
-                });
-                setIsEditDialogOpen(false);
-                toast.success("Orçamento atualizado com sucesso");
+                try {
+                  const { error } = await supabase
+                    .from('budgets')
+                    .update({ amount: editingBudget.amount })
+                    .eq('id', editingBudget.id);
+                  
+                  if (error) throw error;
+                  
+                  queryClient.invalidateQueries({ queryKey: ['budgets'] });
+                  setIsEditDialogOpen(false);
+                  toast.success("Orçamento atualizado com sucesso");
+                } catch (error) {
+                  console.error('Error updating budget:', error);
+                  toast.error("Erro ao atualizar orçamento");
+                }
               }
             }}>
               Salvar Alterações

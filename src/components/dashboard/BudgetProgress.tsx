@@ -3,6 +3,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
 import { BarChart } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProgressBarProps {
   value: number;
@@ -39,13 +41,73 @@ function ProgressBar({
 }
 
 export function BudgetProgress() {
-  const { budgetGoals, formatCurrency } = useFinance();
+  const { formatCurrency } = useFinance();
   const navigate = useNavigate();
   
-  // Sort by highest percentage spent
-  const sortedBudgets = [...budgetGoals]
-    .sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount))
-    .slice(0, 5);
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+  
+  // Fetch budget data from Supabase
+  const { data: budgetGoals = [], isLoading } = useQuery({
+    queryKey: ['budgetProgress', currentMonth, currentYear],
+    queryFn: async () => {
+      const { data: categories, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, name, type')
+        .eq('type', 'expense')
+        .eq('is_active', true);
+      
+      if (categoriesError) throw categoriesError;
+      
+      const { data: budgets, error: budgetsError } = await supabase
+        .from('budgets')
+        .select(`
+          id,
+          amount,
+          category_id,
+          categories (
+            name,
+            type
+          )
+        `)
+        .eq('month', currentMonth)
+        .eq('year', currentYear);
+      
+      if (budgetsError) throw budgetsError;
+      
+      // Get transactions to calculate spent amounts
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('amount, category_id')
+        .gte('date', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
+        .lt('date', `${currentMonth === 12 ? currentYear + 1 : currentYear}-${String(currentMonth === 12 ? 1 : currentMonth + 1).padStart(2, '0')}-01`)
+        .eq('transaction_type', 'expense');
+      
+      if (transactionsError) throw transactionsError;
+      
+      // Map budgets with their spent amounts
+      const budgetsWithSpent = budgets.map(budget => {
+        const categoryTransactions = transactions?.filter(
+          t => t.category_id === budget.category_id
+        ) || [];
+        
+        const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+        
+        return {
+          id: budget.id,
+          category: budget.categories.name,
+          categoryId: budget.category_id,
+          amount: Number(budget.amount),
+          spent: spent
+        };
+      });
+      
+      // Sort by highest percentage spent
+      return budgetsWithSpent.sort((a, b) => (b.spent / b.amount) - (a.spent / a.amount)).slice(0, 5);
+    },
+    enabled: !!supabase
+  });
   
   const handleNavigateToBudgets = () => {
     navigate('/budgets');
@@ -64,47 +126,65 @@ export function BudgetProgress() {
           </button>
         </div>
         
-        <div className="space-y-4">
-          {sortedBudgets.map((budget) => {
-            const percentage = Math.round((budget.spent / budget.amount) * 100);
-            
-            return (
-              <div key={budget.category} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <BarChart size={16} className="text-primary" />
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {budgetGoals.length > 0 ? (
+              budgetGoals.map((budget) => {
+                const percentage = Math.round((budget.spent / budget.amount) * 100);
+                
+                return (
+                  <div key={budget.id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <BarChart size={16} className="text-primary" />
+                        </div>
+                        <span className="font-medium">{budget.category}</span>
+                      </div>
+                      <span className="text-sm">
+                        <span 
+                          className={`font-medium ${
+                            percentage > 100 
+                              ? 'text-destructive' 
+                              : percentage > 80 
+                                ? 'text-finance-expense' 
+                                : 'text-foreground'
+                          }`}
+                        >
+                          {formatCurrency(budget.spent)}
+                        </span>
+                        <span className="text-muted-foreground"> / {formatCurrency(budget.amount)}</span>
+                      </span>
                     </div>
-                    <span className="font-medium">{budget.category}</span>
+                    <div className="space-y-1">
+                      <ProgressBar value={budget.spent} max={budget.amount} />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{percentage}% usado</span>
+                        <span>
+                          {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-sm">
-                    <span 
-                      className={`font-medium ${
-                        percentage > 100 
-                          ? 'text-destructive' 
-                          : percentage > 80 
-                            ? 'text-finance-expense' 
-                            : 'text-foreground'
-                      }`}
-                    >
-                      {formatCurrency(budget.spent)}
-                    </span>
-                    <span className="text-muted-foreground"> / {formatCurrency(budget.amount)}</span>
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <ProgressBar value={budget.spent} max={budget.amount} />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{percentage}% usado</span>
-                    <span>
-                      {formatCurrency(Math.max(budget.amount - budget.spent, 0))} restante
-                    </span>
-                  </div>
-                </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p>Nenhum orçamento definido para este mês</p>
+                <button 
+                  className="text-primary hover:underline mt-2"
+                  onClick={handleNavigateToBudgets}
+                >
+                  Criar orçamentos
+                </button>
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale';
 
 interface AnnualBudgetItem {
   category: string;
+  categoryId: string;
   type: 'income' | 'expense' | 'goal';
   values: number[];
   isParent?: boolean;
@@ -16,7 +17,7 @@ interface AnnualBudgetTableProps {
   year: number;
   budgetData: AnnualBudgetItem[];
   formatCurrency: (value: number) => string;
-  onCellClick?: (category: string, month: number, currentValue: number) => void;
+  onCellClick?: (category: string, categoryId: string, month: number, currentValue: number) => void;
 }
 
 export function AnnualBudgetTable({ 
@@ -92,7 +93,7 @@ export function AnnualBudgetTable({
                   className={`text-center ${getCellStyle(item.type, item.isParent)} ${
                     onCellClick ? "cursor-pointer hover:bg-muted" : ""
                   }`}
-                  onClick={() => onCellClick && onCellClick(item.category, monthIndex, value)}
+                  onClick={() => onCellClick && onCellClick(item.category, item.categoryId, monthIndex, value)}
                 >
                   {formatCurrency(value)}
                 </TableCell>

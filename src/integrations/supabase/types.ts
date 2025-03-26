@@ -9,7 +9,457 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bill_payments: {
+        Row: {
+          amount: number
+          bill_id: string | null
+          created_at: string | null
+          id: string
+          month: number
+          payment_date: string
+          status: string
+          transaction_id: string | null
+          updated_at: string | null
+          user_id: string | null
+          year: number
+        }
+        Insert: {
+          amount: number
+          bill_id?: string | null
+          created_at?: string | null
+          id?: string
+          month: number
+          payment_date: string
+          status: string
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          year: number
+        }
+        Update: {
+          amount?: number
+          bill_id?: string | null
+          created_at?: string | null
+          id?: string
+          month?: number
+          payment_date?: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bills: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          description: string
+          due_day: number
+          id: string
+          institution_id: string | null
+          is_active: boolean | null
+          is_recurring: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          description: string
+          due_day: number
+          id?: string
+          institution_id?: string | null
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string
+          due_day?: number
+          id?: string
+          institution_id?: string | null
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          id: string
+          month: number
+          updated_at: string | null
+          user_id: string | null
+          year: number
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          month: number
+          updated_at?: string | null
+          user_id?: string | null
+          year: number
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          month?: number
+          updated_at?: string | null
+          user_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      credit_cards: {
+        Row: {
+          closing_day: number
+          created_at: string | null
+          due_day: number
+          id: string
+          institution_id: string | null
+          is_active: boolean | null
+          limit_amount: number
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          closing_day: number
+          created_at?: string | null
+          due_day: number
+          id?: string
+          institution_id?: string | null
+          is_active?: boolean | null
+          limit_amount: number
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          closing_day?: number
+          created_at?: string | null
+          due_day?: number
+          id?: string
+          institution_id?: string | null
+          is_active?: boolean | null
+          limit_amount?: number
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_contributions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          description: string | null
+          goal_id: string | null
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_contributions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          current_amount: number | null
+          description: string | null
+          id: string
+          is_completed: boolean | null
+          start_date: string
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          start_date: string
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          start_date?: string
+          target_amount?: number
+          target_date?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institutions: {
+        Row: {
+          created_at: string | null
+          current_balance: number | null
+          id: string
+          is_active: boolean | null
+          logo: string | null
+          name: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_balance?: number | null
+          id?: string
+          is_active?: boolean | null
+          logo?: string | null
+          name: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_balance?: number | null
+          id?: string
+          is_active?: boolean | null
+          logo?: string | null
+          name?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          card_id: string | null
+          category_id: string | null
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          institution_id: string | null
+          notes: string | null
+          settlement_date: string | null
+          status: string
+          subcategory_id: string | null
+          transaction_type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          institution_id?: string | null
+          notes?: string | null
+          settlement_date?: string | null
+          status: string
+          subcategory_id?: string | null
+          transaction_type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          institution_id?: string | null
+          notes?: string | null
+          settlement_date?: string | null
+          status?: string
+          subcategory_id?: string | null
+          transaction_type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, Download, Save } from 'lucide-react';
@@ -8,15 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
-// Sample annual data structure
-interface AnnualBudgetItem {
-  category: string;
-  type: 'income' | 'expense' | 'goal';
-  values: number[];
-  isParent?: boolean;
-  parentCategory?: string;
-}
+import { supabase } from '@/integrations/supabase/client';
 
 interface AnnualBudgetViewProps {
   formatCurrency: (value: number) => string;
@@ -31,107 +24,168 @@ export function AnnualBudgetView({
   onChangeYear,
   onExportData
 }: AnnualBudgetViewProps) {
+  const queryClient = useQueryClient();
   const [isEditingCell, setIsEditingCell] = useState(false);
   const [currentEditCell, setCurrentEditCell] = useState<{
     category: string;
+    categoryId: string;
     month: number;
     value: number;
   } | null>(null);
   const [editValue, setEditValue] = useState('');
   
-  // Sample data generation - in a real app, this would come from props or a context
-  const generateSampleData = (): AnnualBudgetItem[] => {
-    // Parent categories
-    const incomeCategory: AnnualBudgetItem = {
-      category: 'Receitas',
-      type: 'income',
-      values: Array(12).fill(0).map(() => 8000 + Math.random() * 4000),
-      isParent: true
-    };
-    
-    // Income subcategories
-    const salaryCategory: AnnualBudgetItem = {
-      category: 'Salário',
-      type: 'income',
-      values: Array(12).fill(0).map(() => 6000 + Math.random() * 1000),
-      parentCategory: 'Receitas'
-    };
-    
-    const extraIncomeCategory: AnnualBudgetItem = {
-      category: 'Renda extra',
-      type: 'income',
-      values: Array(12).fill(0).map(() => 2000 + Math.random() * 1000),
-      parentCategory: 'Receitas'
-    };
-    
-    // Parent expense category
-    const expenseCategory: AnnualBudgetItem = {
-      category: 'Despesas',
-      type: 'expense',
-      values: Array(12).fill(0).map(() => 5000 + Math.random() * 3000),
-      isParent: true
-    };
-    
-    // Expense subcategories
-    const housingCategory: AnnualBudgetItem = {
-      category: 'Moradia',
-      type: 'expense',
-      values: Array(12).fill(0).map(() => 2000 + Math.random() * 500),
-      parentCategory: 'Despesas'
-    };
-    
-    const foodCategory: AnnualBudgetItem = {
-      category: 'Alimentação',
-      type: 'expense',
-      values: Array(12).fill(0).map(() => 1000 + Math.random() * 500),
-      parentCategory: 'Despesas'
-    };
-    
-    const transportCategory: AnnualBudgetItem = {
-      category: 'Transporte',
-      type: 'expense',
-      values: Array(12).fill(0).map(() => 500 + Math.random() * 200),
-      parentCategory: 'Despesas'
-    };
-    
-    const entertainmentCategory: AnnualBudgetItem = {
-      category: 'Lazer',
-      type: 'expense',
-      values: Array(12).fill(0).map(() => 300 + Math.random() * 200),
-      parentCategory: 'Despesas'
-    };
-    
-    // Goals category
-    const goalsCategory: AnnualBudgetItem = {
-      category: 'Metas',
-      type: 'goal',
-      values: Array(12).fill(0).map(() => 1000 + Math.random() * 1000),
-      isParent: true
-    };
-    
-    return [
-      incomeCategory,
-      salaryCategory,
-      extraIncomeCategory,
-      expenseCategory,
-      housingCategory,
-      foodCategory,
-      transportCategory,
-      entertainmentCategory,
-      goalsCategory
-    ];
-  };
+  // Fetch categories from Supabase
+  const { data: categories = [] } = useQuery({
+    queryKey: ['annualBudgetCategories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, type')
+        .order('type')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!supabase
+  });
   
-  const budgetData = generateSampleData();
+  // Fetch annual budget data from Supabase
+  const { data: annualBudgetData = [], isLoading } = useQuery({
+    queryKey: ['annualBudgets', currentYear],
+    queryFn: async () => {
+      // Get all budgets for the current year
+      const { data, error } = await supabase
+        .from('budgets')
+        .select(`
+          id,
+          amount,
+          month,
+          year,
+          category_id,
+          categories (
+            id,
+            name,
+            type
+          )
+        `)
+        .eq('year', currentYear);
+      
+      if (error) throw error;
+      
+      // Group data by category type
+      const groupedByType: Record<string, any[]> = {
+        income: [],
+        expense: [],
+        goal: []
+      };
+      
+      // First, create parent categories
+      const incomeCategories = categories.filter(c => c.type === 'income');
+      const expenseCategories = categories.filter(c => c.type === 'expense');
+      const goalCategories = categories.filter(c => c.type === 'goal');
+      
+      if (incomeCategories.length > 0) {
+        groupedByType.income.push({
+          category: 'Receitas',
+          categoryId: 'income-parent',
+          type: 'income',
+          values: new Array(12).fill(0),
+          isParent: true
+        });
+      }
+      
+      if (expenseCategories.length > 0) {
+        groupedByType.expense.push({
+          category: 'Despesas',
+          categoryId: 'expense-parent',
+          type: 'expense',
+          values: new Array(12).fill(0),
+          isParent: true
+        });
+      }
+      
+      if (goalCategories.length > 0) {
+        groupedByType.goal.push({
+          category: 'Metas',
+          categoryId: 'goal-parent',
+          type: 'goal',
+          values: new Array(12).fill(0),
+          isParent: true
+        });
+      }
+      
+      // Process the budget data
+      const catData: Record<string, number[]> = {};
+      const catInfo: Record<string, { name: string, type: string, id: string }> = {};
+      
+      // Initialize category data
+      categories.forEach(cat => {
+        catData[cat.id] = new Array(12).fill(0);
+        catInfo[cat.id] = { 
+          name: cat.name, 
+          type: cat.type,
+          id: cat.id
+        };
+      });
+      
+      // Fill in the budget values
+      data.forEach(budget => {
+        if (budget.categories) {
+          const monthIndex = budget.month - 1;
+          if (catData[budget.category_id]) {
+            catData[budget.category_id][monthIndex] = Number(budget.amount);
+            
+            // Also update parent totals
+            const categoryType = budget.categories.type;
+            if (categoryType) {
+              const parentIndex = groupedByType[categoryType].findIndex(item => item.isParent);
+              if (parentIndex !== -1) {
+                groupedByType[categoryType][parentIndex].values[monthIndex] += Number(budget.amount);
+              }
+            }
+          }
+        }
+      });
+      
+      // Convert to our data format
+      Object.entries(catData).forEach(([catId, values]) => {
+        const info = catInfo[catId];
+        if (info) {
+          const type = info.type;
+          groupedByType[type].push({
+            category: info.name,
+            categoryId: catId,
+            type: type as 'income' | 'expense' | 'goal',
+            values,
+            parentCategory: type === 'income' ? 'Receitas' : type === 'expense' ? 'Despesas' : 'Metas'
+          });
+        }
+      });
+      
+      // Combine all data in the correct order
+      const result = [
+        ...groupedByType.income,
+        ...groupedByType.expense,
+        ...groupedByType.goal
+      ];
+      
+      return result;
+    },
+    enabled: !!supabase && categories.length > 0
+  });
   
   const handleNavigateYear = (direction: 'prev' | 'next') => {
     onChangeYear(direction === 'prev' ? currentYear - 1 : currentYear + 1);
   };
   
-  const handleCellClick = (category: string, month: number, currentValue: number) => {
-    // Fix: use direct object assignment instead of property that doesn't exist in type
+  const handleCellClick = (category: string, categoryId: string, month: number, currentValue: number) => {
+    // Don't allow editing parent categories
+    if (categoryId.endsWith('-parent')) return;
+    
     setCurrentEditCell({
       category,
+      categoryId,
       month,
       value: currentValue
     });
@@ -143,7 +197,7 @@ export function AnnualBudgetView({
     setEditValue(e.target.value);
   };
   
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!currentEditCell) return;
     
     const newValue = parseFloat(editValue);
@@ -152,9 +206,51 @@ export function AnnualBudgetView({
       return;
     }
     
-    // Here you would update the actual data in your state/context
-    toast.success(`Valor atualizado para ${formatCurrency(newValue)}`);
-    setIsEditingCell(false);
+    try {
+      const monthNumber = currentEditCell.month + 1;
+      
+      // Check if budget already exists
+      const { data: existingBudget, error: fetchError } = await supabase
+        .from('budgets')
+        .select('id')
+        .eq('category_id', currentEditCell.categoryId)
+        .eq('month', monthNumber)
+        .eq('year', currentYear)
+        .single();
+      
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+      
+      if (existingBudget) {
+        // Update existing budget
+        const { error } = await supabase
+          .from('budgets')
+          .update({ amount: newValue })
+          .eq('id', existingBudget.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new budget
+        const { error } = await supabase
+          .from('budgets')
+          .insert({
+            category_id: currentEditCell.categoryId,
+            amount: newValue,
+            month: monthNumber,
+            year: currentYear
+          });
+        
+        if (error) throw error;
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['annualBudgets'] });
+      toast.success(`Valor atualizado para ${formatCurrency(newValue)}`);
+      setIsEditingCell(false);
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      toast.error("Erro ao atualizar orçamento");
+    }
   };
   
   return (
@@ -184,12 +280,18 @@ export function AnnualBudgetView({
           </div>
         </CardHeader>
         <CardContent>
-          <AnnualBudgetTable 
-            year={currentYear} 
-            budgetData={budgetData} 
-            formatCurrency={formatCurrency}
-            onCellClick={handleCellClick}
-          />
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <AnnualBudgetTable 
+              year={currentYear} 
+              budgetData={annualBudgetData} 
+              formatCurrency={formatCurrency}
+              onCellClick={handleCellClick}
+            />
+          )}
           <div className="mt-4 text-sm text-muted-foreground">
             Clique em qualquer valor na tabela para editar o orçamento para aquele mês.
           </div>
