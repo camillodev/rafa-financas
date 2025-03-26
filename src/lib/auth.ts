@@ -17,8 +17,8 @@ export function useAuth() {
 
     const getSupabaseToken = async () => {
       try {
-        // Clerk's user.getToken() is the correct method to get a JWT
-        const token = await user.getToken({ template: 'supabase' });
+        // Use the JWT template for Supabase
+        const token = await user.getToken({ template: 'supabase' }) as string;
         setSupabaseToken(token);
         
         // Set the token in Supabase
