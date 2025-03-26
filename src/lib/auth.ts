@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { supabase, getSupabaseWithAuth } from '@/integrations/supabase/client';
@@ -29,9 +30,16 @@ export function useAuth() {
         
         // Create a new Supabase client with the JWT
         const authClient = getSupabaseWithAuth(token);
-        setSupabaseClient(authClient);
         
-        // Set auth ready state without testing
+        // Set the session for the client directly
+        try {
+          await authClient.auth.setSession({ access_token: token, refresh_token: '' });
+          console.log('Supabase session set successfully');
+        } catch (sessionError) {
+          console.error('Error setting Supabase session:', sessionError);
+        }
+        
+        setSupabaseClient(authClient);
         setIsSupabaseReady(true);
         console.log('Supabase client authenticated with Clerk JWT');
       } catch (error) {
