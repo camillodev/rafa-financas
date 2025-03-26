@@ -2,11 +2,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialInstitution } from "@/types/finance";
 
-export async function fetchInstitutions() {
-  const { data, error } = await supabase
+export async function fetchInstitutions(includeInactive = false) {
+  let query = supabase
     .from('institutions')
     .select('*')
     .order('name');
+  
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+  
+  const { data, error } = await query;
   
   if (error) {
     console.error('Erro ao buscar instituições financeiras:', error);
@@ -14,6 +20,21 @@ export async function fetchInstitutions() {
   }
   
   return data || [];
+}
+
+export async function fetchInstitutionById(id: string) {
+  const { data, error } = await supabase
+    .from('institutions')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error) {
+    console.error('Erro ao buscar instituição financeira:', error);
+    throw error;
+  }
+  
+  return data;
 }
 
 export async function addInstitution(institution: Omit<FinancialInstitution, 'id'>) {
@@ -87,7 +108,7 @@ export async function updateInstitutionBalance(id: string, amount: number) {
     throw fetchError;
   }
   
-  const newBalance = parseFloat(currentInstitution.current_balance) + amount;
+  const newBalance = parseFloat(String(currentInstitution.current_balance)) + amount;
   
   // Atualizar o saldo
   const { data, error } = await supabase
@@ -104,3 +125,6 @@ export async function updateInstitutionBalance(id: string, amount: number) {
   
   return data;
 }
+
+// Aliasing para compatibilidade com os hooks existentes
+export const createInstitution = addInstitution;

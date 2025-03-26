@@ -16,6 +16,7 @@ export interface Transaction {
   status: 'completed' | 'pending';
   dueDate?: Date;
   card?: string;
+  isActive?: boolean;
 }
 
 export interface Category {
@@ -25,6 +26,7 @@ export interface Category {
   color: string;
   budget?: number;
   type: TransactionType;
+  isActive?: boolean;
 }
 
 export interface Subcategory {
@@ -69,7 +71,7 @@ export interface CreditCard {
   id: string;
   name: string;
   limit: number;
-  brand: string;
+  brand?: string;
   dueDate: number;
   institutionId: string;
   number?: string;
@@ -79,6 +81,7 @@ export interface CreditCard {
   color?: string;
   used?: number;
   archived?: boolean;
+  isActive?: boolean;
 }
 
 export interface GoalTransaction {
@@ -106,6 +109,7 @@ export interface SplitBillParticipant {
   name: string;
   phone?: string;
   email?: string;
+  group_id?: string;
 }
 
 export interface SplitBillGroup {
@@ -119,7 +123,7 @@ export interface SplitBillGroup {
 export type SplitBillDivisionMethod = 'equal' | 'fixed' | 'percentage' | 'weight';
 
 export interface SplitBillParticipantShare {
-  participantId: string; // This is indeed required, not optional
+  participantId: string;
   amount?: number;
   percentage?: number;
   weight?: number;

@@ -150,7 +150,7 @@ export async function addContribution(goalId: string, amount: number, date: Date
     throw goalError;
   }
   
-  const newAmount = parseFloat(goal.current_amount) + amount;
+  const newAmount = parseFloat(String(goal.current_amount)) + amount;
   
   const { error: updateError } = await supabase
     .from('goals')
@@ -223,7 +223,7 @@ export async function removeContribution(contributionId: string, goalId: string)
     throw goalError;
   }
   
-  const newAmount = Math.max(0, parseFloat(goal.current_amount) - parseFloat(contribution.amount));
+  const newAmount = Math.max(0, parseFloat(String(goal.current_amount)) - parseFloat(String(contribution.amount)));
   
   const { error: updateError } = await supabase
     .from('goals')
@@ -235,31 +235,38 @@ export async function removeContribution(contributionId: string, goalId: string)
     throw updateError;
   }
   
-  // Registrar modificação da meta
-  await addGoalModification(goalId, {
-    type: 'withdrawal',
-    description: 'Contribuição removida',
-    amount: -parseFloat(contribution.amount)
-  });
+  // Registrar modificação da meta usando inserção direta
+  try {
+    await supabase
+      .from('goal_contributions')
+      .insert({
+        goal_id: goalId,
+        amount: -parseFloat(String(contribution.amount)),
+        date: new Date().toISOString().split('T')[0],
+        description: 'Contribuição removida'
+      });
+  } catch (error) {
+    console.error('Erro ao registrar modificação da meta:', error);
+    // Não lançar erro para não interromper o fluxo principal
+  }
   
   return true;
 }
 
 // Função auxiliar para registrar modificações de metas
 export async function addGoalModification(goalId: string, modification: Partial<GoalModification>) {
-  const { error } = await supabase
-    .from('goal_modifications')
-    .insert({
-      goal_id: goalId,
-      date: new Date().toISOString().split('T')[0],
-      type: modification.type,
-      description: modification.description,
-      previous_value: modification.previousValue,
-      new_value: modification.newValue,
-      amount: modification.amount
-    });
-  
-  if (error) {
+  // Como não temos uma tabela goal_modifications no schema,
+  // vamos usar a tabela goal_contributions para registrar as modificações
+  try {
+    await supabase
+      .from('goal_contributions')
+      .insert({
+        goal_id: goalId,
+        date: new Date().toISOString().split('T')[0],
+        description: modification.description || 'Modificação da meta',
+        amount: modification.amount || 0
+      });
+  } catch (error) {
     console.error('Erro ao registrar modificação da meta:', error);
     // Não lançar erro para não interromper o fluxo principal
   }

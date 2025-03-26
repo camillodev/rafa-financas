@@ -14,30 +14,42 @@ export async function fetchTransactions(filters = {}) {
     .order('date', { ascending: false });
   
   // Aplicar filtros dinâmicos
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value) {
-      if (key === 'startDate') {
-        query = query.gte('date', value);
-      } else if (key === 'endDate') {
-        query = query.lte('date', value);
-      } else if (key === 'type') {
-        query = query.eq('transaction_type', value);
-      } else if (key === 'search') {
-        query = query.ilike('description', `%${value}%`);
-      } else {
-        query = query.eq(key, value);
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        if (key === 'startDate') {
+          query = query.gte('date', value);
+        } else if (key === 'endDate') {
+          query = query.lte('date', value);
+        } else if (key === 'type') {
+          query = query.eq('transaction_type', value);
+        } else if (key === 'search') {
+          query = query.ilike('description', `%${String(value)}%`);
+        } else if (key === 'limit' || key === 'offset') {
+          // Esses são tratados depois
+        } else {
+          query = query.eq(key, value);
+        }
       }
+    });
+
+    // Adicionar paginação se necessário
+    if (filters.limit) {
+      query = query.limit(Number(filters.limit));
     }
-  });
+    if (filters.offset) {
+      query = query.range(Number(filters.offset), Number(filters.offset) + (Number(filters.limit) || 10) - 1);
+    }
+  }
   
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   
   if (error) {
     console.error('Erro ao buscar transações:', error);
     throw error;
   }
   
-  return data || [];
+  return { data: data || [], count: count || 0 };
 }
 
 export async function addTransaction(transaction: Omit<Transaction, 'id'>) {
@@ -144,9 +156,9 @@ export async function getFinancialSummary(month: number, year: number) {
   
   data?.forEach(transaction => {
     if (transaction.transaction_type === 'income') {
-      summary.totalIncome += parseFloat(transaction.amount);
+      summary.totalIncome += parseFloat(String(transaction.amount));
     } else {
-      summary.totalExpenses += parseFloat(transaction.amount);
+      summary.totalExpenses += parseFloat(String(transaction.amount));
     }
   });
   
@@ -154,3 +166,6 @@ export async function getFinancialSummary(month: number, year: number) {
   
   return summary;
 }
+
+// Aliasing para compatibilidade com os hooks existentes
+export const createTransaction = addTransaction;

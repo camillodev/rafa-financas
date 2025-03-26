@@ -2,8 +2,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard } from "@/types/finance";
 
-export async function fetchCards() {
-  const { data, error } = await supabase
+export async function fetchCards(includeInactive = false) {
+  let query = supabase
     .from('credit_cards')
     .select(`
       *,
@@ -11,12 +11,36 @@ export async function fetchCards() {
     `)
     .order('name');
   
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+  
+  const { data, error } = await query;
+  
   if (error) {
     console.error('Erro ao buscar cartões de crédito:', error);
     throw error;
   }
   
   return data || [];
+}
+
+export async function fetchCardById(id: string) {
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .select(`
+      *,
+      institutions:institution_id (name, logo)
+    `)
+    .eq('id', id)
+    .single();
+  
+  if (error) {
+    console.error('Erro ao buscar cartão de crédito:', error);
+    throw error;
+  }
+  
+  return data;
 }
 
 export async function addCard(card: Omit<CreditCard, 'id'>) {
@@ -108,8 +132,11 @@ export async function getCardUsage(id: string, month: number, year: number) {
   // Calcular o total gasto
   let totalUsed = 0;
   data?.forEach(transaction => {
-    totalUsed += parseFloat(transaction.amount);
+    totalUsed += parseFloat(String(transaction.amount));
   });
   
   return totalUsed;
 }
+
+// Aliasing para compatibilidade com os hooks existentes
+export const createCard = addCard;

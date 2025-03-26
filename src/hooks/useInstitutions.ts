@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchInstitutions, fetchInstitutionById, createInstitution, updateInstitution, deleteInstitution } from '@/services/institutionService';
+import { fetchInstitutions, fetchInstitutionById, addInstitution as createInstitution, updateInstitution, deleteInstitution } from '@/services/institutionService';
 import { type FinancialInstitution } from '@/types/finance';
 import { toast } from 'sonner';
 

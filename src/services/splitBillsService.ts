@@ -101,7 +101,7 @@ export async function addParticipant(participant: Omit<SplitBillParticipant, 'id
   const { data, error } = await supabase
     .from('split_bill_participants')
     .insert({
-      group_id: participant.groupId,
+      group_id: participant.group_id,
       name: participant.name,
       email: participant.email,
       phone: participant.phone
@@ -442,12 +442,12 @@ export async function getPaymentSummary(splitBillId: string) {
   // Calcular o total pago
   let totalPaid = 0;
   payments?.forEach(payment => {
-    totalPaid += parseFloat(payment.amount);
+    totalPaid += parseFloat(String(payment.amount));
   });
   
   return {
-    totalAmount: parseFloat(bill.total_amount),
+    totalAmount: parseFloat(String(bill.total_amount)),
     totalPaid: totalPaid,
-    remaining: parseFloat(bill.total_amount) - totalPaid
+    remaining: parseFloat(String(bill.total_amount)) - totalPaid
   };
 }
