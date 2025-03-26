@@ -4,7 +4,7 @@ import { useAuth as useClerkAuth, useUser  } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useAuth() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
   const { user } = useUser();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
