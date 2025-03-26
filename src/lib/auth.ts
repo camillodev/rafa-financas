@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useAuth() {
-  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
   const { user } = useUser();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
@@ -19,7 +18,7 @@ export function useAuth() {
       try {
         // Get the JWT token for Supabase from Clerk
         // This needs to use the correct API from Clerk
-        const token = await user.getToken({ template: 'supabase' });
+        const token = await getToken({ template: 'supabase' });
         
         setSupabaseToken(token);
         
@@ -46,7 +45,7 @@ export function useAuth() {
     const interval = setInterval(getSupabaseToken, 55 * 60 * 1000); // 55 minutes
     
     return () => clearInterval(interval);
-  }, [isLoaded, isSignedIn, user]);
+  }, [isLoaded, isSignedIn, user, getToken]);
 
   return {
     isLoaded,
