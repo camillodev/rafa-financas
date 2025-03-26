@@ -1012,7 +1012,7 @@ const Reports = () => {
         );
       }
       
-      case 'budget-vs-actual':
+      case 'budget-vs-actual': {
         if (!isBudgetsEnabled) {
           return (
             <div className="text-center p-6">
@@ -1101,17 +1101,17 @@ const Reports = () => {
       }
       
       case 'credit-card-expenses': {
-  if (!isCardsEnabled) {
-    return (
-      <div className="text-center p-6">
-        <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Relatório não disponível</h3>
-        <p className="text-muted-foreground">
-          Este relatório requer que a funcionalidade de Cartões esteja ativada.
-        </p>
-      </div>
-    );
-  }
+        if (!isCardsEnabled) {
+          return (
+            <div className="text-center p-6">
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Relatório não disponível</h3>
+              <p className="text-muted-foreground">
+                Este relatório requer que a funcionalidade de Cartões esteja ativada.
+              </p>
+            </div>
+          );
+        }
 
         const data = prepareCreditCardExpenses();
         const colors = data.map(item => item.color);
