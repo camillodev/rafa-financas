@@ -1,10 +1,10 @@
 
 import { useEffect, useState } from 'react';
-import { useAuth as useClerkAuth, useUser, isSignedIn  } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser  } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useAuth() {
-  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
@@ -21,7 +21,7 @@ export function useAuth() {
         if(isSignedIn ) {
 
    
-        const token = await (user as any).getToken({ template: 'supabase' }) as string;
+        const token = await getToken({ template: 'supabase' });
 
 
         setSupabaseToken(token);
