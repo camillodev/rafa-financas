@@ -1,4 +1,3 @@
-
 # Rafa Finanças - Sistema de Gestão Financeira Pessoal
 
 ![Rafa Finanças](public/og-image.png)
@@ -29,6 +28,125 @@ Rafa Finanças é uma aplicação web abrangente para gestão financeira pessoal
 - [Recharts](https://recharts.org/) - Biblioteca de gráficos para React
 - [date-fns](https://date-fns.org/) - Biblioteca JavaScript para manipulação de datas
 - [Lucide React](https://lucide.dev/) - Conjunto de ícones para React
+
+## 🚩 Feature Flags
+
+O sistema de Feature Flags permite ativar ou desativar funcionalidades específicas da aplicação sem necessidade de modificar ou reimplantar o código. Isso é útil para testes A/B, lançamentos graduais, ou personalização da experiência do usuário.
+
+### Como Funciona
+
+- As feature flags são armazenadas no localStorage para persistência
+- O controle de features é centralizado em um contexto React
+- Usuários podem habilitar/desabilitar funcionalidades na página de configurações
+- Os componentes da interface e rotas verificam as flags para determinar o comportamento
+
+### Feature Flags Atuais
+
+- `bills` - Contas a Pagar
+- `budgets` - Orçamentos
+- `reports` - Relatórios
+- `cards` - Cartões
+- `goals` - Metas
+- `splitBills` - Dividir Contas
+
+### Adicionando Novas Feature Flags
+
+1. **Adicione a chave da feature no tipo `FeatureKey`**:
+
+```typescript
+// src/context/FeatureFlagsContext.tsx
+export type FeatureKey =
+  | 'bills'
+  | 'budgets' 
+  | 'reports'
+  | 'cards'
+  | 'goals'
+  | 'splitBills'
+  | 'novaFeature'; // Adicione sua nova feature aqui
+```
+
+2. **Adicione o valor padrão (habilitado ou desabilitado)**:
+
+```typescript
+// src/context/FeatureFlagsContext.tsx
+const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
+  bills: true,
+  budgets: true,
+  reports: true,
+  cards: true,
+  goals: true,
+  splitBills: true,
+  novaFeature: false, // Adicione com o valor padrão desejado
+};
+```
+
+3. **Adicione na página de configurações**:
+
+```typescript
+// src/pages/Settings.tsx
+const featureDetails = {
+  // Features existentes...
+  novaFeature: {
+    label: "Nova Funcionalidade",
+    description: "Descrição da nova funcionalidade",
+    icon: <MinhaIcon className="h-4 w-4 mr-2" />
+  },
+};
+```
+
+### Proteção de Rotas com Feature Flags
+
+Para proteger uma rota com feature flag, utilize o componente `FeatureRoute`:
+
+```jsx
+<Route path="/minha-nova-rota" element={
+  <>
+    <SignedIn>
+      <FinanceProvider>
+        <FeatureRoute featureKey="novaFeature" element={<MinhaNovaPage />} />
+      </FinanceProvider>
+    </SignedIn>
+    <SignedOut>
+      <Navigate to="/sign-in" replace />
+    </SignedOut>
+  </>
+} />
+```
+
+### Adicionando ao Menu de Navegação
+
+Para adicionar uma nova funcionalidade ao menu lateral, atualize o arquivo `sidebarConfig.tsx`:
+
+```typescript
+// src/components/layout/sidebar/sidebarConfig.tsx
+export const sidebarLinks = [
+  // Outros links...
+  { 
+    icon: <MinhaIcon size={20} />, 
+    label: "Nova Funcionalidade", 
+    href: "/minha-nova-rota",
+    featureFlag: 'novaFeature' as FeatureKey
+  },
+];
+```
+
+### Verificando Feature Flags em Componentes
+
+Para verificar se uma feature está habilitada dentro de qualquer componente:
+
+```typescript
+import { useFeatureFlags } from '@/context/FeatureFlagsContext';
+
+function MeuComponente() {
+  const { isFeatureEnabled } = useFeatureFlags();
+  
+  if (isFeatureEnabled('novaFeature')) {
+    return <p>Funcionalidade disponível!</p>;
+  }
+  
+  return <p>Funcionalidade não disponível.</p>;
+}
+```
 
 ## 📦 Instalação e Uso
 
