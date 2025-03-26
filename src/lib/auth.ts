@@ -17,6 +17,8 @@ export function useAuth() {
 
     const getSupabaseToken = async () => {
       try {
+        // Use the correct method to get the token
+        // The `getToken` method should be replaced with the correct one from Clerk API
         const token = await user.getToken({ template: 'supabase' });
         setSupabaseToken(token);
         
