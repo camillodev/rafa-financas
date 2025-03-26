@@ -17,8 +17,7 @@ export function useAuth() {
 
     const getSupabaseToken = async () => {
       try {
-        // Use the correct method to get the token
-        // The `getToken` method should be replaced with the correct one from Clerk API
+        // Clerk's user.getToken() is the correct method to get a JWT
         const token = await user.getToken({ template: 'supabase' });
         setSupabaseToken(token);
         
