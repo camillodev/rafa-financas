@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, memo } from 'react';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ interface AdvancedFiltersBuilderProps {
   clearButtonLabel?: string;
 }
 
-const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
+const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = memo(({
   title = "Filtros Avançados",
   fields,
   onChange,
@@ -42,8 +42,41 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
   applyButtonLabel = "Aplicar",
   clearButtonLabel = "Limpar Filtros"
 }) => {
-  const renderField = (field: FilterField) => {
+  const renderField = useCallback((field: FilterField) => {
     const id = `filter-${field.name}`;
+
+    // Create memoized change handlers for each field type
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(field.name, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(field.name, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(field.name, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleDateRangeStartChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(`${field.name}.start`, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleDateRangeEndChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(`${field.name}.end`, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleNumberRangeMinChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(`${field.name}.min`, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleNumberRangeMaxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(`${field.name}.max`, e.target.value);
+    }, [field.name, onChange]);
+
+    const handleSelectChange = useCallback((value: string) => {
+      onChange(field.name, value);
+    }, [field.name, onChange]);
 
     switch (field.type) {
       case 'select':
@@ -52,7 +85,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
             <Label htmlFor={id}>{field.label}</Label>
             <Select
               value={field.value}
-              onValueChange={(value) => onChange(field.name, value)}
+              onValueChange={handleSelectChange}
             >
               <SelectTrigger id={id}>
                 <SelectValue placeholder={field.placeholder || `Selecione ${field.label.toLowerCase()}`} />
@@ -76,7 +109,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
               id={id}
               value={field.value}
               placeholder={field.placeholder}
-              onChange={(e) => onChange(field.name, e.target.value)}
+              onChange={handleInputChange}
               required={field.required}
             />
           </div>
@@ -90,7 +123,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
               id={id}
               type="date"
               value={field.value}
-              onChange={(e) => onChange(field.name, e.target.value)}
+              onChange={handleDateChange}
               required={field.required}
             />
           </div>
@@ -108,7 +141,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
               min={field.min}
               max={field.max}
               step={field.step || 1}
-              onChange={(e) => onChange(field.name, e.target.value)}
+              onChange={handleNumberChange}
               required={field.required}
             />
           </div>
@@ -123,7 +156,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
                 id={`${id}-start`}
                 type="date"
                 value={field.value.start}
-                onChange={(e) => onChange(`${field.name}.start`, e.target.value)}
+                onChange={handleDateRangeStartChange}
               />
             </div>
             <div className="space-y-1">
@@ -132,7 +165,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
                 id={`${id}-end`}
                 type="date"
                 value={field.value.end}
-                onChange={(e) => onChange(`${field.name}.end`, e.target.value)}
+                onChange={handleDateRangeEndChange}
               />
             </div>
           </div>
@@ -151,7 +184,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
                 max={field.max}
                 step={field.step || 1}
                 value={field.value.min}
-                onChange={(e) => onChange(`${field.name}.min`, e.target.value)}
+                onChange={handleNumberRangeMinChange}
               />
             </div>
             <div className="space-y-1">
@@ -164,7 +197,7 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
                 max={field.max}
                 step={field.step || 1}
                 value={field.value.max}
-                onChange={(e) => onChange(`${field.name}.max`, e.target.value)}
+                onChange={handleNumberRangeMaxChange}
               />
             </div>
           </div>
@@ -173,14 +206,14 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
       default:
         return null;
     }
-  };
+  }, [onChange]);
 
   return (
     <>
       <h4 className="font-medium mb-4">{title}</h4>
 
       <div className="grid gap-4">
-        {fields.map(renderField)}
+        {fields.map(field => renderField(field))}
 
         <div className="flex justify-end gap-2 mt-2">
           <Button
@@ -200,6 +233,8 @@ const AdvancedFiltersBuilder: React.FC<AdvancedFiltersBuilderProps> = ({
       </div>
     </>
   );
-};
+});
+
+AdvancedFiltersBuilder.displayName = 'AdvancedFiltersBuilder';
 
 export default AdvancedFiltersBuilder; 

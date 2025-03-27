@@ -145,8 +145,19 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
     advancedFilters.amountRange.max
   ]);
 
+  // Set filter type
+  const handleSetFilter = useCallback((newFilter: string) => {
+    if (newFilter === 'all') {
+      setSearchParams({});
+      setFilter({});
+    } else {
+      setSearchParams({ filter: newFilter });
+      setFilter({ type: newFilter as 'income' | 'expense' });
+    }
+  }, [setSearchParams]);
+
   // Clear all filters
-  const handleClearFilter = () => {
+  const handleClearFilter = useCallback(() => {
     setSearchParams({});
     setFilter({});
     setSearchTerm('');
@@ -160,21 +171,10 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
       status: '',
       amountRange: { min: '', max: '' },
     });
-  };
-
-  // Set filter type
-  const handleSetFilter = (newFilter: string) => {
-    if (newFilter === 'all') {
-      setSearchParams({});
-      setFilter({});
-    } else {
-      setSearchParams({ filter: newFilter });
-      setFilter({ type: newFilter as 'income' | 'expense' });
-    }
-  };
+  }, [setSearchParams]);
 
   // Update advanced filters
-  const handleAdvancedFilterChange = (field: string, value: string) => {
+  const handleAdvancedFilterChange = useCallback((field: string, value: string) => {
     setAdvancedFilters(prev => {
       if (field.includes('.')) {
         const [parent, child] = field.split('.');
@@ -196,7 +196,7 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
       }
       return { ...prev, [field]: value };
     });
-  };
+  }, []);
 
   // Check if any filter is active
   const hasActiveFilters = useCallback(() => {

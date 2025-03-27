@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Card,
@@ -61,23 +61,34 @@ export function Transactions() {
   // Calculate if filters are active
   const isAnyFilterActive = hasActiveFilters();
 
-  // Use useDataTable for table data management
-  const {
-    currentPage,
-    pageSize,
-    totalPages,
-    paginatedItems: paginatedTransactions,
-    handlePageChange,
-    handlePageSizeChange,
-    pageSizeOptions,
-    sortKey,
-    sortDirection,
-    handleSort
-  } = useDataTable<TransactionValues>({
-    data: filteredTransactions,
-    defaultPageSize: DEFAULT_PAGE_SIZE,
-    pageSizeOptions: PAGE_SIZES
-  });
+  // Memoize the filtered transactions to prevent re-renders
+  const memoizedFilteredTransactions = useMemo(() => filteredTransactions, [filteredTransactions]);
+
+  // State variables for sorting and pagination
+  const [sortKey, setSortKey] = useState<keyof TransactionValues | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const totalPages = useMemo(() => Math.ceil(memoizedFilteredTransactions.length / pageSize), [memoizedFilteredTransactions.length, pageSize]);
+  const pageSizeOptions = useMemo(() => PAGE_SIZES, []);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+    setCurrentPage(1); // Reset to first page when changing page size
+  }, []);
+
+  const handleSort = useCallback((key: keyof TransactionValues) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  }, [sortKey]);
 
   // Form handling
   const {
@@ -157,7 +168,7 @@ export function Transactions() {
         <CardContent>
           <TransactionTable
             filteredTransactions={filteredTransactions}
-            paginatedTransactions={paginatedTransactions}
+            paginatedTransactions={filteredTransactions}
             formatCurrency={formatCurrency}
             handlePageChange={handlePageChange}
             handlePageSizeChange={handlePageSizeChange}

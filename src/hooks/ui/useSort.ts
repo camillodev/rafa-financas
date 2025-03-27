@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -31,8 +31,8 @@ export function useSort<T>({
     direction: initialSortDirection
   });
 
-  // Handle sorting
-  const handleSort = (key: keyof T) => {
+  // Handle sorting with useCallback
+  const handleSort = useCallback((key: keyof T) => {
     let direction: SortDirection = 'asc';
 
     // If we're already sorting by this key, toggle the direction
@@ -41,15 +41,15 @@ export function useSort<T>({
     }
 
     setSortConfig({ key, direction });
-  };
+  }, [sortConfig.key, sortConfig.direction]);
 
   // Reset sort to initial state
-  const resetSort = () => {
+  const resetSort = useCallback(() => {
     setSortConfig({
       key: initialSortKey,
       direction: initialSortDirection
     });
-  };
+  }, [initialSortKey, initialSortDirection]);
 
   // Compute sorted data
   const sortedData = useMemo(() => {
