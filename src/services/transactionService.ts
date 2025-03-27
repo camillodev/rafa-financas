@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/finance";
 
@@ -30,7 +31,7 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
   // Aplicar filtros dinâmicos
   if (filters) {
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
+      if (value !== undefined && value !== null && value !== '') {
         if (key === 'startDate') {
           query = query.gte('date', value as string);
         } else if (key === 'endDate') {
@@ -40,18 +41,22 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
         } else if (key === 'search') {
           query = query.ilike('description', `%${String(value)}%`);
         } else if (key === 'limit' || key === 'offset') {
+          // Esses filtros são aplicados depois
         } else {
-          (query as any) = (query as any).eq(key, String(value));
+          query = query.eq(key, String(value));
         }
       }
     });
 
     // Adicionar paginação se necessário
-    if (filters.limit) {
+    if (filters.limit !== undefined) {
       query = query.limit(Number(filters.limit));
     }
-    if (filters.offset) {
-      query = query.range(Number(filters.offset), Number(filters.offset) + (Number(filters.limit) || 10) - 1);
+    
+    if (filters.offset !== undefined) {
+      const offsetValue = Number(filters.offset);
+      const limitValue = Number(filters.limit || 10);
+      query = query.range(offsetValue, offsetValue + limitValue - 1);
     }
   }
   
