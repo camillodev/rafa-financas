@@ -1,129 +1,71 @@
-import { FilterField } from '@/components/ui/AdvancedFiltersBuilder';
-import { TransactionType } from '@/types/finance';
+import { AdvancedFilters } from './hooks/useTransactionFilters';
 
-interface Category {
-  id: string;
-  name: string;
-  type: TransactionType;
+// Utility function to get transaction filter options
+export function getTransactionFilterOptions() {
+  return [
+    { value: 'all', label: 'Todas' },
+    { value: 'income', label: 'Receitas', color: 'green' },
+    { value: 'expense', label: 'Despesas', color: 'red' },
+  ];
 }
 
-interface Institution {
-  id: string;
-  name: string;
-}
-
-interface AdvancedFilters {
-  dateRange: {
-    start: string;
-    end: string;
-  };
-  category: string;
-  subcategory: string;
-  institution: string;
-  transactionType: string;
-  paymentMethod: string;
-  status: string;
-  amountRange: {
-    min: string;
-    max: string;
-  };
-}
-
-/**
- * Get filter options for transaction types
- */
-export const getTransactionFilterOptions = () => [
-  { value: 'all', label: 'Todos' },
-  { value: 'income', label: 'Receitas', color: 'bg-finance-income text-white' },
-  { value: 'expense', label: 'Despesas', color: 'bg-finance-expense text-white' }
-];
-
-/**
- * Get advanced filter fields based on categories and institutions
- */
-export const getAdvancedFilterFields = (
-  advancedFilters: AdvancedFilters,
-  categories: Category[],
-  institutions: Institution[]
-): FilterField[] => [
+// Utility function to get advanced filter fields
+export function getAdvancedFilterFields(
+  filters: AdvancedFilters,
+  categories: Array<{ id: string; name: string; type: 'income' | 'expense' }> = [],
+  financialInstitutions: Array<{ id: string; name: string }> = []
+) {
+  return [
     {
-      type: 'dateRange',
-      name: 'dateRange',
-      label: 'Data',
-      value: advancedFilters.dateRange
+      id: 'dateRange',
+      label: 'Período',
+      type: 'dateRange' as const,
+      value: filters.dateRange,
+      options: [],
     },
     {
-      type: 'select',
-      name: 'category',
+      id: 'category',
       label: 'Categoria',
-      value: advancedFilters.category,
+      type: 'select' as const,
+      value: filters.category,
       options: [
-        { value: 'all', label: 'Todas as categorias' },
-        ...categories.map(category => ({ value: category.name, label: category.name }))
-      ]
+        { value: 'all', label: 'Todas' },
+        ...categories.map(cat => ({
+          value: cat.name,
+          label: cat.name,
+        })),
+      ],
     },
     {
-      type: 'input',
-      name: 'subcategory',
-      label: 'Subcategoria',
-      value: advancedFilters.subcategory,
-      placeholder: 'Filtrar por subcategoria'
-    },
-    {
-      type: 'select',
-      name: 'institution',
+      id: 'institution',
       label: 'Instituição Financeira',
-      value: advancedFilters.institution,
+      type: 'select' as const,
+      value: filters.institution,
       options: [
-        { value: 'all', label: 'Todas as instituições' },
-        ...institutions.map(institution => ({ value: institution.name, label: institution.name }))
-      ]
+        { value: 'all', label: 'Todas' },
+        ...financialInstitutions.map(inst => ({
+          value: inst.name,
+          label: inst.name,
+        })),
+      ],
     },
     {
-      type: 'select',
-      name: 'transactionType',
-      label: 'Tipo de Transação',
-      value: advancedFilters.transactionType,
-      options: [
-        { value: 'all', label: 'Todos os tipos' },
-        { value: 'Credit Card', label: 'Cartão de Crédito' },
-        { value: 'Transfer', label: 'Transferência' },
-        { value: 'Debit', label: 'Débito' },
-        { value: 'Other', label: 'Outro' }
-      ]
-    },
-    {
-      type: 'select',
-      name: 'paymentMethod',
-      label: 'Método de Pagamento',
-      value: advancedFilters.paymentMethod,
-      options: [
-        { value: 'all', label: 'Todos os métodos' },
-        { value: 'Débito', label: 'Débito' },
-        { value: 'Crédito', label: 'Cartão de Crédito' },
-        { value: 'Transferência', label: 'Transferência' },
-        { value: 'Dinheiro', label: 'Dinheiro' },
-        { value: 'Outros', label: 'Outros' }
-      ]
-    },
-    {
-      type: 'select',
-      name: 'status',
+      id: 'status',
       label: 'Status',
-      value: advancedFilters.status,
+      type: 'select' as const,
+      value: filters.status,
       options: [
-        { value: 'all', label: 'Todos os status' },
-        { value: 'completed', label: 'Concluído' },
-        { value: 'pending', label: 'Pendente' }
-      ]
+        { value: 'all', label: 'Todos' },
+        { value: 'completed', label: 'Concluídas' },
+        { value: 'pending', label: 'Pendentes' },
+      ],
     },
     {
-      type: 'numberRange',
-      name: 'amountRange',
+      id: 'amountRange',
       label: 'Valor',
-      value: advancedFilters.amountRange,
-      placeholder: 'R$ 0,00',
-      min: 0,
-      step: 0.01
-    }
-  ]; 
+      type: 'range' as const,
+      value: filters.amountRange,
+      options: [],
+    },
+  ];
+} 

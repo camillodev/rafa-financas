@@ -1,21 +1,13 @@
 import React from 'react';
-import { Filter, X, Search, SlidersHorizontal } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-interface FilterOption {
-  value: string;
-  label: string;
-  color?: string;
-}
+import { Search, X, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 
 interface FiltersProps {
-  filter: string | null;
+  filter: string;
   searchTerm: string;
   isAdvancedFilterOpen: boolean;
   setIsAdvancedFilterOpen: (open: boolean) => void;
@@ -23,21 +15,12 @@ interface FiltersProps {
   handleSetFilter: (filter: string) => void;
   handleClearFilter: () => void;
   hasActiveFilters: boolean;
-
-  // Customization props
   searchPlaceholder?: string;
-  filterLabel?: string;
-  advancedFiltersLabel?: string;
-  clearFiltersLabel?: string;
-  showAdvancedFilters?: boolean;
-  showSearch?: boolean;
-  filterOptions: FilterOption[];
-
-  // The advanced filters content component
-  advancedFiltersContent?: React.ReactNode;
+  filterOptions: Array<{ value: string; label: string; color?: string }>;
+  advancedFiltersContent: React.ReactNode;
 }
 
-const Filters: React.FC<FiltersProps> = ({
+export default function Filters({
   filter,
   searchTerm,
   isAdvancedFilterOpen,
@@ -46,93 +29,103 @@ const Filters: React.FC<FiltersProps> = ({
   handleSetFilter,
   handleClearFilter,
   hasActiveFilters,
-
-  // Default values for customization
-  searchPlaceholder = "Buscar...",
-  filterLabel = "Filtrar por:",
-  advancedFiltersLabel = "Filtros Avançados",
-  clearFiltersLabel = "Limpar filtros",
-  showAdvancedFilters = true,
-  showSearch = true,
+  searchPlaceholder = 'Pesquisar...',
   filterOptions,
-
   advancedFiltersContent
-}) => {
+}: FiltersProps) {
   return (
-    <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Type Filter */}
-        <div className="bg-accent p-2 rounded-lg flex items-center">
-          <Filter size={16} className="mr-2 text-muted-foreground" />
-          <span className="text-sm font-medium mr-2">{filterLabel}</span>
-
-          <div className="flex gap-1">
-            {filterOptions.map(option => (
-              <button
-                key={option.value}
-                className={`px-3 py-1 text-xs font-medium rounded-md ${filter === option.value
-                  ? option.color
-                    ? `${option.color}`
-                    : 'bg-primary text-primary-foreground'
-                  : 'bg-background'
-                  }`}
-                onClick={() => handleSetFilter(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Search Input */}
-        {showSearch && (
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={searchPlaceholder}
-              className="pl-10 w-64"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                onClick={() => setSearchTerm('')}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Advanced Filter Button */}
-        {showAdvancedFilters && advancedFiltersContent && (
-          <Popover open={isAdvancedFilterOpen} onOpenChange={setIsAdvancedFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <SlidersHorizontal size={16} />
-                <span>{advancedFiltersLabel}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[350px] p-4">
-              {advancedFiltersContent}
-            </PopoverContent>
-          </Popover>
-        )}
-
-        {/* Clear Filters Button */}
-        {hasActiveFilters && (
-          <button
-            className="flex items-center gap-1 text-xs bg-background px-3 py-1 rounded-md border"
-            onClick={handleClearFilter}
+    <div className="flex flex-wrap gap-2 items-center">
+      <div className="relative flex-1 min-w-[240px]">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder={searchPlaceholder}
+          className="pl-8 max-w-lg"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {searchTerm && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1 h-7 w-7 p-0 rounded-full"
+            onClick={() => setSearchTerm('')}
           >
-            <span>{clearFiltersLabel}</span>
-            <X size={12} />
-          </button>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Limpar busca</span>
+          </Button>
+        )}
+      </div>
+
+      <div className="flex gap-2 items-center flex-wrap">
+        {filterOptions.map((option) => (
+          <Button
+            key={option.value}
+            variant={filter === option.value ? 'secondary' : 'outline'}
+            size="sm"
+            className={
+              filter === option.value && option.color
+                ? `bg-${option.color}-100 text-${option.color}-700 hover:bg-${option.color}-200`
+                : ''
+            }
+            onClick={() => handleSetFilter(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+
+        <Popover open={isAdvancedFilterOpen} onOpenChange={setIsAdvancedFilterOpen}>
+          <PopoverTrigger asChild>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={hasActiveFilters ? 'secondary' : 'outline'}
+                    size="icon"
+                    className="relative"
+                  >
+                    <Filter className="h-4 w-4" />
+                    {hasActiveFilters && (
+                      <Badge
+                        className="absolute -top-1 -right-1 w-2 h-2 p-0 rounded-full bg-primary"
+                        variant="secondary"
+                      />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Filtros avançados</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-80 sm:w-96 p-0"
+          >
+            {advancedFiltersContent}
+          </PopoverContent>
+        </Popover>
+
+        {hasActiveFilters && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClearFilter}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Limpar filtros</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
     </div>
   );
-};
-
-export default Filters; 
+} 

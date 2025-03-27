@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Transaction } from '@/types/finance';
+import { TransactionValues } from '@/schemas/transactionSchema';
 
 // Type for filter state
 export type TransactionFilterType = {
@@ -8,7 +8,7 @@ export type TransactionFilterType = {
 };
 
 // Type for advanced filters
-interface AdvancedFilters {
+export interface AdvancedFilters {
   dateRange: {
     start: string;
     end: string;
@@ -30,7 +30,7 @@ interface UseTransactionFiltersReturn {
   searchTerm: string;
   isFilterPopoverOpen: boolean;
   advancedFilters: AdvancedFilters;
-  filteredTransactions: Transaction[];
+  filteredTransactions: TransactionValues[];
   setSearchTerm: (term: string) => void;
   setIsFilterPopoverOpen: (open: boolean) => void;
   handleSetFilter: (newFilter: string) => void;
@@ -39,7 +39,7 @@ interface UseTransactionFiltersReturn {
   hasActiveFilters: () => boolean;
 }
 
-export function useTransactionFilters(transactions: Transaction[]): UseTransactionFiltersReturn {
+export function useTransactionFilters(transactions: TransactionValues[]): UseTransactionFiltersReturn {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<TransactionFilterType>({});
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);

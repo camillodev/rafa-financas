@@ -11,13 +11,13 @@ import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 
 import { useTransaction } from '@/hooks/useTransaction';
 import { useDataTable } from '@/hooks/ui';
-import { TransactionFormValues } from '@/schemas/transactionSchema';
 import {
   useTransactionFilters,
   useTransactionForm,
   useTransactionExport
 } from './hooks';
 import { getTransactionFilterOptions, getAdvancedFilterFields } from './utils';
+import { TransactionValues } from '@/schemas/transactionSchema';
 
 import TransactionTable from './components/TransactionTable';
 import TransactionFormDialog from './components/TransactionFormDialog';
@@ -28,8 +28,10 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 10;
 
 export function Transactions() {
+  // Use the transaction hook for data and operations
   const {
-    filteredTransactions: monthFilteredTransactions,
+    transactions,
+    filteredTransactions: monthTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -41,6 +43,7 @@ export function Transactions() {
     navigateToNextMonth,
   } = useTransaction();
 
+  // Custom hooks for transactions page
   const {
     filter,
     searchTerm,
@@ -53,7 +56,7 @@ export function Transactions() {
     handleClearFilter,
     handleAdvancedFilterChange,
     hasActiveFilters
-  } = useTransactionFilters(monthFilteredTransactions);
+  } = useTransactionFilters(monthTransactions);
 
   // Use useDataTable for table data management
   const {
@@ -67,7 +70,7 @@ export function Transactions() {
     sortKey,
     sortDirection,
     handleSort
-  } = useDataTable({
+  } = useDataTable<TransactionValues>({
     data: filteredTransactions,
     defaultPageSize: DEFAULT_PAGE_SIZE,
     pageSizeOptions: PAGE_SIZES
@@ -87,8 +90,10 @@ export function Transactions() {
     setEditingTransaction
   } = useTransactionForm({
     addTransaction,
-    updateTransaction: (id, data) => updateTransaction(id, data),
-    deleteTransaction
+    updateTransaction,
+    deleteTransaction,
+    categories,
+    financialInstitutions
   });
 
   const { exportTransactions } = useTransactionExport({

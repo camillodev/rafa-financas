@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { Transaction } from '@/types/finance';
+import { TransactionValues } from '@/schemas/transactionSchema';
 
 interface UseTransactionExportOptions {
   dateFormat?: string;
@@ -16,7 +16,7 @@ export function useTransactionExport(options: UseTransactionExportOptions = {}) 
     currentDate = new Date()
   } = options;
 
-  const exportTransactions = (transactions: Transaction[]) => {
+  const exportTransactions = (transactions: TransactionValues[]) => {
     // Create CSV content
     let csvContent = 'Data,Data de Liquidação,Categoria,Subcategoria,Instituição,Tipo de Transação,Descrição,Valor,Status,Tipo\n';
 

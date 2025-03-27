@@ -2,7 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowUpRight, ArrowDownRight, MoreHorizontal, Pencil, Trash2, AlertCircle, ArrowUpDown } from 'lucide-react';
-import { Transaction } from '@/types/finance';
+import { TransactionValues } from '@/schemas/transactionSchema';
 import { SortDirection } from '@/hooks/ui/useSort';
 import {
   Table,
@@ -34,24 +34,26 @@ import {
 import { Button } from "@/components/ui/button";
 import TablePagination from './TablePagination';
 import { formatDate } from '@/lib/utils';
+import { Pagination } from '@/components/ui/Pagination';
+import { Badge } from '@/components/ui/badge';
 
 interface TransactionTableProps {
-  filteredTransactions: Transaction[];
-  paginatedTransactions: Transaction[];
-  formatCurrency: (value: number) => string;
+  filteredTransactions: TransactionValues[];
+  paginatedTransactions: TransactionValues[];
+  formatCurrency: (amount: number) => string;
   handlePageChange: (page: number) => void;
   handlePageSizeChange: (size: number) => void;
-  handleOpenEditDialog: (transaction: Transaction) => void;
-  setEditingTransaction: (transaction: Transaction) => void;
+  handleOpenEditDialog: (transaction: TransactionValues) => void;
+  setEditingTransaction: (transaction: TransactionValues) => void;
   setIsDeleteDialogOpen: (open: boolean) => void;
   currentPage: number;
   totalPages: number;
   pageSize: number;
   PAGE_SIZES: number[];
   // Sorting props
-  sortKey: keyof Transaction | null;
+  sortKey: string | null;
   sortDirection: SortDirection;
-  handleSort: (key: keyof Transaction) => void;
+  handleSort: (key: string) => void;
 }
 
 const TransactionTable: React.FC<TransactionTableProps> = ({
@@ -73,7 +75,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
   handleSort
 }) => {
   // Helper function to render sort indicator
-  const renderSortableHeader = (label: string, key: keyof Transaction) => (
+  const renderSortableHeader = (label: string, key: string) => (
     <div
       className="flex items-center cursor-pointer"
       onClick={() => handleSort(key)}
@@ -87,6 +89,30 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
       )}
     </div>
   );
+
+  // Function to get the sort indicator
+  const getSortIndicator = (key: string) => {
+    if (key !== sortKey) return null;
+    return sortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  // Function to handle editing a transaction
+  const onEditTransaction = (transaction: TransactionValues) => {
+    handleOpenEditDialog(transaction);
+  };
+
+  // Function to handle deleting a transaction
+  const onDeleteTransaction = (transaction: TransactionValues) => {
+    setEditingTransaction(transaction);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Render the badge for transaction type
+  const renderTransactionTypeBadge = (type: 'income' | 'expense') => {
+    const variant = type === 'income' ? 'success' : 'destructive';
+    const label = type === 'income' ? 'Receita' : 'Despesa';
+    return <Badge variant={variant}>{label}</Badge>;
+  };
 
   if (filteredTransactions.length === 0) {
     return (

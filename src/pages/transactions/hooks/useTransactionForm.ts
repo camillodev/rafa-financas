@@ -1,126 +1,50 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Transaction, TransactionType } from '@/types/finance';
-import { TransactionFormValues } from '@/schemas/transactionSchema';
+import { TransactionFormValues, TransactionValues } from '@/schemas/transactionSchema';
 
-type TransactionFormType = {
-  amount: number;
-  type: TransactionType;
-  category: string;
-  subcategory: string;
-  date: string;
-  settlementDate: string;
-  description: string;
-  paymentMethod: string;
-  financialInstitution: string;
-  transactionType: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
-  status: 'completed' | 'pending';
-};
-
-interface TransactionFormActions {
+interface UseTransactionFormConfig {
   addTransaction: (transaction: TransactionFormValues) => Promise<void>;
   updateTransaction: (id: string, transaction: TransactionFormValues) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  categories: Array<{ id: string; name: string; type: TransactionType }>;
-  financialInstitutions: Array<{ id: string; name: string }>;
+  categories?: Array<{ id: string; name: string; type: 'income' | 'expense' }>;
+  financialInstitutions?: Array<{ id: string; name: string }>;
 }
 
 interface UseTransactionFormReturn {
-  formData: TransactionFormType;
-  editingTransaction: Transaction | null;
+  editingTransaction: TransactionValues | null;
   isDialogOpen: boolean;
   isDeleteDialogOpen: boolean;
   setIsDialogOpen: (open: boolean) => void;
   setIsDeleteDialogOpen: (open: boolean) => void;
   handleOpenAddDialog: () => void;
-  handleOpenEditDialog: (transaction: Transaction) => void;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSelectChange: (name: string, value: string) => void;
+  handleOpenEditDialog: (transaction: TransactionValues) => void;
   handleSubmit: (data: TransactionFormValues) => Promise<void>;
   handleDeleteTransaction: () => Promise<void>;
-  setEditingTransaction: (transaction: Transaction | null) => void;
+  setEditingTransaction: (transaction: TransactionValues | null) => void;
 }
 
 export function useTransactionForm({
   addTransaction,
   updateTransaction,
-  deleteTransaction,
-  categories,
-  financialInstitutions
-}: TransactionFormActions): UseTransactionFormReturn {
+  deleteTransaction
+}: UseTransactionFormConfig): UseTransactionFormReturn {
+  // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionValues | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState<TransactionFormType>({
-    amount: 0,
-    type: 'expense',
-    category: '',
-    subcategory: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    settlementDate: format(new Date(), 'yyyy-MM-dd'),
-    description: '',
-    paymentMethod: 'Débito',
-    financialInstitution: 'Banco do Brasil',
-    transactionType: 'Debit',
-    status: 'completed'
-  });
-
+  // Form handlers
   const handleOpenAddDialog = () => {
     setEditingTransaction(null);
-    setFormData({
-      amount: 0,
-      type: 'expense',
-      category: categories.find(c => c.type === 'expense')?.name || '',
-      subcategory: '',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      settlementDate: format(new Date(), 'yyyy-MM-dd'),
-      description: '',
-      paymentMethod: 'Débito',
-      financialInstitution: financialInstitutions[0]?.name || 'Banco do Brasil',
-      transactionType: 'Debit',
-      status: 'completed'
-    });
     setIsDialogOpen(true);
   };
 
-  const handleOpenEditDialog = (transaction: Transaction) => {
+  const handleOpenEditDialog = (transaction: TransactionValues) => {
     setEditingTransaction(transaction);
-    setFormData({
-      amount: transaction.amount,
-      type: transaction.type,
-      category: transaction.category,
-      subcategory: transaction.subcategory || '',
-      date: format(new Date(transaction.date), 'yyyy-MM-dd'),
-      settlementDate: transaction.settlementDate
-        ? format(new Date(transaction.settlementDate), 'yyyy-MM-dd')
-        : format(new Date(transaction.date), 'yyyy-MM-dd'),
-      description: transaction.description,
-      paymentMethod: transaction.paymentMethod || 'Débito',
-      financialInstitution: transaction.financialInstitution || 'Banco do Brasil',
-      transactionType: transaction.transactionType as 'Credit Card' | 'Transfer' | 'Debit' | 'Other' || 'Debit',
-      status: transaction.status
-    });
     setIsDialogOpen(true);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || 0 : value
-    }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
+  // Form submission
   const handleSubmit = async (data: TransactionFormValues) => {
     try {
       if (editingTransaction) {
@@ -138,6 +62,7 @@ export function useTransactionForm({
     }
   };
 
+  // Delete handling
   const handleDeleteTransaction = async () => {
     if (!editingTransaction) return;
 
@@ -152,7 +77,6 @@ export function useTransactionForm({
   };
 
   return {
-    formData,
     editingTransaction,
     isDialogOpen,
     isDeleteDialogOpen,
@@ -160,8 +84,6 @@ export function useTransactionForm({
     setIsDeleteDialogOpen,
     handleOpenAddDialog,
     handleOpenEditDialog,
-    handleInputChange,
-    handleSelectChange,
     handleSubmit,
     handleDeleteTransaction,
     setEditingTransaction

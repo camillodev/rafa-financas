@@ -1,9 +1,9 @@
 import React from 'react';
-import { format } from 'date-fns';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TransactionFormValues, transactionFormSchema } from '@/schemas/transactionSchema';
-import { Transaction } from '@/types/finance';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
@@ -11,17 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -29,122 +19,119 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { transactionFormSchema, TransactionFormValues, TransactionValues } from '@/schemas/transactionSchema';
 
 interface TransactionFormDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  editingTransaction: Transaction | null;
-  onSubmit: (data: TransactionFormValues) => void;
+  editingTransaction: TransactionValues | null;
+  onSubmit: (data: TransactionFormValues) => Promise<void>;
   categories: Array<{ id: string; name: string; type: 'income' | 'expense' }>;
   financialInstitutions: Array<{ id: string; name: string }>;
 }
 
-const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
+export default function TransactionFormDialog({
   isOpen,
   onOpenChange,
   editingTransaction,
   onSubmit,
   categories,
-  financialInstitutions
-}) => {
-  // Set up form with default values
+  financialInstitutions,
+}: TransactionFormDialogProps) {
+  // Setup form with React Hook Form and zod validation
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
-    defaultValues: getDefaultValues(),
-  });
-
-  // Reset form when editing transaction changes
-  React.useEffect(() => {
-    if (isOpen) {
-      const values = getDefaultValues();
-      Object.keys(values).forEach((key) => {
-        form.setValue(key as any, values[key as keyof TransactionFormValues]);
-      });
-    }
-  }, [isOpen, editingTransaction, form]);
-
-  // Get default values based on editing state
-  function getDefaultValues(): TransactionFormValues {
-    if (editingTransaction) {
-      return {
-        description: editingTransaction.description,
-        amount: editingTransaction.amount,
-        type: editingTransaction.type,
-        category: editingTransaction.category,
-        categoryId: editingTransaction.categoryId || '',
-        subcategory: editingTransaction.subcategory || '',
-        date: new Date(editingTransaction.date),
-        settlementDate: editingTransaction.settlementDate
-          ? new Date(editingTransaction.settlementDate)
-          : undefined,
-        paymentMethod: editingTransaction.paymentMethod || undefined,
-        financialInstitution: editingTransaction.financialInstitution || '',
-        transactionType: editingTransaction.transactionType || undefined,
-        status: editingTransaction.status
-      };
-    }
-
-    return {
+    defaultValues: {
       description: '',
       amount: 0,
       type: 'expense',
-      category: categories.find(c => c.type === 'expense')?.name || '',
-      categoryId: categories.find(c => c.type === 'expense')?.id || '',
-      subcategory: '',
+      category: '',
+      categoryId: '',
       date: new Date(),
-      settlementDate: undefined,
-      paymentMethod: 'Débito',
-      financialInstitution: financialInstitutions[0]?.name || '',
-      transactionType: 'Debit',
-      status: 'completed'
-    };
-  }
+      status: 'completed',
+    },
+  });
+
+  // Reset form when dialog opens/closes or editing transaction changes
+  React.useEffect(() => {
+    if (isOpen) {
+      if (editingTransaction) {
+        form.reset({
+          description: editingTransaction.description,
+          amount: editingTransaction.amount,
+          type: editingTransaction.type,
+          category: editingTransaction.category,
+          categoryId: editingTransaction.categoryId,
+          subcategory: editingTransaction.subcategory,
+          date: new Date(editingTransaction.date),
+          settlementDate: editingTransaction.settlementDate ? new Date(editingTransaction.settlementDate) : undefined,
+          paymentMethod: editingTransaction.paymentMethod,
+          financialInstitution: editingTransaction.financialInstitution,
+          transactionType: editingTransaction.transactionType,
+          status: editingTransaction.status,
+        });
+      } else {
+        form.reset({
+          description: '',
+          amount: 0,
+          type: 'expense',
+          category: categories.find(c => c.type === 'expense')?.name || '',
+          categoryId: categories.find(c => c.type === 'expense')?.id || '',
+          date: new Date(),
+          status: 'completed',
+        });
+      }
+    }
+  }, [isOpen, editingTransaction, form, categories]);
 
   // Get filtered categories based on selected transaction type
   const filteredCategories = categories.filter(
-    cat => cat.type === form.watch('type')
+    (category) => category.type === form.watch('type')
   );
 
-  // Handle form submission
-  const handleSubmit = form.handleSubmit((data) => {
-    // Set category ID based on selected category name
-    const categoryObj = categories.find(c => c.name === data.category);
-    if (categoryObj) {
-      data.categoryId = categoryObj.id;
-    }
-
-    onSubmit(data);
-    onOpenChange(false);
-  });
+  // Format date for display
+  const formatDate = (date: Date) => {
+    return format(date, 'PPP', { locale: ptBR });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>{editingTransaction ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
+          <DialogTitle>{editingTransaction ? 'Editar' : 'Adicionar'} Transação</DialogTitle>
           <DialogDescription>
             {editingTransaction
-              ? 'Edite os detalhes da transação abaixo.'
-              : 'Preencha os detalhes da nova transação abaixo.'}
+              ? 'Edite os detalhes da transação selecionada.'
+              : 'Preencha os detalhes da nova transação.'}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Type Selection */}
             <FormField
               control={form.control}
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo</FormLabel>
+                  <FormLabel>Tipo de Transação</FormLabel>
                   <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      // Reset category when type changes
-                      const defaultCategory = categories.find(c => c.type === value)?.name || '';
-                      form.setValue('category', defaultCategory);
-                    }}
+                    onValueChange={field.onChange}
                     defaultValue={field.value}
                     value={field.value}
                   >
@@ -154,8 +141,8 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="expense">Despesa</SelectItem>
                       <SelectItem value="income">Receita</SelectItem>
+                      <SelectItem value="expense">Despesa</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -163,6 +150,7 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
               )}
             />
 
+            {/* Description */}
             <FormField
               control={form.control}
               name="description"
@@ -170,13 +158,14 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                 <FormItem>
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input placeholder="Descrição da transação" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Amount */}
             <FormField
               control={form.control}
               name="amount"
@@ -186,10 +175,9 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                   <FormControl>
                     <Input
                       type="number"
-                      min="0"
-                      step="0.01"
+                      placeholder="0.00"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -197,6 +185,7 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
               )}
             />
 
+            {/* Category */}
             <FormField
               control={form.control}
               name="category"
@@ -204,17 +193,22 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      const selectedCategory = categories.find((cat) => cat.name === value);
+                      if (selectedCategory) {
+                        form.setValue('categoryId', selectedCategory.id);
+                      }
+                    }}
                     value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a categoria" />
+                        <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredCategories.map(category => (
+                      {filteredCategories.map((category) => (
                         <SelectItem key={category.id} value={category.name}>
                           {category.name}
                         </SelectItem>
@@ -226,74 +220,57 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="subcategory"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subcategoria</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Date */}
             <FormField
               control={form.control}
               name="date"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Data</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                    />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className="text-left font-normal"
+                        >
+                          {field.value ? formatDate(field.value) : "Selecione uma data"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="settlementDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Liquidação</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Financial Institution */}
             <FormField
               control={form.control}
               name="financialInstitution"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Instituição</FormLabel>
+                  <FormLabel>Instituição Financeira</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
+                    value={field.value || ''}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a instituição" />
+                        <SelectValue placeholder="Selecione uma instituição" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {financialInstitutions.map(institution => (
+                      {financialInstitutions.map((institution) => (
                         <SelectItem key={institution.id} value={institution.name}>
                           {institution.name}
                         </SelectItem>
@@ -305,63 +282,7 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="transactionType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Transação</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo de transação" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Credit Card">Cartão de Crédito</SelectItem>
-                      <SelectItem value="Transfer">Transferência</SelectItem>
-                      <SelectItem value="Debit">Débito</SelectItem>
-                      <SelectItem value="Other">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="paymentMethod"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Método de Pagamento</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o método de pagamento" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Débito">Débito</SelectItem>
-                      <SelectItem value="Crédito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="Transferência">Transferência</SelectItem>
-                      <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Status */}
             <FormField
               control={form.control}
               name="status"
@@ -370,7 +291,6 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                   <FormLabel>Status</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
                     value={field.value}
                   >
                     <FormControl>
@@ -379,7 +299,7 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="completed">Concluída</SelectItem>
                       <SelectItem value="pending">Pendente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -389,15 +309,11 @@ const TransactionFormDialog: React.FC<TransactionFormDialogProps> = ({
             />
 
             <DialogFooter>
-              <Button type="submit">
-                {editingTransaction ? 'Salvar Alterações' : 'Adicionar Transação'}
-              </Button>
+              <Button type="submit">{editingTransaction ? 'Salvar' : 'Adicionar'}</Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default TransactionFormDialog; 
+} 

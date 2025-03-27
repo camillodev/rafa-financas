@@ -1,10 +1,59 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useDate } from './useDate';
-import { TransactionFormValues, TransactionValues } from '@/schemas/transactionSchema';
+import { useDate } from '@/hooks/useDate';
+import { useFormatting } from '@/hooks/useFormatting';
+import {
+  TransactionFormValues,
+  TransactionValues,
+  transactionMethodSchema,
+  paymentMethodSchema
+} from '@/schemas/transactionSchema';
 
 // Mock data - replace with API calls
 import { mockTransactions, mockCategories, mockFinancialInstitutions } from '@/mocks/data';
+
+// Convert mock data to match TransactionValues type
+const typedMockTransactions: TransactionValues[] = mockTransactions.map(transaction => {
+  // Map payment method to the correct enum value
+  let paymentMethod: typeof paymentMethodSchema._type | undefined;
+  if (transaction.paymentMethod === 'Transferência') {
+    paymentMethod = 'Transferência';
+  } else if (transaction.paymentMethod === 'Débito') {
+    paymentMethod = 'Débito';
+  } else if (transaction.paymentMethod === 'Crédito') {
+    paymentMethod = 'Crédito';
+  } else {
+    paymentMethod = 'Outros';
+  }
+
+  // Map transaction type to the correct enum value
+  let transactionType: typeof transactionMethodSchema._type | undefined;
+  if (transaction.transactionType === 'Transfer') {
+    transactionType = 'Transferência';
+  } else if (transaction.transactionType === 'Debit') {
+    transactionType = 'Débito';
+  } else if (transaction.transactionType === 'Credit Card') {
+    transactionType = 'Cartão de Crédito';
+  } else {
+    transactionType = 'Outro';
+  }
+
+  return {
+    id: transaction.id,
+    description: transaction.description,
+    amount: transaction.amount,
+    type: transaction.type,
+    category: transaction.category,
+    categoryId: transaction.categoryId,
+    date: transaction.date,
+    status: transaction.status,
+    settlementDate: transaction.settlementDate || undefined,
+    subcategory: '',  // Default empty string if not available
+    paymentMethod,
+    financialInstitution: transaction.financialInstitution || '',
+    transactionType,
+  };
+});
 
 interface UseTransactionReturn {
   // Transaction data
@@ -33,6 +82,7 @@ interface UseTransactionReturn {
 export function useTransaction(): UseTransactionReturn {
   const [transactions, setTransactions] = useState<TransactionValues[]>([]);
   const { currentDate, navigateToPreviousMonth, navigateToNextMonth } = useDate();
+  const { formatCurrency } = useFormatting();
 
   // Fetch transactions for current month
   useEffect(() => {
@@ -40,7 +90,7 @@ export function useTransaction(): UseTransactionReturn {
       try {
         // In a real app, replace with API call using the current month
         // For now, use mock data
-        setTransactions(mockTransactions);
+        setTransactions(typedMockTransactions);
       } catch (error) {
         toast.error('Failed to fetch transactions');
         console.error(error);
@@ -83,7 +133,7 @@ export function useTransaction(): UseTransactionReturn {
       setTransactions(prev =>
         prev.map(item =>
           item.id === id
-            ? { ...transaction, id }
+            ? { ...transaction, id } 
             : item
         )
       );
@@ -106,14 +156,6 @@ export function useTransaction(): UseTransactionReturn {
       throw error;
     }
   }, []);
-
-  // Utility functions
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(amount);
-  };
 
   return {
     // Transaction data
