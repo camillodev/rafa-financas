@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { memo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -11,7 +10,7 @@ interface MonthFilterProps {
   periodFilterActive?: boolean;
 }
 
-const MonthFilter = ({ 
+const MonthFilter = memo(({ 
   currentDate, 
   onPreviousMonth, 
   onNextMonth,
@@ -46,6 +45,8 @@ const MonthFilter = ({
       )}
     </div>
   );
-};
+});
+
+MonthFilter.displayName = 'MonthFilter';
 
 export default MonthFilter;

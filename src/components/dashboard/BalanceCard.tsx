@@ -1,78 +1,65 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react';
-import { useFinance } from '@/context/FinanceContext';
-import AnimatedNumber from '@/components/ui/AnimatedNumber';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFinance } from '@/hooks/useFinance';
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import StatValue from "@/components/ui/atoms/StatValue";
 
-export function BalanceCard() {
-  const { formatCurrency } = useFinance();
-  // Use optional chaining to safely access missing properties
+const BalanceCard = () => {
   const finance = useFinance();
-  const financialSummary = finance.financialSummary || {
-    netBalance: 0,
-    totalIncome: 0,
-    totalExpenses: 0,
-    savingsGoal: 0,
-    savingsProgress: 0
-  };
-  const navigateToTransactions = finance.navigateToTransactions ||
-    ((filter) => console.warn('navigateToTransactions not implemented', filter));
-  
-  const cards = [
-    {
-      title: 'Saldo Total',
-      value: financialSummary.netBalance,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-      valueColor: 'text-primary',
-      onClick: () => {}
-    },
-    {
-      title: 'Receitas',
-      value: financialSummary.totalIncome,
-      icon: <ArrowUpRight className="h-5 w-5 text-finance-income" />,
-      valueColor: 'text-finance-income',
-      onClick: () => navigateToTransactions('income')
-    },
-    {
-      title: 'Despesas',
-      value: financialSummary.totalExpenses,
-      icon: <ArrowDownRight className="h-5 w-5 text-finance-expense" />,
-      valueColor: 'text-finance-expense',
-      onClick: () => navigateToTransactions('expense')
-    },
-  ];
-  
+  const { selectedMonth } = finance;
+
+  const totalIncome = finance.calculateTotalIncome(selectedMonth);
+  const totalExpenses = finance.calculateTotalExpenses(selectedMonth);
+  const balance = finance.calculateBalance(selectedMonth);
+
+  // Format currency for display
+  const formatValue = (value: number) => finance.formatCurrency(value);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-      {cards.map((card, index) => (
-        <div 
-          key={card.title}
-          className={cn(
-            "relative overflow-hidden rounded-lg border p-3 sm:p-4 shadow-sm transition-all hover:shadow-md animate-scale-in bg-card",
-            index > 0 ? "cursor-pointer" : ""
-          )}
-          style={{ animationDelay: `${index * 100}ms` }}
-          onClick={card.onClick}
-        >
-          <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <p className="text-xs sm:text-sm font-medium text-muted-foreground">{card.title}</p>
-              <div className={cn("text-xl sm:text-2xl font-bold", card.valueColor)}>
-                <AnimatedNumber 
-                  value={card.value} 
-                  formatValue={(value) => formatCurrency(value)}
-                />
-              </div>
-            </div>
-            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-background/90">
-              {card.icon}
-            </div>
+    <Card className="h-full">
+      <CardHeader 
+        title="Balanço" 
+        description="Resumo do mês atual"
+      />
+      <CardContent>
+        <div className="space-y-6">
+          {/* Balance */}
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Saldo
+            </p>
+            <AnimatedNumber
+              value={balance}
+              formatter={formatValue}
+              className="text-2xl font-bold"
+            />
+          </div>
+
+          {/* Income & Expenses */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Income */}
+            <StatValue
+              title="Receitas"
+              value={totalIncome}
+              formatValue={formatValue}
+              icon={<ArrowUpRight className="text-emerald-500" />}
+              trend="up"
+            />
+
+            {/* Expenses */}
+            <StatValue
+              title="Despesas"
+              value={totalExpenses}
+              formatValue={formatValue}
+              icon={<ArrowDownRight className="text-rose-500" />}
+              trend="down"
+            />
           </div>
         </div>
-      ))}
-    </div>
+      </CardContent>
+    </Card>
   );
-}
+};
 
 export default BalanceCard;

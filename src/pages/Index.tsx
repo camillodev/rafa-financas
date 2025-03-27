@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -8,7 +7,7 @@ import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown';
 import TransactionList from '@/components/dashboard/TransactionList';
 import BudgetProgress from '@/components/dashboard/BudgetProgress';
 import MonthFilter from '@/components/ui/MonthFilter';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/hooks/useFinance';
 import UpcomingBills from '@/components/dashboard/UpcomingBills';
 import SavingsGoals from '@/components/dashboard/SavingsGoals';
 import {

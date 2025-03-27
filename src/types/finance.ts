@@ -1,3 +1,18 @@
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  type: 'income' | 'expense';
+  isActive: boolean;
+}
+
+export interface Subcategory {
+  id: string;
+  name: string;
+  categoryId: string;
+}
+
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -5,153 +20,198 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: string;
+  categoryId: string;
   subcategory?: string;
   date: Date;
-  settlementDate?: Date;
   description: string;
-  paymentMethod?: string;
-  financialInstitution?: string;
-  transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   status: 'completed' | 'pending';
-  dueDate?: Date;
-  card?: string;
+  settlementDate?: Date;
+  institution?: string;
+  institutionId?: string;
+  financialInstitution?: string;
+  paymentMethod?: string;
+  transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   isActive?: boolean;
 }
 
-export interface Category {
+export interface Budget {
   id: string;
-  name: string;
-  icon: string;
-  color: string;
-  budget?: number;
-  type: TransactionType;
-  isActive?: boolean;
-}
-
-export interface Subcategory {
-  id: string;
-  name: string;
   categoryId: string;
-  color?: string;
-}
-
-export interface BudgetGoal {
-  id?: string;          
-  category: string;
-  categoryId?: string;  
   amount: number;
-  spent: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  date?: Date;
-}
-
-// Alias for back-compatibility
-export type Budget = BudgetGoal;
-
-export interface FinancialSummary {
-  totalIncome: number;
-  totalExpenses: number;
-  netBalance: number;
-  savingsGoal: number;
-  savingsProgress: number;
 }
 
 export interface FinancialInstitution {
   id: string;
   name: string;
+  type: string;
   icon: string;
   currentBalance: number;
   isActive: boolean;
-  type?: string;
-  logoUrl?: string;
-  balance?: number;
-  color?: string;
-  archived?: boolean;
 }
 
 export interface CreditCard {
   id: string;
   name: string;
-  limit: number;
-  brand?: string;
-  dueDate: number;
+  type: string;
+  institution: string;
   institutionId: string;
-  number?: string;
-  institution?: string;
-  closingDay?: number;
-  dueDay?: number;
+  limit: number;
+  dueDate: number;
+  closingDate: number;
+  isActive: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+// Update the BudgetGoal type to align with what's used in the application
+export interface BudgetGoal {
+  id: string;
+  category: string;
+  amount: number;
+  period: string;
+  spent: number;
   color?: string;
-  used?: number;
-  archived?: boolean;
-  isActive?: boolean;
+  name?: string;
+  icon?: string;
+  targetAmount?: number;
+  currentAmount?: number;
+  targetDate?: string;
+  date?: Date;
+  year?: number;
+  month?: number;
 }
 
-export interface GoalTransaction {
+// Update Goal interface to make transactions optional on creation
+export interface Goal {
   id: string;
-  date: Date;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  icon: string;
+  color: string;
+  transactions: any[];
+  modifications?: any[];
+}
+
+// Add FinancialInstitutionResponse for API responses
+export interface FinancialInstitutionResponse {
+  id: string;
+  name: string;
+  type: string;
+  logo: string;
+  current_balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
+// Add CreditCardResponse for API responses
+export interface CreditCardResponse {
+  id: string;
+  name: string;
+  type: string;
+  institution_id: string;
+  limit: number;
+  due_date: number;
+  closing_date: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  institutions?: {
+    name: string;
+    logo: string;
+  };
+}
+
+// Update the BankTransactionResponse to include all needed fields
+export interface BankTransactionResponse {
+  id: string;
   amount: number;
-  type: 'add' | 'remove';
+  date: string;
   description: string;
-}
-
-export interface GoalModification {
-  id: string;
-  goalId: string;
-  date: Date;
-  type: 'contribution' | 'withdrawal' | 'target_change' | 'date_change' | 'description_change';
-  description: string;
-  previousValue?: number | string;
-  newValue?: number | string;
-  amount?: number;
-}
-
-// Novas interfaces para a funcionalidade "Dividir Contas"
-export interface SplitBillParticipant {
-  id: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  group_id?: string;
-}
-
-export interface SplitBillGroup {
-  id: string;
-  name: string;
-  participants: SplitBillParticipant[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export type SplitBillDivisionMethod = 'equal' | 'fixed' | 'percentage' | 'weight';
-
-export interface SplitBillParticipantShare {
-  participantId: string;
-  amount?: number;
-  percentage?: number;
-  weight?: number;
-  isIncluded: boolean;
-}
-
-export interface SplitBill {
-  id: string;
-  name: string;
-  totalAmount: number;
-  category?: string;
-  date: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  receiptImageUrl?: string;
-  divisionMethod: SplitBillDivisionMethod;
-  participants: SplitBillParticipantShare[];
-  groupId?: string;
-  status: 'active' | 'completed';
-}
-
-export interface SplitBillPayment {
-  id: string;
-  splitBillId: string;
-  participantId: string;
-  amount: number;
-  date: Date;
+  status: string;
+  settlement_date?: string;
   notes?: string;
+  transaction_type: string;
+  category_id?: string;
+  subcategory_id?: string;
+  institution_id?: string;
+  card_id?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  categories?: {
+    name: string;
+    color: string;
+    icon: string;
+    type: string;
+  };
+  institutions?: {
+    name: string;
+    logo: string;
+  };
+  type: string;
+  is_active: boolean;
+}
+
+// CategoryResponse for API responses
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  type: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
+// GoalResponse for API responses
+export interface GoalResponse {
+  id: string;
+  title: string;
+  description: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string;
+  start_date: string;
+  is_completed: boolean;
+  category_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  categories: {
+    name: string;
+    color: string;
+    icon: string;
+    type: string;
+  };
+}
+
+// BudgetResponse for API responses
+export interface BudgetResponse {
+  id: string;
+  amount: number;
+  month: number;
+  year: number;
+  category_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  categories: {
+    name: string;
+    color: string;
+    icon: string;
+    type: string;
+  };
 }

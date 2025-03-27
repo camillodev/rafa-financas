@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Calendar, AlertCircle, Check, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/hooks/useFinance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { format, isAfter, isBefore, addDays } from 'date-fns';

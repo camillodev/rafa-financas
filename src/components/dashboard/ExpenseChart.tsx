@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ResponsiveContainer, 
   ComposedChart, 
@@ -11,7 +10,7 @@ import {
   Tooltip, 
   Legend 
 } from 'recharts';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/hooks/useFinance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronRight } from 'lucide-react';
 import { format, getDate, startOfMonth, endOfMonth, eachDayOfInterval, isEqual, isSameDay } from 'date-fns';
