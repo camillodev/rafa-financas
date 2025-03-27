@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/card";
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 
-import { useFinance } from '@/hooks/useFinance';
-import { usePagination } from '@/hooks/ui/usePagination';
+import { useTransaction } from '@/hooks/useTransaction';
+import { useDataTable } from '@/hooks/ui';
+import { TransactionFormValues } from '@/schemas/transactionSchema';
 import {
   useTransactionFilters,
   useTransactionForm,
@@ -29,18 +30,17 @@ const DEFAULT_PAGE_SIZE = 10;
 export function Transactions() {
   const {
     filteredTransactions: monthFilteredTransactions,
-    formatCurrency,
-    currentDate,
-    navigateToPreviousMonth,
-    navigateToNextMonth,
     addTransaction,
     updateTransaction,
     deleteTransaction,
     categories,
     financialInstitutions,
-  } = useFinance();
+    formatCurrency,
+    currentDate,
+    navigateToPreviousMonth,
+    navigateToNextMonth,
+  } = useTransaction();
 
-  // Custom hooks for transactions page
   const {
     filter,
     searchTerm,
@@ -55,6 +55,7 @@ export function Transactions() {
     hasActiveFilters
   } = useTransactionFilters(monthFilteredTransactions);
 
+  // Use useDataTable for table data management
   const {
     currentPage,
     pageSize,
@@ -62,14 +63,18 @@ export function Transactions() {
     paginatedItems: paginatedTransactions,
     handlePageChange,
     handlePageSizeChange,
-    pageSizeOptions
-  } = usePagination(filteredTransactions, {
+    pageSizeOptions,
+    sortKey,
+    sortDirection,
+    handleSort
+  } = useDataTable({
+    data: filteredTransactions,
     defaultPageSize: DEFAULT_PAGE_SIZE,
     pageSizeOptions: PAGE_SIZES
   });
 
+  // Form handling
   const {
-    formData,
     editingTransaction,
     isDialogOpen,
     isDeleteDialogOpen,
@@ -77,17 +82,13 @@ export function Transactions() {
     setIsDeleteDialogOpen,
     handleOpenAddDialog,
     handleOpenEditDialog,
-    handleInputChange,
-    handleSelectChange,
     handleSubmit,
-    setEditingTransaction,
-    handleConfirmDelete
+    handleDeleteTransaction,
+    setEditingTransaction
   } = useTransactionForm({
     addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    categories,
-    financialInstitutions
+    updateTransaction: (id, data) => updateTransaction(id, data),
+    deleteTransaction
   });
 
   const { exportTransactions } = useTransactionExport({
@@ -105,7 +106,7 @@ export function Transactions() {
   return (
     <AppLayout>
       <TransactionHeader
-      // Date navigation props
+        // Date navigation props
         currentDate={currentDate}
         onPreviousMonth={navigateToPreviousMonth}
         onNextMonth={navigateToNextMonth}
@@ -150,6 +151,9 @@ export function Transactions() {
             totalPages={totalPages}
             pageSize={pageSize}
             PAGE_SIZES={pageSizeOptions}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            handleSort={handleSort}
           />
         </CardContent>
       </Card>
@@ -159,17 +163,16 @@ export function Transactions() {
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         editingTransaction={editingTransaction}
-        formData={formData}
-        onInputChange={handleInputChange}
-        onSelectChange={handleSelectChange}
         onSubmit={handleSubmit}
+        categories={categories}
+        financialInstitutions={financialInstitutions}
       />
 
       {/* Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
+        onConfirm={handleDeleteTransaction}
         title="Confirmar Exclusão"
         description="Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita."
         confirmLabel="Excluir"

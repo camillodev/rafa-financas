@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Transaction, TransactionType } from '@/types/finance';
-import { TransactionFilterType } from '@/hooks/useFinance';
+import { Transaction } from '@/types/finance';
 
+// Type for filter state
+export type TransactionFilterType = {
+  type?: 'income' | 'expense' | 'all';
+};
+
+// Type for advanced filters
 interface AdvancedFilters {
   dateRange: {
     start: string;
@@ -58,10 +63,11 @@ export function useTransactionFilters(transactions: Transaction[]): UseTransacti
     },
   });
 
+  // Initialize filters from URL parameters
   useEffect(() => {
     const filterParam = searchParams.get('filter');
     if (filterParam && ['income', 'expense', 'all'].includes(filterParam)) {
-      setFilter({ type: filterParam as TransactionType });
+      setFilter({ type: filterParam as 'income' | 'expense' | 'all' });
     } else {
       setFilter({});
     }
@@ -70,7 +76,7 @@ export function useTransactionFilters(transactions: Transaction[]): UseTransacti
   // Apply all filters (type, search, advanced)
   const filteredTransactions = transactions.filter(transaction => {
     // Type filter
-    if (filter.type && transaction.type !== filter.type) {
+    if (filter.type && filter.type !== 'all' && transaction.type !== filter.type) {
       return false;
     }
 
@@ -123,6 +129,7 @@ export function useTransactionFilters(transactions: Transaction[]): UseTransacti
     return true;
   });
 
+  // Clear all filters
   const handleClearFilter = () => {
     setSearchParams({});
     setFilter({});
@@ -139,16 +146,18 @@ export function useTransactionFilters(transactions: Transaction[]): UseTransacti
     });
   };
 
+  // Set filter type
   const handleSetFilter = (newFilter: string) => {
     if (newFilter === 'all') {
       setSearchParams({});
       setFilter({});
     } else {
       setSearchParams({ filter: newFilter });
-      setFilter({ type: newFilter as TransactionType });
+      setFilter({ type: newFilter as 'income' | 'expense' });
     }
   };
 
+  // Update advanced filters
   const handleAdvancedFilterChange = (field: string, value: string) => {
     setAdvancedFilters(prev => {
       if (field.includes('.')) {
@@ -173,6 +182,7 @@ export function useTransactionFilters(transactions: Transaction[]): UseTransacti
     });
   };
 
+  // Check if any filter is active
   const hasActiveFilters = () => {
     return Boolean(filter.type) ||
       Boolean(searchTerm) ||

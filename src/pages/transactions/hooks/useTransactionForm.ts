@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Transaction, TransactionType } from '@/types/finance';
+import { TransactionFormValues } from '@/schemas/transactionSchema';
 
 type TransactionFormType = {
   amount: number;
@@ -18,8 +19,8 @@ type TransactionFormType = {
 };
 
 interface TransactionFormActions {
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
-  updateTransaction: (transaction: Transaction) => Promise<void>;
+  addTransaction: (transaction: TransactionFormValues) => Promise<void>;
+  updateTransaction: (id: string, transaction: TransactionFormValues) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   categories: Array<{ id: string; name: string; type: TransactionType }>;
   financialInstitutions: Array<{ id: string; name: string }>;
@@ -36,16 +37,18 @@ interface UseTransactionFormReturn {
   handleOpenEditDialog: (transaction: Transaction) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSelectChange: (name: string, value: string) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  handleConfirmDelete: () => void;
+  handleSubmit: (data: TransactionFormValues) => Promise<void>;
+  handleDeleteTransaction: () => Promise<void>;
   setEditingTransaction: (transaction: Transaction | null) => void;
 }
 
-export function useTransactionForm(
-  actions: TransactionFormActions
-): UseTransactionFormReturn {
-  const { addTransaction, updateTransaction, deleteTransaction, categories, financialInstitutions } = actions;
-
+export function useTransactionForm({
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+  categories,
+  financialInstitutions
+}: TransactionFormActions): UseTransactionFormReturn {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -118,48 +121,33 @@ export function useTransactionForm(
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const selectedCategory = categories.find(c => c.name === formData.category);
-
-    if (!selectedCategory) {
-      toast.error("Categoria não encontrada");
-      return;
+  const handleSubmit = async (data: TransactionFormValues) => {
+    try {
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction.id, data);
+        toast.success('Transação atualizada com sucesso');
+      } else {
+        await addTransaction(data);
+        toast.success('Transação adicionada com sucesso');
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      const actionName = editingTransaction ? 'atualizar' : 'adicionar';
+      toast.error(`Erro ao ${actionName} transação`);
+      console.error(error);
     }
-
-    const transactionData = {
-      amount: formData.amount,
-      type: formData.type,
-      category: formData.category,
-      categoryId: selectedCategory.id,
-      subcategory: formData.subcategory || undefined,
-      date: new Date(formData.date),
-      settlementDate: new Date(formData.settlementDate),
-      description: formData.description,
-      paymentMethod: formData.paymentMethod,
-      financialInstitution: formData.financialInstitution,
-      transactionType: formData.transactionType,
-      status: formData.status
-    };
-
-    if (editingTransaction) {
-      updateTransaction({
-        id: editingTransaction.id,
-        ...transactionData
-      });
-    } else {
-      addTransaction(transactionData);
-    }
-
-    setIsDialogOpen(false);
   };
 
-  const handleConfirmDelete = () => {
-    if (editingTransaction) {
-      deleteTransaction(editingTransaction.id);
+  const handleDeleteTransaction = async () => {
+    if (!editingTransaction) return;
+
+    try {
+      await deleteTransaction(editingTransaction.id);
+      toast.success('Transação excluída com sucesso');
       setIsDeleteDialogOpen(false);
-      setEditingTransaction(null);
+    } catch (error) {
+      toast.error('Erro ao excluir transação');
+      console.error(error);
     }
   };
 
@@ -175,7 +163,7 @@ export function useTransactionForm(
     handleInputChange,
     handleSelectChange,
     handleSubmit,
-    handleConfirmDelete,
+    handleDeleteTransaction,
     setEditingTransaction
   };
 } 

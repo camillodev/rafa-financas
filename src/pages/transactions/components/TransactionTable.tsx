@@ -1,8 +1,9 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUpRight, ArrowDownRight, MoreHorizontal, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, MoreHorizontal, Pencil, Trash2, AlertCircle, ArrowUpDown } from 'lucide-react';
 import { Transaction } from '@/types/finance';
+import { SortDirection } from '@/hooks/ui/useSort';
 import {
   Table,
   TableBody,
@@ -47,6 +48,10 @@ interface TransactionTableProps {
   totalPages: number;
   pageSize: number;
   PAGE_SIZES: number[];
+  // Sorting props
+  sortKey: keyof Transaction | null;
+  sortDirection: SortDirection;
+  handleSort: (key: keyof Transaction) => void;
 }
 
 const TransactionTable: React.FC<TransactionTableProps> = ({
@@ -61,8 +66,28 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
   currentPage,
   totalPages,
   pageSize,
-  PAGE_SIZES
+  PAGE_SIZES,
+  // Sorting props
+  sortKey,
+  sortDirection,
+  handleSort
 }) => {
+  // Helper function to render sort indicator
+  const renderSortableHeader = (label: string, key: keyof Transaction) => (
+    <div
+      className="flex items-center cursor-pointer"
+      onClick={() => handleSort(key)}
+    >
+      {label}
+      <ArrowUpDown size={16} className="ml-1 text-muted-foreground/70" />
+      {sortKey === key && (
+        <span className="ml-1 text-xs text-muted-foreground">
+          {sortDirection === 'asc' ? '↑' : '↓'}
+        </span>
+      )}
+    </div>
+  );
+
   if (filteredTransactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -82,15 +107,15 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
           <TableHeader>
             <TableRow>
               <TableHead>Tipo</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Data Liquidação</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Subcategoria</TableHead>
-              <TableHead>Instituição</TableHead>
-              <TableHead>Tipo Transação</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Valor</TableHead>
+              <TableHead>{renderSortableHeader('Descrição', 'description')}</TableHead>
+              <TableHead>{renderSortableHeader('Data', 'date')}</TableHead>
+              <TableHead>{renderSortableHeader('Data Liquidação', 'settlementDate')}</TableHead>
+              <TableHead>{renderSortableHeader('Categoria', 'category')}</TableHead>
+              <TableHead>{renderSortableHeader('Subcategoria', 'subcategory')}</TableHead>
+              <TableHead>{renderSortableHeader('Instituição', 'financialInstitution')}</TableHead>
+              <TableHead>{renderSortableHeader('Tipo Transação', 'transactionType')}</TableHead>
+              <TableHead>{renderSortableHeader('Status', 'status')}</TableHead>
+              <TableHead>{renderSortableHeader('Valor', 'amount')}</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
