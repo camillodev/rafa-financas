@@ -183,7 +183,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         // Load transactions
         const transactionsData = await fetchTransactions();
         if (transactionsData) {
-          const formattedTransactions = transactionsData.map(t => ({
+          const formattedTransactions = transactionsData.data.map(t => ({
             id: t.id,
             amount: t.amount,
             type: t.transaction_type === 'income' ? 'income' : 'expense',
