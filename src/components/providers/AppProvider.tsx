@@ -1,4 +1,3 @@
-
 import React, { useEffect, ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { useFinanceStore } from '@/store/useFinanceStore';

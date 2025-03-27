@@ -1,5 +1,5 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "./components/layout/AppLayout";
 import Index from "./pages/Index";
 import Transactions from "./pages/Transactions";
@@ -21,18 +21,20 @@ import SplitBillsHistory from "./pages/split-bills/SplitBillsHistory";
 import SplitBillsReports from "./pages/split-bills/SplitBillsReports";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import { Toaster } from "@/components/ui/sonner";
 import { AppProvider } from "./components/providers/AppProvider";
+
+// Create a client
+const queryClient = new QueryClient();
 
 function App() {
   return (
     <BrowserRouter>
-      <AppProvider>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/sign-up" element={<SignUpPage />} />
-          <Route path="/" element={<AppLayout />}>
-            <Route index element={<Index />} />
+      <QueryClientProvider client={queryClient}>
+        <AppProvider>
+          <Routes>
+            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="/sign-up" element={<SignUpPage />} />
+            <Route path="/" element={<Index />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="budgets" element={<Budgets />} />
             <Route path="goals" element={<Goals />} />
@@ -52,10 +54,9 @@ function App() {
               <Route path="reports" element={<SplitBillsReports />} />
             </Route>
             <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-        <Toaster />
-      </AppProvider>
+          </Routes>
+        </AppProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/hooks/useFinance';
 import { ArrowUpRight, ArrowDownRight, ChevronRight, AlertCircle, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { useFinance, TransactionFilterType } from '@/context/FinanceContext';
+import { useFinance, TransactionFilterType } from '@/hooks/useFinance';
 import { 
   ArrowUpRight, 
   ArrowDownRight, 

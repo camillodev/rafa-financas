@@ -1,10 +1,9 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { useFinance } from "@/hooks/useFinance";
 import ProgressIndicator from "@/components/ui/atoms/ProgressIndicator";
-import CardHeader from "@/components/ui/atoms/CardHeader";
 
 const SavingsGoals = () => {
   const finance = useFinance();

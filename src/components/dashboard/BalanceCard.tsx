@@ -1,10 +1,9 @@
-
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { useFinance } from "@/hooks/useFinance";
+import React from 'react';
+import { ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFinance } from '@/hooks/useFinance';
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import StatValue from "@/components/ui/atoms/StatValue";
-import CardHeader from "@/components/ui/atoms/CardHeader";
 
 const BalanceCard = () => {
   const finance = useFinance();
