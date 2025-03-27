@@ -17,14 +17,14 @@ export function getAdvancedFilterFields(
 ) {
   return [
     {
-      id: 'dateRange',
+      name: 'dateRange',
       label: 'Período',
       type: 'dateRange' as const,
       value: filters.dateRange,
       options: [],
     },
     {
-      id: 'category',
+      name: 'category',
       label: 'Categoria',
       type: 'select' as const,
       value: filters.category,
@@ -37,7 +37,7 @@ export function getAdvancedFilterFields(
       ],
     },
     {
-      id: 'institution',
+      name: 'institution',
       label: 'Instituição Financeira',
       type: 'select' as const,
       value: filters.institution,
@@ -50,7 +50,7 @@ export function getAdvancedFilterFields(
       ],
     },
     {
-      id: 'status',
+      name: 'status',
       label: 'Status',
       type: 'select' as const,
       value: filters.status,
@@ -61,9 +61,9 @@ export function getAdvancedFilterFields(
       ],
     },
     {
-      id: 'amountRange',
+      name: 'amountRange',
       label: 'Valor',
-      type: 'range' as const,
+      type: 'numberRange' as const,
       value: filters.amountRange,
       options: [],
     },
