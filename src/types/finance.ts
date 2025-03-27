@@ -18,11 +18,14 @@ export interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   category: string;
+  categoryId: string;
   date: Date;
   description: string;
   status: 'completed' | 'pending';
   settlementDate?: Date;
-  financialInstitution?: string;
+  institution?: string;
+  institutionId?: string;
+  isActive?: boolean;
   transactionType?: string;
 }
 
