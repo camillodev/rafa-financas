@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/hooks/useFinance';
+import CategoryBadge from '@/components/ui/atoms/CategoryBadge';
+import ProgressIndicator from '@/components/ui/atoms/ProgressIndicator';
 
 interface CategoryBreakdownProps {
   className?: string;
@@ -20,10 +22,17 @@ export function CategoryBreakdown({ className }: CategoryBreakdownProps) {
   } = finance;
   
   // Get expense breakdown data
-  const breakdownData = expenseBreakdown();
+  const breakdownData = typeof expenseBreakdown === 'function' 
+    ? expenseBreakdown() 
+    : [];
+  
+  // Filter breakdown data if we have selected categories
+  const filteredData = selectedCategories.length > 0
+    ? breakdownData.filter(item => selectedCategories.includes(item.name))
+    : breakdownData;
   
   // Sort categories by expense amount (descending)
-  const sortedData = [...breakdownData].sort((a, b) => b.value - a.value);
+  const sortedData = [...filteredData].sort((a, b) => b.value - a.value);
   
   // Calculate total expenses
   const totalExpenses = sortedData.reduce((sum, item) => sum + item.value, 0);
@@ -76,14 +85,11 @@ export function CategoryBreakdown({ className }: CategoryBreakdownProps) {
                   </Button>
                   <span className="text-sm">{formatCurrency(category.value)}</span>
                 </div>
-                <Progress
-                  value={percentage}
-                  indicatorClassName={`bg-[${category.color}]`}
-                  className="h-2"
+                <ProgressIndicator
+                  value={category.value}
+                  max={totalExpenses}
+                  showPercentage={true}
                 />
-                <p className="text-xs text-muted-foreground text-right">
-                  {percentage}% do total
-                </p>
               </div>
             );
           })}

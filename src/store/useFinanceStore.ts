@@ -1,61 +1,55 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { format, subMonths, addMonths, getMonth, getYear } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Category, 
-  Subcategory, 
-  Transaction, 
-  BudgetGoal, 
-  FinancialInstitution, 
-  CreditCard,
-  FinancialSummary,
-  PaginatedResponse,
-  BankTransactionResponse,
-  TransactionFilterType,
-  GoalTransaction,
-  GoalModification,
-  TransactionType,
-  Goal
+  Category, Subcategory, Transaction, FinancialInstitution, 
+  CreditCard, Goal, Budget, PaginatedResponse, BankTransactionResponse
 } from '@/types/finance';
-import { fetchCategories } from '@/services/categoryService';
-import { fetchTransactions } from '@/services/transactionService';
-import { fetchInstitutions } from '@/services/institutionService';
-import { fetchCards } from '@/services/cardService';
-import { fetchBudgets } from '@/services/budgetService';
-import { fetchGoals } from '@/services/goalService';
-import { supabase } from '@/integrations/supabase/client';
-import { addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, isSameYear } from 'date-fns';
+import { TransactionFilterType, TransactionApiParams } from '@/types/transaction';
+import * as categoryService from '@/services/categoryService';
+import * as transactionService from '@/services/transactionService';
+import * as institutionService from '@/services/institutionService';
+import * as cardService from '@/services/cardService';
+import * as goalService from '@/services/goalService';
+import * as budgetService from '@/services/budgetService';
 
 interface FinanceState {
   // Data
   categories: Category[];
   subcategories: Subcategory[];
   transactions: Transaction[];
-  filteredTransactions: Transaction[];
-  budgetGoals: BudgetGoal[];
+  budgetGoals: Budget[];
   goals: Goal[];
   institutions: FinancialInstitution[];
+  financialInstitutions: FinancialInstitution[];
   cards: CreditCard[];
   creditCards: CreditCard[];
-  financialInstitutions: FinancialInstitution[];
+  
+  // UI State
   isLoading: boolean;
   error: string | null;
   selectedMonth: Date;
   currentDate: Date;
   selectedCategories: string[];
-  userId: string | null;
-  financialSummary: FinancialSummary;
+  filteredTransactions: Transaction[];
   
-  // Methods for data fetching
+  // Computed data
+  financialSummary: {
+    totalIncome: number;
+    totalExpenses: number;
+    netBalance: number;
+    savingsGoal: number;
+    savingsProgress: number;
+  };
+  
+  // Methods
   fetchAllData: () => Promise<void>;
-  
-  // Navigation methods
+  hasDataForCurrentMonth: () => boolean;
   setSelectedMonth: (date: Date) => void;
   navigateToPreviousMonth: () => void;
   navigateToNextMonth: () => void;
   navigateToTransactions: (filter?: TransactionFilterType) => void;
   navigateToGoalDetail: (id: string) => void;
-  
-  // Format and calculation methods
   formatCurrency: (value: number) => string;
   calculateTotalIncome: (month: Date) => number;
   calculateTotalExpenses: (month: Date) => number;
@@ -63,545 +57,780 @@ interface FinanceState {
   getTransactionsByCategory: (categoryName: string, month: Date) => Transaction[];
   findCategoryById: (id: string) => Category | undefined;
   findCategoryByName: (name: string) => Category | undefined;
-  hasDataForCurrentMonth: () => boolean;
+  expenseBreakdown: () => { name: string; value: number; color: string }[];
+  toggleCategorySelection: (categoryId: string) => void;
+  resetCategorySelection: () => void;
   
-  // Category operations
+  // CRUD operations
   addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
   updateCategory: (category: Category) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   addSubcategory: (subcategory: Omit<Subcategory, 'id'>) => Promise<void>;
   updateSubcategory: (subcategory: Subcategory) => Promise<void>;
   deleteSubcategory: (id: string) => Promise<void>;
-  
-  // Transaction operations
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  
-  // Budget operations
-  addBudgetGoal: (budget: Omit<BudgetGoal, 'id'>) => Promise<void>;
-  updateBudgetGoal: (budget: BudgetGoal) => Promise<void>;
+  addBudgetGoal: (budget: Omit<Budget, 'id'>) => Promise<void>;
+  updateBudgetGoal: (budget: Budget) => Promise<void>;
   deleteBudgetGoal: (id: string) => Promise<void>;
-  
-  // Institution operations
   addFinancialInstitution: (institution: Omit<FinancialInstitution, 'id'>) => Promise<void>;
   updateFinancialInstitution: (institution: FinancialInstitution) => Promise<void>;
   deleteFinancialInstitution: (id: string) => Promise<void>;
   archiveFinancialInstitution: (id: string) => Promise<void>;
-  
-  // Card operations
   addCreditCard: (card: Omit<CreditCard, 'id'>) => Promise<void>;
   updateCreditCard: (card: CreditCard) => Promise<void>;
   deleteCreditCard: (id: string) => Promise<void>;
   archiveCreditCard: (id: string) => Promise<void>;
-  
-  // Goal operations
   addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
   updateGoal: (goal: Goal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
-  
-  // Goal transaction operations
-  addGoalTransaction: (goalId: string, transaction: Omit<GoalTransaction, 'id'>) => Promise<void>;
+  addGoalTransaction: (goalId: string, transaction: any) => Promise<void>;
   deleteGoalTransaction: (id: string) => Promise<void>;
-  
-  // Goal modification operations
-  addGoalModification: (modification: Omit<GoalModification, 'id'>) => Promise<void>;
-  getGoalModifications: (goalId: string) => Promise<GoalModification[]>;
-  
-  // Category selection for charts
-  toggleCategorySelection: (categoryId: string) => void;
-  resetCategorySelection: () => void;
-  
-  // Filtering for charts and reports
-  expenseBreakdown: () => { name: string; value: number; color: string }[];
+  addGoalModification: (modification: any) => Promise<void>;
+  getGoalModifications: (goalId: string) => Promise<any[]>;
 }
 
-// Helper functions for data transformation
-const transformCategories = (apiCategories: any[]): Category[] => {
-  return apiCategories.map(cat => ({
-    id: cat.id,
-    name: cat.name,
-    icon: cat.icon,
-    color: cat.color,
-    type: cat.type as TransactionType,
-    isActive: cat.is_active
-  }));
-};
-
-const transformTransactions = (apiResponse: any): Transaction[] => {
-  if (!apiResponse?.data) return [];
-  
-  return apiResponse.data.map((tx: any) => ({
+// Convert API transactions to our app's transaction format
+const convertApiTransactions = (apiTransactions: BankTransactionResponse[]): Transaction[] => {
+  return apiTransactions.map(tx => ({
     id: tx.id,
     amount: tx.amount,
-    type: tx.type || tx.transaction_type as TransactionType,
-    category: tx.categories?.name || '',
+    type: tx.type as 'income' | 'expense',
+    category: tx.categories.name,
     date: new Date(tx.date),
-    settlementDate: tx.settlement_date ? new Date(tx.settlement_date) : undefined,
     description: tx.description,
-    paymentMethod: tx.payment_method,
+    status: tx.status as 'completed' | 'pending',
+    settlementDate: tx.settlement_date ? new Date(tx.settlement_date) : undefined,
     financialInstitution: tx.institutions?.name,
     transactionType: tx.transaction_type as any,
-    status: tx.status as any,
-    dueDate: tx.due_date ? new Date(tx.due_date) : undefined,
-    card: tx.card_id,
-    isActive: tx.is_active
+    // Add any other needed fields
   }));
 };
 
-const transformInstitutions = (apiInstitutions: any[]): FinancialInstitution[] => {
-  return apiInstitutions.map(inst => ({
-    id: inst.id,
-    name: inst.name,
-    icon: inst.logo,
-    currentBalance: inst.current_balance,
-    isActive: inst.is_active,
-    type: inst.type,
-    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color if not provided
-  }));
+// Helper to build date range for the current month
+const getMonthDateRange = (date: Date) => {
+  const year = getYear(date);
+  const month = getMonth(date);
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0);
+  return { startDate, endDate };
 };
 
-const transformCards = (apiCards: any[]): CreditCard[] => {
-  return apiCards.map(card => ({
-    id: card.id,
-    name: card.name,
-    limit: card.limit_amount,
-    dueDate: card.due_day,
-    institutionId: card.institution_id,
-    institution: card.institutions?.name,
-    closingDay: card.closing_day,
-    dueDay: card.due_day,
-    isActive: card.is_active,
-    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color if not provided
-  }));
-};
-
-const transformBudgets = (apiBudgets: any[]): BudgetGoal[] => {
-  return apiBudgets.map(budget => ({
-    id: budget.id,
-    category: budget.categories?.name || '',
-    categoryId: budget.category_id,
-    amount: budget.amount,
-    spent: 0, // This would need to be calculated based on transactions
-    period: 'monthly', // Default to monthly budgets
-    date: new Date(budget.year, budget.month - 1, 1)
-  }));
-};
-
-export const useFinanceStore = create<FinanceState>()(
-  persist(
-    (set, get) => ({
-      categories: [],
-      subcategories: [],
-      transactions: [],
-      filteredTransactions: [],
-      budgetGoals: [],
-      goals: [] as Goal[],
-      institutions: [],
-      cards: [],
-      creditCards: [],
-      financialInstitutions: [],
-      isLoading: false,
-      error: null,
-      selectedMonth: new Date(),
-      currentDate: new Date(),
-      selectedCategories: [],
-      userId: null,
-      financialSummary: {
-        totalIncome: 0,
-        totalExpenses: 0,
-        netBalance: 0,
-        savingsGoal: 0,
-        savingsProgress: 0
-      },
+export const useFinanceStore = create<FinanceState>((set, get) => ({
+  // Initialize state
+  categories: [],
+  subcategories: [],
+  transactions: [],
+  filteredTransactions: [],
+  budgetGoals: [],
+  goals: [],
+  institutions: [],
+  financialInstitutions: [],
+  cards: [],
+  creditCards: [],
+  isLoading: false,
+  error: null,
+  selectedMonth: new Date(),
+  currentDate: new Date(),
+  selectedCategories: [],
+  financialSummary: {
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+    savingsGoal: 0,
+    savingsProgress: 0
+  },
+  
+  // Fetch data methods
+  fetchAllData: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      // Fetch categories
+      const categoriesData = await categoryService.fetchCategories();
       
-      fetchAllData: async () => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          // Get current user
-          const { data: sessionData } = await supabase.auth.getSession();
-          const userId = sessionData.session?.user.id || null;
-          
-          // Fetch all data
-          const categoriesData = await fetchCategories();
-          
-          // For now, we'll use an empty array for subcategories as we don't have the table yet
-          const subcategoriesData: Subcategory[] = [];
-          
-          const currentMonth = get().selectedMonth;
-          const filters = {
-            startDate: startOfMonth(currentMonth),
-            endDate: endOfMonth(currentMonth)
-          };
-          const transactionsData = await fetchTransactions(1, 20, filters);
-          
-          const institutionsData = await fetchInstitutions();
-          const cardsData = await fetchCards();
-          
-          // Fetch budgets for the selected month
-          const budgetsData = await fetchBudgets(
-            currentMonth.getFullYear(), 
-            currentMonth.getMonth() + 1
-          );
-          
-          // Fetch goals
-          const goalsData = await fetchGoals();
-          
-          // Transform API responses to our internal types
-          const transformedCategories = transformCategories(categoriesData);
-          const transformedTransactions = transformTransactions(transactionsData);
-          const transformedInstitutions = transformInstitutions(institutionsData);
-          const transformedCards = transformCards(cardsData);
-          const transformedBudgets = transformBudgets(budgetsData);
-          
-          // Calculate financial summary
-          const totalIncome = transformedTransactions
-            .filter(tx => tx.type === 'income')
-            .reduce((sum, tx) => sum + tx.amount, 0);
-            
-          const totalExpenses = transformedTransactions
-            .filter(tx => tx.type === 'expense')
-            .reduce((sum, tx) => sum + tx.amount, 0);
-          
-          const financialSummary = {
-            totalIncome,
-            totalExpenses,
-            netBalance: totalIncome - totalExpenses,
-            savingsGoal: 2000, // Default value, should be fetched from settings
-            savingsProgress: ((totalIncome - totalExpenses) / 2000) * 100
-          };
-          
-          set({
-            categories: transformedCategories,
-            subcategories: subcategoriesData,
-            transactions: transformedTransactions,
-            filteredTransactions: transformedTransactions,
-            institutions: transformedInstitutions,
-            financialInstitutions: transformedInstitutions,
-            cards: transformedCards,
-            creditCards: transformedCards,
-            budgetGoals: transformedBudgets,
-            goals: transformedBudgets as unknown as Goal[],
-            userId,
-            isLoading: false,
-            financialSummary
-          });
-        } catch (error) {
-          console.error('Error fetching finance data:', error);
-          set({ error: 'Failed to load finance data', isLoading: false });
+      // Fetch transactions for current month
+      const { startDate, endDate } = getMonthDateRange(get().selectedMonth);
+      const transactionsData = await transactionService.fetchTransactions({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd')
+      });
+      
+      // Convert API format to our app format
+      const transactions = convertApiTransactions(transactionsData.data);
+      
+      // Fetch institutions
+      const institutionsData = await institutionService.fetchInstitutions();
+      
+      // Fetch credit cards
+      const cardsData = await cardService.fetchCreditCards();
+      
+      // Fetch goals
+      const goalsData = await goalService.fetchGoals();
+      
+      // Fetch budget goals
+      const budgetData = await budgetService.fetchBudgets(
+        getMonth(get().selectedMonth) + 1, 
+        getYear(get().selectedMonth)
+      );
+      
+      // Calculate financial summary
+      const totalIncome = transactions
+        .filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      
+      const totalExpenses = transactions
+        .filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      
+      const netBalance = totalIncome - totalExpenses;
+      
+      // Update state with all fetched data
+      set({
+        categories: categoriesData,
+        transactions,
+        filteredTransactions: transactions,
+        institutions: institutionsData,
+        financialInstitutions: institutionsData,
+        cards: cardsData,
+        creditCards: cardsData,
+        goals: goalsData,
+        budgetGoals: budgetData,
+        isLoading: false,
+        financialSummary: {
+          totalIncome,
+          totalExpenses,
+          netBalance,
+          savingsGoal: 0, // Calculate if needed
+          savingsProgress: 0 // Calculate if needed
         }
-      },
-      
-      setSelectedMonth: (date: Date) => {
-        set({ selectedMonth: date, currentDate: date });
-        // Refetch data for the new month
-        get().fetchAllData();
-      },
-      
-      navigateToPreviousMonth: () => {
-        const currentDate = get().currentDate;
-        const newDate = subMonths(currentDate, 1);
-        set({ currentDate: newDate, selectedMonth: newDate });
-        get().fetchAllData();
-      },
-      
-      navigateToNextMonth: () => {
-        const currentDate = get().currentDate;
-        const newDate = addMonths(currentDate, 1);
-        set({ currentDate: newDate, selectedMonth: newDate });
-        get().fetchAllData();
-      },
-      
-      navigateToTransactions: (filter?: TransactionFilterType) => {
-        // This would be implemented with react-router
-        console.log('Navigate to transactions with filter:', filter);
-        // Implementation would depend on routing library
-      },
-      
-      navigateToGoalDetail: (id: string) => {
-        // This would be implemented with react-router
-        console.log('Navigate to goal detail:', id);
-        // Implementation would depend on routing library
-      },
-      
-      formatCurrency: (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-        }).format(value);
-      },
-      
-      calculateTotalIncome: (month: Date) => {
-        const { transactions } = get();
-        
-        return transactions
-          .filter((transaction) => {
-            const transactionDate = transaction.date;
-            return (
-              isSameMonth(transactionDate, month) &&
-              isSameYear(transactionDate, month) &&
-              transaction.type === 'income'
-            );
-          })
-          .reduce((total, transaction) => total + transaction.amount, 0);
-      },
-      
-      calculateTotalExpenses: (month: Date) => {
-        const { transactions } = get();
-        
-        return transactions
-          .filter((transaction) => {
-            const transactionDate = transaction.date;
-            return (
-              isSameMonth(transactionDate, month) &&
-              isSameYear(transactionDate, month) &&
-              transaction.type === 'expense'
-            );
-          })
-          .reduce((total, transaction) => total + transaction.amount, 0);
-      },
-      
-      calculateBalance: (month: Date) => {
-        const totalIncome = get().calculateTotalIncome(month);
-        const totalExpenses = get().calculateTotalExpenses(month);
-        return totalIncome - totalExpenses;
-      },
-      
-      getTransactionsByCategory: (categoryName: string, month: Date) => {
-        const { transactions } = get();
-        
-        return transactions.filter((transaction) => {
-          const transactionDate = transaction.date;
-          return (
-            isSameMonth(transactionDate, month) &&
-            isSameYear(transactionDate, month) &&
-            transaction.category === categoryName
-          );
-        });
-      },
-      
-      findCategoryById: (id: string) => {
-        return get().categories.find((category) => category.id === id);
-      },
-      
-      findCategoryByName: (name: string) => {
-        return get().categories.find((category) => category.name === name);
-      },
-      
-      hasDataForCurrentMonth: () => {
-        const { transactions, currentDate } = get();
-        return transactions.some(tx => 
-          isSameMonth(tx.date, currentDate) && 
-          isSameYear(tx.date, currentDate)
-        );
-      },
-      
-      // Category operations - these would call the API services
-      addCategory: async (category) => {
-        // Implementation would call categoryService
-        console.log('Add category:', category);
-      },
-      
-      updateCategory: async (category) => {
-        // Implementation would call categoryService
-        console.log('Update category:', category);
-      },
-      
-      deleteCategory: async (id) => {
-        // Implementation would call categoryService
-        console.log('Delete category:', id);
-      },
-      
-      addSubcategory: async (subcategory) => {
-        // Implementation would call categoryService
-        console.log('Add subcategory:', subcategory);
-      },
-      
-      updateSubcategory: async (subcategory) => {
-        // Implementation would call categoryService
-        console.log('Update subcategory:', subcategory);
-      },
-      
-      deleteSubcategory: async (id) => {
-        // Implementation would call categoryService
-        console.log('Delete subcategory:', id);
-      },
-      
-      // Transaction operations
-      addTransaction: async (transaction) => {
-        // Implementation would call transactionService
-        console.log('Add transaction:', transaction);
-      },
-      
-      updateTransaction: async (transaction) => {
-        // Implementation would call transactionService
-        console.log('Update transaction:', transaction);
-      },
-      
-      deleteTransaction: async (id) => {
-        // Implementation would call transactionService
-        console.log('Delete transaction:', id);
-      },
-      
-      // Budget operations
-      addBudgetGoal: async (budget) => {
-        // Implementation would call budgetService
-        console.log('Add budget goal:', budget);
-      },
-      
-      updateBudgetGoal: async (budget) => {
-        // Implementation would call budgetService
-        console.log('Update budget goal:', budget);
-      },
-      
-      deleteBudgetGoal: async (id) => {
-        // Implementation would call budgetService
-        console.log('Delete budget goal:', id);
-      },
-      
-      // Institution operations
-      addFinancialInstitution: async (institution) => {
-        // Implementation would call institutionService
-        console.log('Add financial institution:', institution);
-      },
-      
-      updateFinancialInstitution: async (institution) => {
-        // Implementation would call institutionService
-        console.log('Update financial institution:', institution);
-      },
-      
-      deleteFinancialInstitution: async (id) => {
-        // Implementation would call institutionService
-        console.log('Delete financial institution:', id);
-      },
-      
-      archiveFinancialInstitution: async (id) => {
-        // Implementation would call institutionService
-        console.log('Archive financial institution:', id);
-      },
-      
-      // Card operations
-      addCreditCard: async (card) => {
-        // Implementation would call cardService
-        console.log('Add credit card:', card);
-      },
-      
-      updateCreditCard: async (card) => {
-        // Implementation would call cardService
-        console.log('Update credit card:', card);
-      },
-      
-      deleteCreditCard: async (id) => {
-        // Implementation would call cardService
-        console.log('Delete credit card:', id);
-      },
-      
-      archiveCreditCard: async (id) => {
-        // Implementation would call cardService
-        console.log('Archive credit card:', id);
-      },
-      
-      // Goal operations
-      addGoal: async (goal) => {
-        try {
-          // Implementation details
-          set(state => ({
-            ...state,
-            goals: [...state.goals, goal as unknown as Goal]
-          }));
-        } catch (error) {
-          console.error("Error adding goal:", error);
-        }
-      },
-      
-      updateGoal: async (goal) => {
-        try {
-          // Implementation details
-          set(state => ({
-            ...state,
-            goals: state.goals.map(g => g.id === goal.id ? goal : g)
-          }));
-        } catch (error) {
-          console.error("Error updating goal:", error);
-        }
-      },
-      
-      deleteGoal: async (id) => {
-        // Implementation would call goalService
-        console.log('Delete goal:', id);
-      },
-      
-      // Goal transaction operations
-      addGoalTransaction: async (goalId, transaction) => {
-        // Implementation would call goalService
-        console.log('Add goal transaction:', goalId, transaction);
-      },
-      
-      deleteGoalTransaction: async (id) => {
-        // Implementation would call goalService
-        console.log('Delete goal transaction:', id);
-      },
-      
-      // Goal modification operations
-      addGoalModification: async (modification) => {
-        // Implementation would call goalService
-        console.log('Add goal modification:', modification);
-      },
-      
-      getGoalModifications: async (goalId) => {
-        // Implementation would call goalService
-        console.log('Get goal modifications:', goalId);
-        return [];
-      },
-      
-      // Category selection for charts
-      toggleCategorySelection: (categoryId) => {
-        const { selectedCategories } = get();
-        if (selectedCategories.includes(categoryId)) {
-          set({ selectedCategories: selectedCategories.filter(id => id !== categoryId) });
-        } else {
-          set({ selectedCategories: [...selectedCategories, categoryId] });
-        }
-      },
-      
-      resetCategorySelection: () => {
-        set({ selectedCategories: [] });
-      },
-      
-      // Expense breakdown for charts
-      expenseBreakdown: () => {
-        const { transactions, categories, selectedMonth } = get();
-        
-        const expensesByCategory = transactions
-          .filter(tx => 
-            tx.type === 'expense' && 
-            isSameMonth(tx.date, selectedMonth) && 
-            isSameYear(tx.date, selectedMonth)
-          )
-          .reduce((acc, tx) => {
-            const categoryName = tx.category;
-            acc[categoryName] = (acc[categoryName] || 0) + tx.amount;
-            return acc;
-          }, {} as Record<string, number>);
-        
-        return Object.entries(expensesByCategory).map(([name, value]) => {
-          const category = categories.find(c => c.name === name);
-          return {
-            name,
-            value,
-            color: category?.color || '#cccccc'
-          };
-        });
-      }
-    }),
-    {
-      name: 'finance-storage',
-      partialize: (state) => ({
-        selectedMonth: state.selectedMonth,
-        currentDate: state.currentDate,
-        selectedCategories: state.selectedCategories
-      }),
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
-  )
-);
+  },
+  
+  // Other helper methods
+  hasDataForCurrentMonth: () => {
+    return get().filteredTransactions.length > 0;
+  },
+  
+  setSelectedMonth: (date: Date) => {
+    set({ selectedMonth: date });
+    get().fetchAllData();
+  },
+  
+  navigateToPreviousMonth: () => {
+    const newDate = subMonths(get().selectedMonth, 1);
+    get().setSelectedMonth(newDate);
+  },
+  
+  navigateToNextMonth: () => {
+    const newDate = addMonths(get().selectedMonth, 1);
+    get().setSelectedMonth(newDate);
+  },
+  
+  navigateToTransactions: (filter?: TransactionFilterType) => {
+    // This function should be implemented in components that need navigation
+    // using react-router-dom's useNavigate
+    console.log('Navigate to transactions with filter:', filter);
+  },
+  
+  navigateToGoalDetail: (id: string) => {
+    // This function should be implemented in components that need navigation
+    console.log('Navigate to goal detail:', id);
+  },
+  
+  formatCurrency: (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  },
+  
+  calculateTotalIncome: (month: Date) => {
+    const { startDate, endDate } = getMonthDateRange(month);
+    return get().transactions
+      .filter(tx => 
+        tx.type === 'income' && 
+        tx.date >= startDate && 
+        tx.date <= endDate
+      )
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  },
+  
+  calculateTotalExpenses: (month: Date) => {
+    const { startDate, endDate } = getMonthDateRange(month);
+    return get().transactions
+      .filter(tx => 
+        tx.type === 'expense' && 
+        tx.date >= startDate && 
+        tx.date <= endDate
+      )
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  },
+  
+  calculateBalance: (month: Date) => {
+    return get().calculateTotalIncome(month) - get().calculateTotalExpenses(month);
+  },
+  
+  getTransactionsByCategory: (categoryName: string, month: Date) => {
+    const { startDate, endDate } = getMonthDateRange(month);
+    return get().transactions.filter(tx => 
+      tx.category === categoryName &&
+      tx.date >= startDate && 
+      tx.date <= endDate
+    );
+  },
+  
+  findCategoryById: (id: string) => {
+    return get().categories.find(cat => cat.id === id);
+  },
+  
+  findCategoryByName: (name: string) => {
+    return get().categories.find(cat => cat.name === name);
+  },
+  
+  expenseBreakdown: () => {
+    // Get current month's expense transactions
+    const { startDate, endDate } = getMonthDateRange(get().selectedMonth);
+    const expenseTransactions = get().transactions.filter(tx => 
+      tx.type === 'expense' && 
+      tx.date >= startDate && 
+      tx.date <= endDate
+    );
+    
+    // Group by category and calculate totals
+    const categoryTotals: Record<string, { total: number, color: string }> = {};
+    
+    expenseTransactions.forEach(tx => {
+      const category = get().findCategoryByName(tx.category);
+      if (!categoryTotals[tx.category]) {
+        categoryTotals[tx.category] = {
+          total: 0,
+          color: category?.color || '#888888'
+        };
+      }
+      categoryTotals[tx.category].total += tx.amount;
+    });
+    
+    // Convert to array format for charts
+    return Object.entries(categoryTotals).map(([name, { total, color }]) => ({
+      name,
+      value: total,
+      color
+    }));
+  },
+  
+  toggleCategorySelection: (categoryId: string) => {
+    set(state => {
+      if (state.selectedCategories.includes(categoryId)) {
+        return {
+          selectedCategories: state.selectedCategories.filter(id => id !== categoryId)
+        };
+      } else {
+        return {
+          selectedCategories: [...state.selectedCategories, categoryId]
+        };
+      }
+    });
+  },
+  
+  resetCategorySelection: () => {
+    set({ selectedCategories: [] });
+  },
+  
+  // CRUD operations
+  addCategory: async (category: Omit<Category, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newCategory = await categoryService.createCategory(category);
+      set(state => ({
+        categories: [...state.categories, newCategory],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding category:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      throw error;
+    }
+  },
+  
+  updateCategory: async (category: Category) => {
+    set({ isLoading: true, error: null });
+    try {
+      await categoryService.updateCategory(category.id, category);
+      set(state => ({
+        categories: state.categories.map(c => c.id === category.id ? category : c),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating category:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      throw error;
+    }
+  },
+  
+  deleteCategory: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await categoryService.deleteCategory(id);
+      set(state => ({
+        categories: state.categories.filter(c => c.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      throw error;
+    }
+  },
+  
+  addSubcategory: async (subcategory: Omit<Subcategory, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newSubcategory = await categoryService.createSubcategory(subcategory);
+      set(state => ({
+        subcategories: [...state.subcategories, newSubcategory],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding subcategory:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateSubcategory: async (subcategory: Subcategory) => {
+    set({ isLoading: true, error: null });
+    try {
+      await categoryService.updateSubcategory(subcategory.id, subcategory);
+      set(state => ({
+        subcategories: state.subcategories.map(s => s.id === subcategory.id ? subcategory : s),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating subcategory:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteSubcategory: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await categoryService.deleteSubcategory(id);
+      set(state => ({
+        subcategories: state.subcategories.filter(s => s.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting subcategory:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addTransaction: async (transaction: Omit<Transaction, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newTransaction = await transactionService.addTransaction(transaction);
+      set(state => ({
+        transactions: [...state.transactions, newTransaction],
+        filteredTransactions: [...state.filteredTransactions, newTransaction],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateTransaction: async (transaction: Transaction) => {
+    set({ isLoading: true, error: null });
+    try {
+      await transactionService.updateTransaction(transaction.id, transaction);
+      set(state => ({
+        transactions: state.transactions.map(t => t.id === transaction.id ? transaction : t),
+        filteredTransactions: state.filteredTransactions.map(t => t.id === transaction.id ? transaction : t),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteTransaction: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await transactionService.deleteTransaction(id);
+      set(state => ({
+        transactions: state.transactions.filter(t => t.id !== id),
+        filteredTransactions: state.filteredTransactions.filter(t => t.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addBudgetGoal: async (budget: Omit<Budget, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newBudget = await budgetService.createBudget(budget);
+      set(state => ({
+        budgetGoals: [...state.budgetGoals, newBudget],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding budget goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateBudgetGoal: async (budget: Budget) => {
+    set({ isLoading: true, error: null });
+    try {
+      await budgetService.updateBudget(budget.id, budget);
+      set(state => ({
+        budgetGoals: state.budgetGoals.map(b => b.id === budget.id ? budget : b),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating budget goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteBudgetGoal: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await budgetService.deleteBudget(id);
+      set(state => ({
+        budgetGoals: state.budgetGoals.filter(b => b.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting budget goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addFinancialInstitution: async (institution: Omit<FinancialInstitution, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newInstitution = await institutionService.createInstitution(institution);
+      set(state => ({
+        institutions: [...state.institutions, newInstitution],
+        financialInstitutions: [...state.financialInstitutions, newInstitution],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding financial institution:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateFinancialInstitution: async (institution: FinancialInstitution) => {
+    set({ isLoading: true, error: null });
+    try {
+      await institutionService.updateInstitution(institution.id, institution);
+      set(state => ({
+        institutions: state.institutions.map(i => i.id === institution.id ? institution : i),
+        financialInstitutions: state.financialInstitutions.map(i => i.id === institution.id ? institution : i),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating financial institution:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteFinancialInstitution: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await institutionService.deleteInstitution(id);
+      set(state => ({
+        institutions: state.institutions.filter(i => i.id !== id),
+        financialInstitutions: state.financialInstitutions.filter(i => i.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting financial institution:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  archiveFinancialInstitution: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await institutionService.archiveInstitution(id);
+      set(state => ({
+        institutions: state.institutions.map(i => i.id === id ? { ...i, archived: true } : i),
+        financialInstitutions: state.financialInstitutions.map(i => i.id === id ? { ...i, archived: true } : i),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error archiving financial institution:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addCreditCard: async (card: Omit<CreditCard, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newCard = await cardService.createCreditCard(card);
+      set(state => ({
+        cards: [...state.cards, newCard],
+        creditCards: [...state.creditCards, newCard],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding credit card:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateCreditCard: async (card: CreditCard) => {
+    set({ isLoading: true, error: null });
+    try {
+      await cardService.updateCreditCard(card.id, card);
+      set(state => ({
+        cards: state.cards.map(c => c.id === card.id ? card : c),
+        creditCards: state.creditCards.map(c => c.id === card.id ? card : c),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating credit card:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteCreditCard: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await cardService.deleteCreditCard(id);
+      set(state => ({
+        cards: state.cards.filter(c => c.id !== id),
+        creditCards: state.creditCards.filter(c => c.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting credit card:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  archiveCreditCard: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await cardService.archiveCreditCard(id);
+      set(state => ({
+        cards: state.cards.map(c => c.id === id ? { ...c, archived: true } : c),
+        creditCards: state.creditCards.map(c => c.id === id ? { ...c, archived: true } : c),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error archiving credit card:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addGoal: async (goal: Omit<Goal, 'id'>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newGoal = await goalService.createGoal(goal);
+      set(state => ({
+        goals: [...state.goals, newGoal],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  updateGoal: async (goal: Goal) => {
+    set({ isLoading: true, error: null });
+    try {
+      await goalService.updateGoal(goal.id, goal);
+      set(state => ({
+        goals: state.goals.map(g => g.id === goal.id ? goal : g),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error updating goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteGoal: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await goalService.deleteGoal(id);
+      set(state => ({
+        goals: state.goals.filter(g => g.id !== id),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addGoalTransaction: async (goalId: string, transaction: any) => {
+    set({ isLoading: true, error: null });
+    try {
+      await goalService.addGoalTransaction(goalId, transaction);
+      set(state => ({
+        goals: state.goals.map(g =>
+          g.id === goalId
+            ? { ...g, transactions: [...(g.transactions || []), transaction] }
+            : g
+        ),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding goal transaction:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  deleteGoalTransaction: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await goalService.deleteGoalTransaction(id);
+      set(state => ({
+        goals: state.goals.map(g => ({
+          ...g,
+          transactions: g.transactions.filter(t => t.id !== id)
+        })),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting goal transaction:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  addGoalModification: async (modification: any) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Assuming the API returns the new modification after adding it
+      // const newModification = await goalService.addGoalModification(modification);
+      set(state => ({
+        goals: state.goals.map(g =>
+          g.id === modification.goalId
+            ? { ...g, modifications: [...(g.modifications || []), modification] }
+            : g
+        ),
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error adding goal modification:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  },
+  getGoalModifications: async (goalId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const modifications = await goalService.getGoalModifications(goalId);
+      set(state => ({
+        goals: state.goals.map(g =>
+          g.id === goalId ? { ...g, modifications: modifications } : g
+        ),
+        isLoading: false
+      }));
+      return modifications;
+    } catch (error) {
+      console.error('Error getting goal modifications:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return [];
+    }
+  }
+}));

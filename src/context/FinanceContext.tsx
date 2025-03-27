@@ -1,9 +1,10 @@
+
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { Category, Subcategory, Transaction, BudgetGoal, FinancialInstitution, CreditCard, Goal } from '@/types/finance';
-
-// Export the TransactionFilterType from our types
-export type { TransactionFilterType } from '@/types/finance';
+import { useFinanceNavigation } from '@/hooks/useFinanceNavigation';
+import { Category, Subcategory, Transaction, FinancialInstitution, CreditCard, Goal } from '@/types/finance';
+import { TransactionFilterType } from '@/types/transaction';
+import { BudgetGoal } from '@/types/budget';
 
 // This is now a compatibility layer that uses the Zustand store
 // But provides the same API as the old context for backward compatibility
@@ -28,7 +29,7 @@ interface FinanceContextType {
   setSelectedMonth: (date: Date) => void;
   navigateToPreviousMonth: () => void;
   navigateToNextMonth: () => void;
-  navigateToTransactions: (filter?: any) => void;
+  navigateToTransactions: (filter?: TransactionFilterType | string) => void;
   navigateToGoalDetail: (id: string) => void;
   formatCurrency: (value: number) => string;
   calculateTotalIncome: (month: Date) => number;
@@ -76,10 +77,14 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const finance = useFinanceStore();
+  const navigation = useFinanceNavigation();
   
   // Create a context value that matches the expected shape
   const value: FinanceContextType = {
-    ...finance
+    ...finance,
+    // Override navigation methods with React Router aware versions
+    navigateToTransactions: navigation.navigateToTransactions,
+    navigateToGoalDetail: navigation.navigateToGoalDetail
   };
   
   return (

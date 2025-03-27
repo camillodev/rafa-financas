@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { Target, TrendingUp, ArrowRight } from 'lucide-react';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/hooks/useFinance';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import ProgressIndicator from '@/components/ui/atoms/ProgressIndicator';
+import CardHeader from '@/components/ui/atoms/CardHeader';
 
 export function SavingsGoals() {
   const { goals, formatCurrency } = useFinance();
@@ -23,14 +25,18 @@ export function SavingsGoals() {
   
   return (
     <Card className="h-full animate-fade-in">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Metas de Economia</CardTitle>
-        <button 
-          className="text-sm text-primary hover:underline flex items-center gap-1"
-          onClick={handleNavigateToGoals}
-        >
-          Ver Todas <ArrowRight size={16} />
-        </button>
+      <CardHeader>
+        <CardHeader 
+          title="Metas de Economia"
+          action={
+            <button 
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+              onClick={handleNavigateToGoals}
+            >
+              Ver Todas <ArrowRight size={16} />
+            </button>
+          }
+        />
       </CardHeader>
       <CardContent>
         {topGoals.length > 0 ? (
@@ -57,7 +63,11 @@ export function SavingsGoals() {
                     </div>
                     <span className="text-sm font-semibold">{percentage}%</span>
                   </div>
-                  <Progress value={percentage} />
+                  <ProgressIndicator 
+                    value={goal.currentAmount} 
+                    max={goal.targetAmount}
+                    showPercentage={false}
+                  />
                 </div>
               );
             })}
