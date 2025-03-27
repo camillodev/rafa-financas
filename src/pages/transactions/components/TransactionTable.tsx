@@ -18,23 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import TablePagination from './TablePagination';
-import { formatDate } from '@/lib/utils';
-import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/badge';
 
 interface TransactionTableProps {
@@ -89,30 +73,6 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
       )}
     </div>
   );
-
-  // Function to get the sort indicator
-  const getSortIndicator = (key: string) => {
-    if (key !== sortKey) return null;
-    return sortDirection === 'asc' ? ' ↑' : ' ↓';
-  };
-
-  // Function to handle editing a transaction
-  const onEditTransaction = (transaction: TransactionValues) => {
-    handleOpenEditDialog(transaction);
-  };
-
-  // Function to handle deleting a transaction
-  const onDeleteTransaction = (transaction: TransactionValues) => {
-    setEditingTransaction(transaction);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Render the badge for transaction type
-  const renderTransactionTypeBadge = (type: 'income' | 'expense') => {
-    const variant = type === 'income' ? 'success' : 'destructive';
-    const label = type === 'income' ? 'Receita' : 'Despesa';
-    return <Badge variant={variant}>{label}</Badge>;
-  };
 
   if (filteredTransactions.length === 0) {
     return (
