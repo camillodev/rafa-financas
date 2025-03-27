@@ -1,8 +1,22 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/finance";
 
-export async function fetchTransactions(filters = {}) {
+interface FilterOptions {
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  search?: string;
+  limit?: number | string;
+  offset?: number | string;
+  category_id?: string;
+  subcategory_id?: string;
+  institution_id?: string;
+  transaction_type?: string;
+  status?: string;
+  [key: string]: any;
+}
+
+export async function fetchTransactions(filters: FilterOptions = {}) {
   let query = supabase
     .from('transactions')
     .select(`
@@ -18,17 +32,16 @@ export async function fetchTransactions(filters = {}) {
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         if (key === 'startDate') {
-          query = query.gte('date', value);
+          query = query.gte('date', value as string);
         } else if (key === 'endDate') {
-          query = query.lte('date', value);
+          query = query.lte('date', value as string);
         } else if (key === 'type') {
-          query = query.eq('transaction_type', value);
+          query = query.eq('transaction_type', value as string);
         } else if (key === 'search') {
           query = query.ilike('description', `%${String(value)}%`);
         } else if (key === 'limit' || key === 'offset') {
-          // Esses são tratados depois
         } else {
-          query = query.eq(key, value);
+          (query as any) = (query as any).eq(key, String(value));
         }
       }
     });
