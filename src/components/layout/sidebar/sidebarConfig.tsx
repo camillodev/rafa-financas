@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   LayoutDashboard, 
@@ -17,6 +16,7 @@ import {
   Users,
   History
 } from 'lucide-react';
+import { FeatureKey } from '@/context/FeatureFlagsContext';
 
 export const sidebarLinks = [
   { 
@@ -32,17 +32,19 @@ export const sidebarLinks = [
   { 
     icon: <Receipt size={20} />, 
     label: "Contas a Pagar", 
-    href: "/bills" 
+    href: "/bills",
+    featureFlag: 'bills' as FeatureKey
   },
   { 
     icon: <BarChart3 size={20} />, 
     label: "Orçamentos", 
-    href: "/budgets" 
+    href: "/budgets",
+    featureFlag: 'budgets' as FeatureKey
   },
   { 
     icon: <FileBarChart size={20} />, 
     label: "Relatórios", 
-    href: "/reports" 
+    href: "/reports"
   },
   { 
     icon: <List size={20} />, 
@@ -57,17 +59,20 @@ export const sidebarLinks = [
   { 
     icon: <CreditCard size={20} />, 
     label: "Cartões", 
-    href: "/cards" 
+    href: "/cards",
+    featureFlag: 'cards' as FeatureKey
   },
   { 
     icon: <Target size={20} />, 
     label: "Metas", 
-    href: "/goals" 
+    href: "/goals",
+    featureFlag: 'goals' as FeatureKey
   },
   {
     icon: <Split size={20} />,
     label: "Dividir Contas",
     href: "/split-bills",
+    featureFlag: 'splitBills' as FeatureKey,
     submenu: [
       {
         icon: <Home size={20} />,

@@ -11,9 +11,10 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun, Monitor, Database, Trash2, Layers, Receipt, PieChart, CreditCard, Target, Split } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/lib/auth';
+import { FeatureKey, useFeatureFlags } from '@/context/FeatureFlagsContext';
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -21,6 +22,49 @@ const Settings = () => {
 
   const handleThemeChange = (value: "light" | "dark" | "system") => {
     setTheme(value);
+  };
+
+  // Map of feature keys to their display names and icons
+  const featureDetails = {
+    bills: {
+      label: "Contas a Pagar", 
+      description: "Gerenciamento de contas e pagamentos",
+      icon: <Receipt className="h-4 w-4 mr-2" /> 
+    },
+    budgets: {
+      label: "Orçamentos", 
+      description: "Planejamento de orçamentos mensais",
+      icon: <Layers className="h-4 w-4 mr-2" /> 
+    },
+    reports: {
+      label: "Relatórios", 
+      description: "Relatórios e análises financeiras",
+      icon: <PieChart className="h-4 w-4 mr-2" /> 
+    },
+    cards: {
+      label: "Cartões", 
+      description: "Gerenciamento de cartões de crédito",
+      icon: <CreditCard className="h-4 w-4 mr-2" /> 
+    },
+    goals: {
+      label: "Metas", 
+      description: "Definição e acompanhamento de metas financeiras",
+      icon: <Target className="h-4 w-4 mr-2" /> 
+    },
+    splitBills: {
+      label: "Dividir Contas", 
+      description: "Divisão de contas entre amigos e grupos",
+      icon: <Split className="h-4 w-4 mr-2" /> 
+    },
+  };
+
+  // Handler for toggling features (only works in development)
+  const handleFeatureToggle = (key: FeatureKey) => {
+    if (isDevelopment && 'toggleFeature' in featureFlagsContext) {
+      // Type assertion to access the method safely
+      const toggleFeature = featureFlagsContext.toggleFeature as (key: FeatureKey) => void;
+      toggleFeature(key);
+    }
   };
 
   return (
@@ -33,6 +77,47 @@ const Settings = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Feature Flags section - only visible in development mode */}
+        {isDevelopment && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Funcionalidades (Modo Desenvolvimento)</CardTitle>
+              <CardDescription>
+                Ative ou desative funcionalidades específicas do aplicativo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Object.entries(featureDetails).map(([key, details]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <div className="flex items-start flex-col space-y-1">
+                    <div className="flex items-center">
+                      {details.icon}
+                      <Label htmlFor={`feature-${key}`} className="font-medium">
+                        {details.label}
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-6">
+                      {details.description}
+                    </p>
+                  </div>
+                  <Switch
+                    id={`feature-${key}`}
+                    checked={features[key]} 
+                    onCheckedChange={() => handleFeatureToggle(key as FeatureKey)}
+                  />
+                </div>
+              ))}
+
+              <Alert className="bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-900 mt-4">
+                <AlertDescription>
+                  Estas opções só são editáveis em ambiente de desenvolvimento. Em produção,
+                  as funcionalidades são controladas por variáveis de ambiente.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Tema</CardTitle>
@@ -132,13 +217,13 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="notifications-goals" className="font-medium">
-                  Progresso de metas
+                  Metas atingidas
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Receba atualizações sobre o progresso de suas metas financeiras
+                  Receba notificações quando atingir suas metas financeiras
                 </p>
               </div>
-              <Switch id="notifications-goals" />
+              <Switch id="notifications-goals" defaultChecked />
             </div>
           </CardContent>
         </Card>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Home, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -9,6 +8,7 @@ import { SidebarLink } from './SidebarLink';
 import { MobileHeader } from '../header/MobileHeader';
 import { sidebarLinks, settingsLink } from './sidebarConfig';
 import { UserButton } from '@clerk/clerk-react';
+import { useFeatureFlags } from '@/context/FeatureFlagsContext';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -16,6 +16,7 @@ export function Sidebar() {
   const location = useLocation();
   const { theme } = useTheme();
   const isMobile = useIsMobile();
+  const { isFeatureEnabled } = useFeatureFlags();
   
   useEffect(() => {
     if (isMobile) {
@@ -39,44 +40,62 @@ export function Sidebar() {
     setMobileOpen(!mobileOpen);
   };
   
+  // Filter links based on feature flags
+  const filteredLinks = sidebarLinks.filter(link => {
+    // If there's no feature flag specified, always show the link
+    if (!link.featureFlag) return true;
+
+    // Otherwise, check if the feature is enabled
+    return isFeatureEnabled(link.featureFlag);
+  });
+
   return (
     <>
-      {isMobile && (
-        <MobileHeader onMenuClick={toggleMobileMenu} />
+      {/* Mobile overlay */}
+      {isMobile && mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
-    
-      <div 
+
+      {/* Mobile header */}
+      {isMobile && (
+        <MobileHeader
+          onMenuClick={toggleMobileMenu}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
         className={cn(
-          "h-screen flex flex-col transition-all duration-300 ease-in-out z-40",
-          collapsed ? "w-16" : "w-64",
-          isMobile && !mobileOpen && "w-0 -translate-x-full",
-          isMobile && mobileOpen && "fixed left-0 top-0 w-full max-w-[280px] shadow-xl",
-          "bg-sidebar-background dark:bg-sidebar-background border-sidebar-border",
-          isMobile && "border-r-0 pt-14" // Add padding top for mobile header
+          "bg-sidebar border-r border-sidebar-border h-screen flex flex-col z-40 fixed transition-all duration-300 ease-in-out",
+          isMobile
+            ? cn(
+              "w-64 lg:w-72 top-0 bottom-0",
+              mobileOpen ? "left-0" : "-left-full"
+            )
+            : cn(
+              collapsed ? "w-[72px]" : "w-64 lg:w-72"
+            )
         )}
       >
-        {/* Header with logo */}
-        <div className="flex items-center justify-between p-4">
-          {(!collapsed || (isMobile && mobileOpen)) && (
-            <div className="flex items-center gap-2">
-              <Home className="text-sidebar-primary h-6 w-6" />
-              <span className="font-medium text-lg text-sidebar-foreground">Riqueza em Dia</span>
+        {/* Sidebar header */}
+        <div className="px-4 h-14 flex items-center justify-between border-b border-sidebar-border relative">
+          {!collapsed || (isMobile && mobileOpen) ? (
+            <h2 className="text-xl font-semibold text-sidebar-foreground">Finanças</h2>
+          ) : (
+            <div className="w-full flex justify-center">
+              <Home className="w-6 h-6 text-sidebar-primary" />
             </div>
           )}
-          {collapsed && !isMobile && <Home className="text-sidebar-primary h-6 w-6 mx-auto" />}
-          
-          {/* Close button for mobile */}
+
           {isMobile && mobileOpen && (
-            <button
-              onClick={toggleMobileMenu}
-              className="p-1 rounded-full hover:bg-sidebar-accent transition-colors"
-              aria-label="Close menu"
-            >
-              <X className="h-5 w-5 text-sidebar-foreground" />
+            <button onClick={() => setMobileOpen(false)} className="p-1 rounded-full hover:bg-sidebar-accent transition-colors">
+              <X className="h-5 w-5" />
             </button>
           )}
-          
-          {/* Collapse toggle for desktop */}
+
           {!isMobile && (
             <button
               onClick={() => setCollapsed(prev => !prev)}
@@ -105,7 +124,7 @@ export function Sidebar() {
         
         {/* Navigation links */}
         <div className="mt-6 flex flex-col gap-1 px-3 overflow-y-auto flex-1">
-          {sidebarLinks.map((link) => (
+          {filteredLinks.map((link) => (
             <SidebarLink
               key={link.href}
               icon={link.icon}
@@ -130,16 +149,19 @@ export function Sidebar() {
             onClick={handleLinkClick}
           />
         </div>
-      </div>
+      </aside>
       
-      {/* Overlay for mobile */}
-      {isMobile && mobileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
-          onClick={toggleMobileMenu}
-          aria-hidden="true"
-        />
-      )}
+      {/* Main content wrapper with padding */}
+      <main className={cn(
+        "min-h-screen transition-all duration-300 ease-in-out",
+        isMobile
+          ? "pl-0 pt-14"
+          : cn(
+            collapsed ? "pl-[72px]" : "pl-64 lg:pl-72"
+          )
+      )}>
+        {/* Children content */}
+      </main>
     </>
   );
 }

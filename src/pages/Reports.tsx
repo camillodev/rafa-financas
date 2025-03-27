@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+import { useFeatureFlags } from '@/context/FeatureFlagsContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +67,11 @@ const Reports = () => {
     formatCurrency,
   } = useFinance();
 
+  // Get feature flags to check which reports should be available
+  const { isFeatureEnabled } = useFeatureFlags();
+  const isCardsEnabled = isFeatureEnabled('cards');
+  const isBudgetsEnabled = isFeatureEnabled('budgets');
+
   const [activeReport, setActiveReport] = useState<string>('expenses-by-category');
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -79,6 +85,17 @@ const Reports = () => {
     selectedInstitutions: [] as string[],
     transactionStatus: 'all' as TransactionStatus,
   });
+
+  // Check if a report is available based on feature flags
+  const isReportAvailable = (reportType: string) => {
+    if (reportType === 'budget-vs-actual') {
+      return isBudgetsEnabled;
+    }
+    if (reportType === 'credit-card-expenses') {
+      return isCardsEnabled;
+    }
+    return true; // All other reports are always available
+  };
 
   const getPeriodDates = () => {
     const now = currentDate;
@@ -996,6 +1013,18 @@ const Reports = () => {
       }
       
       case 'budget-vs-actual': {
+        if (!isBudgetsEnabled) {
+          return (
+            <div className="text-center p-6">
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Relatório não disponível</h3>
+              <p className="text-muted-foreground">
+                Este relatório requer que a funcionalidade de Orçamentos esteja ativada.
+              </p>
+            </div>
+          );
+        }
+
         const data = prepareBudgetVsActual();
         return (
           <div className="space-y-6">
@@ -1072,6 +1101,18 @@ const Reports = () => {
       }
       
       case 'credit-card-expenses': {
+        if (!isCardsEnabled) {
+          return (
+            <div className="text-center p-6">
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Relatório não disponível</h3>
+              <p className="text-muted-foreground">
+                Este relatório requer que a funcionalidade de Cartões esteja ativada.
+              </p>
+            </div>
+          );
+        }
+
         const data = prepareCreditCardExpenses();
         const colors = data.map(item => item.color);
         return (
@@ -1333,7 +1374,7 @@ const Reports = () => {
         <Card>
           <CardContent className="p-6">
             <Tabs value={activeReport} onValueChange={setActiveReport}>
-              <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 mb-6">
+              <TabsList className="grid grid-cols-2 md:grid-cols-7 mb-4">
                 <TabsTrigger value="expenses-by-category">
                   Despesas por Categoria
                 </TabsTrigger>
@@ -1349,12 +1390,16 @@ const Reports = () => {
                 <TabsTrigger value="expenses-vs-income">
                   Receitas vs Despesas
                 </TabsTrigger>
-                <TabsTrigger value="budget-vs-actual">
-                  Planejado vs Realizado
-                </TabsTrigger>
-                <TabsTrigger value="credit-card-expenses">
-                  Despesas com Cartão
-                </TabsTrigger>
+                {isBudgetsEnabled && (
+                  <TabsTrigger value="budget-vs-actual">
+                    Planejado vs Realizado
+                  </TabsTrigger>
+                )}
+                {isCardsEnabled && (
+                  <TabsTrigger value="credit-card-expenses">
+                    Despesas por Cartão
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value={activeReport} className="mt-6">

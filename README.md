@@ -1,4 +1,3 @@
-
 # Rafa Finanças - Sistema de Gestão Financeira Pessoal
 
 ![Rafa Finanças](public/og-image.png)
@@ -29,6 +28,90 @@ Rafa Finanças é uma aplicação web abrangente para gestão financeira pessoal
 - [Recharts](https://recharts.org/) - Biblioteca de gráficos para React
 - [date-fns](https://date-fns.org/) - Biblioteca JavaScript para manipulação de datas
 - [Lucide React](https://lucide.dev/) - Conjunto de ícones para React
+
+## 🚩 Feature Flags (Bandeiras de Funcionalidades)
+
+O sistema utiliza feature flags baseadas em ambiente (environment-based feature flags) para controlar quais funcionalidades estão disponíveis em diferentes ambientes de implantação (desenvolvimento, homologação, produção). Isso permite:
+
+- Desativar funcionalidades específicas em produção enquanto estão em desenvolvimento
+- Implementar lançamentos graduais de novas funcionalidades
+- Testar diferentes configurações sem alterar o código
+
+### Feature Flags Disponíveis
+
+- `VITE_FEATURE_BILLS` - Contas a Pagar
+- `VITE_FEATURE_BUDGETS` - Orçamentos
+- `VITE_FEATURE_CARDS` - Cartões
+- `VITE_FEATURE_GOALS` - Metas
+- `VITE_FEATURE_SPLITBILLS` - Dividir Contas
+
+> **Nota**: A funcionalidade de Relatórios está sempre disponível, mas certos relatórios específicos dependem de outras feature flags:
+> - "Planejado vs Realizado" só estará disponível se `VITE_FEATURE_BUDGETS` estiver ativado
+> - "Despesas por Cartão" só estará disponível se `VITE_FEATURE_CARDS` estiver ativado
+
+### Configuração de Feature Flags
+
+As feature flags são configuradas através de variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto (baseado no `.env.example`) e defina os valores:
+
+```
+# Feature Flags (true para ativar, false para desativar)
+VITE_FEATURE_BILLS=true
+VITE_FEATURE_BUDGETS=true
+VITE_FEATURE_REPORTS=true
+VITE_FEATURE_CARDS=true
+VITE_FEATURE_GOALS=true
+VITE_FEATURE_SPLITBILLS=true
+```
+
+### Como Adicionar Novas Feature Flags
+
+1. **Adicione a nova variável de ambiente**:
+   - Adicione a variável ao arquivo `.env.example`
+   - Adicione a mesma variável ao seu arquivo `.env` local
+
+2. **Atualize o tipo FeatureKey**:
+   ```typescript
+   // src/context/FeatureFlagsContext.tsx
+   export type FeatureKey = 
+     | 'bills' 
+     | 'budgets' 
+     // ... outras flags existentes
+     | 'novaFeature'; // Adicione sua nova feature aqui
+   ```
+
+3. **Adicione ao método getDefaultFeatureFlags**:
+   ```typescript
+   // src/context/FeatureFlagsContext.tsx
+   const getDefaultFeatureFlags = (): FeatureFlags => ({
+     bills: getEnvFlag('bills', true),
+     // ... outras flags existentes
+     novaFeature: getEnvFlag('novaFeature', false), // Padrão desativado
+   });
+   ```
+
+4. **Proteja as rotas ou componentes com a nova feature flag**:
+   ```tsx
+   import { useFeatureFlags } from '@/context/FeatureFlagsContext';
+   
+   function MinhaFuncionalidade() {
+     const { isFeatureEnabled } = useFeatureFlags();
+     
+     if (!isFeatureEnabled('novaFeature')) {
+       return null; // Ou algum fallback
+     }
+     
+     return <MeuComponente />;
+   }
+   ```
+
+### Modo de Desenvolvimento
+
+No ambiente de desenvolvimento, você pode:
+- Ver o painel de Feature Flags na página de Configurações
+- Ativar/desativar features localmente para teste (estas mudanças são armazenadas no localStorage)
+- Verificar o comportamento da aplicação com diferentes configurações de features
+
+**Nota**: Em ambientes de produção, as feature flags são controladas exclusivamente por variáveis de ambiente, e a interface de controle não é exibida.
 
 ## 📦 Instalação e Uso
 
