@@ -15,3 +15,7 @@ export function useAuth() {
     supabase: auth.supabase
   };
 }
+
+export function signOut() {
+  return useSupabaseAuth().signOut();
+}

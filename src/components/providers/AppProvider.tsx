@@ -3,6 +3,8 @@ import React, { useEffect, ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { signInAnonymously } from '@/integrations/supabase/client';
+import { SplitBillsProvider } from '@/context/SplitBillsContext';
+import { FeatureFlagsProvider } from '@/context/FeatureFlagsContext';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -31,9 +33,11 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [fetchAllData]);
   
   return (
-    <>
-      {children}
-      <Toaster />
-    </>
+    <FeatureFlagsProvider>
+      <SplitBillsProvider>
+        {children}
+        <Toaster />
+      </SplitBillsProvider>
+    </FeatureFlagsProvider>
   );
 }

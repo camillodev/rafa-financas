@@ -155,3 +155,55 @@ export interface SplitBillPayment {
   date: Date;
   notes?: string;
 }
+
+// New type for transaction filtering
+export type TransactionFilterType = {
+  startDate?: Date;
+  endDate?: Date;
+  categories?: string[];
+  status?: string;
+  type?: TransactionType;
+  search?: string;
+  institution?: string;
+  card?: string;
+}
+
+// Type for bank transaction response from API
+export interface BankTransactionResponse {
+  id: string;
+  amount: number;
+  type: string;
+  category_id: string;
+  subcategory_id?: string;
+  date: string;
+  settlement_date?: string;
+  description: string;
+  payment_method?: string;
+  institution_id?: string;
+  transaction_type?: string;
+  status: string;
+  due_date?: string;
+  card_id?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  categories: {
+    name: string;
+    color: string;
+    icon: string;
+    type: string;
+  };
+  institutions?: {
+    name: string;
+    logo: string;
+  };
+}
+
+// Type for API responses with pagination
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+}
