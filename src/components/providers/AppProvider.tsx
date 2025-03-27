@@ -1,8 +1,9 @@
+
 import React, { useEffect, ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
-import { SplitBillsProvider } from '@/context/SplitBillsContext';
 import { FeatureFlagsProvider } from '@/context/FeatureFlagsContext';
 import { fetchAllFinanceData } from '@/services/financeService';
+import { ThemeProvider } from '@/hooks/use-theme';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -15,11 +16,11 @@ export function AppProvider({ children }: AppProviderProps) {
   }, []);
   
   return (
-    <FeatureFlagsProvider>
-      <SplitBillsProvider>
-        {children}
-        <Toaster />
-      </SplitBillsProvider>
-    </FeatureFlagsProvider>
+    <ThemeProvider>
+      <FeatureFlagsProvider>
+          {children}
+          <Toaster />
+      </FeatureFlagsProvider>
+    </ThemeProvider>
   );
 }
