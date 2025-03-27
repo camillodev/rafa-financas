@@ -135,6 +135,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Check if we're authenticated first
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (!sessionData.session) {
+          console.log("No active session, attempting anonymous sign-in");
+          const { error } = await supabase.auth.signInAnonymously();
+          if (error) {
+            console.error("Failed to sign in anonymously:", error);
+            toast.error("Falha na autenticação");
+            return;
+          }
+        }
+        
         // Load categories
         const categoriesData = await fetchCategories();
         if (categoriesData) {
@@ -181,9 +194,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         setSubcategories(subcategoriesData || []);
 
         // Load transactions
-        const transactionsData = await fetchTransactions();
-        if (transactionsData) {
-          const formattedTransactions = transactionsData.data.map(t => ({
+        const transactionsResponse = await fetchTransactions();
+        if (transactionsResponse && transactionsResponse.data) {
+          const formattedTransactions = transactionsResponse.data.map(t => ({
             id: t.id,
             amount: t.amount,
             type: t.transaction_type === 'income' ? 'income' : 'expense',
@@ -313,7 +326,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         date: format(transaction.date, 'yyyy-MM-dd'),
         settlement_date: transaction.settlementDate ? format(transaction.settlementDate, 'yyyy-MM-dd') : null,
         description: transaction.description,
-        institution_id: transaction.financialInstitution || null,
+        financialInstitution: transaction.financialInstitution || null,
         card_id: transaction.card || null,
         status: transaction.status
       } as any);

@@ -50,8 +50,14 @@ export const initSupabaseAuth = () => {
   return subscription;
 };
 
-// Auth helper functions - these will be replaced by Clerk
+// Auth helper functions 
 export const getSession = async () => {
   const { data, error } = await supabase.auth.getSession();
+  return { data, error };
+};
+
+// Add a function to sign in anonymously to enable using RLS
+export const signInAnonymously = async () => {
+  const { data, error } = await supabase.auth.signInAnonymously();
   return { data, error };
 };
