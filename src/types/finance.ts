@@ -13,20 +13,25 @@ export interface Subcategory {
   categoryId: string;
 }
 
+export type TransactionType = 'income' | 'expense';
+
 export interface Transaction {
   id: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: TransactionType;
   category: string;
   categoryId: string;
+  subcategory?: string;
   date: Date;
   description: string;
   status: 'completed' | 'pending';
   settlementDate?: Date;
   institution?: string;
   institutionId?: string;
+  financialInstitution?: string;
+  paymentMethod?: string;
+  transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   isActive?: boolean;
-  transactionType?: string;
 }
 
 export interface Budget {
