@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -63,7 +62,7 @@ import { differenceInMonths, format, isAfter, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { toast } from "sonner";
-import { GoalModification, GoalTransaction } from '@/types/finance';
+import { Goal, GoalModification, GoalTransaction } from '@/types/finance';
 
 export function GoalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -81,7 +80,7 @@ export function GoalDetail() {
     getGoalModifications
   } = useFinance();
   
-  const goal = goals.find(g => g.id === id);
+  const goal = goals.find(g => g.id === id) as unknown as Goal;
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -110,8 +109,12 @@ export function GoalDetail() {
   // Load modification history
   useEffect(() => {
     if (id) {
-      const modifications = getGoalModifications(id);
-      setModificationHistory(modifications);
+      getGoalModifications(id).then(data => {
+        setModificationHistory(data);
+      }).catch(error => {
+        console.error("Failed to load goal modifications:", error);
+        setModificationHistory([]);
+      });
     }
   }, [id, getGoalModifications]);
   
@@ -195,7 +198,15 @@ export function GoalDetail() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    updateGoal(goal.id, editFormData);
+    updateGoal({
+      ...goal,
+      name: editFormData.name,
+      targetAmount: editFormData.targetAmount,
+      targetDate: editFormData.targetDate,
+      category: editFormData.category,
+      icon: editFormData.icon,
+      color: editFormData.color,
+    } as any);
     setIsEditDialogOpen(false);
   };
   
@@ -234,7 +245,7 @@ export function GoalDetail() {
   
   const handleDeleteTransaction = () => {
     if (selectedTransaction) {
-      deleteGoalTransaction(goal.id, selectedTransaction.id);
+      deleteGoalTransaction(selectedTransaction.id);
       setIsDeleteTransactionDialogOpen(false);
     }
   };

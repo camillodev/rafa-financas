@@ -256,7 +256,8 @@ export function BudgetCreationDialog({ isOpen, onClose, currentMonth }: BudgetCr
         addBudgetGoal({
           category: allocation.category,
           amount: allocation.amount,
-          period: 'monthly'
+          period: 'monthly',
+          spent: 0
         });
       }
     });

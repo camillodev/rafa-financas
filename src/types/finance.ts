@@ -207,3 +207,15 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  icon: string;
+  color: string;
+  transactions: GoalTransaction[];
+}

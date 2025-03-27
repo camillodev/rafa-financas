@@ -5,6 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from 'lucide-react';
 
+// Define a type for the expense breakdown items
+type ExpenseBreakdownItem = {
+  name: string;
+  category: string;
+  value: number;
+  color: string;
+  percent?: number;
+};
+
 const CustomTooltip = ({ active, payload }: any) => {
   const { formatCurrency } = useFinance();
   
@@ -42,10 +51,24 @@ export function CategoryBreakdown() {
   const [showingSubcategories, setShowingSubcategories] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
+  // Get expenses data either from the function or directly from the array
+  const getExpensesData = (): ExpenseBreakdownItem[] => {
+    if (typeof expenseBreakdown === 'function') {
+      return expenseBreakdown().map(item => ({
+        ...item,
+        category: item.name
+      }));
+    }
+    if (Array.isArray(expenseBreakdown)) {
+      return expenseBreakdown;
+    }
+    return [];
+  };
+
   // If we have selected categories to filter by, filter the expense breakdown
-  const filteredExpenseBreakdown = selectedCategories.length > 0
-    ? expenseBreakdown.filter(item => selectedCategories.includes(item.category))
-    : expenseBreakdown;
+  const filteredExpenseBreakdown: ExpenseBreakdownItem[] = selectedCategories.length > 0
+    ? getExpensesData().filter(item => selectedCategories.includes(item.name))
+    : getExpensesData();
   
   // Calculate total expenses for percentage calculation
   const totalExpenses = filteredExpenseBreakdown.reduce((sum, item) => sum + item.value, 0);
@@ -81,6 +104,7 @@ export function CategoryBreakdown() {
     
     return Object.entries(subcategoryAmounts).map(([name, value], index) => ({
       category: name,
+      name,
       value,
       color: category.color,
       percent: subTotal > 0 ? Math.round((value / subTotal) * 100) : 0

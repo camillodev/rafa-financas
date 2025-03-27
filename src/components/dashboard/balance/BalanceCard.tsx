@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,7 @@ export function BalanceCard({ className }: BalanceCardProps) {
             <span className="text-xl font-bold">
               <AnimatedNumber
                 value={summary.netBalance}
-                formatter={formatCurrency}
+                formatter={(value) => formatCurrency(value)}
               />
             </span>
           </div>
@@ -46,8 +45,7 @@ export function BalanceCard({ className }: BalanceCardProps) {
                 <ArrowUpIcon className="mr-1 h-4 w-4" />
                 <AnimatedNumber
                   value={summary.totalIncome}
-                  formatter={formatCurrency}
-                  className="font-medium"
+                  formatter={(value) => formatCurrency(value)}
                 />
               </div>
             </div>
@@ -58,8 +56,7 @@ export function BalanceCard({ className }: BalanceCardProps) {
                 <ArrowDownIcon className="mr-1 h-4 w-4" />
                 <AnimatedNumber
                   value={summary.totalExpenses}
-                  formatter={formatCurrency}
-                  className="font-medium"
+                  formatter={(value) => formatCurrency(value)}
                 />
               </div>
             </div>

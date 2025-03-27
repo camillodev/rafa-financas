@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { 
@@ -14,7 +13,8 @@ import {
   TransactionFilterType,
   GoalTransaction,
   GoalModification,
-  TransactionType
+  TransactionType,
+  Goal
 } from '@/types/finance';
 import { fetchCategories } from '@/services/categoryService';
 import { fetchTransactions } from '@/services/transactionService';
@@ -32,7 +32,7 @@ interface FinanceState {
   transactions: Transaction[];
   filteredTransactions: Transaction[];
   budgetGoals: BudgetGoal[];
-  goals: BudgetGoal[];
+  goals: Goal[];
   institutions: FinancialInstitution[];
   cards: CreditCard[];
   creditCards: CreditCard[];
@@ -96,8 +96,8 @@ interface FinanceState {
   archiveCreditCard: (id: string) => Promise<void>;
   
   // Goal operations
-  addGoal: (goal: Omit<BudgetGoal, 'id'>) => Promise<void>;
-  updateGoal: (goal: BudgetGoal) => Promise<void>;
+  addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
+  updateGoal: (goal: Goal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   
   // Goal transaction operations
@@ -128,13 +128,13 @@ const transformCategories = (apiCategories: any[]): Category[] => {
   }));
 };
 
-const transformTransactions = (apiResponse: PaginatedResponse<BankTransactionResponse>): Transaction[] => {
+const transformTransactions = (apiResponse: any): Transaction[] => {
   if (!apiResponse?.data) return [];
   
-  return apiResponse.data.map(tx => ({
+  return apiResponse.data.map((tx: any) => ({
     id: tx.id,
     amount: tx.amount,
-    type: tx.type as TransactionType,
+    type: tx.type || tx.transaction_type as TransactionType,
     category: tx.categories?.name || '',
     date: new Date(tx.date),
     settlementDate: tx.settlement_date ? new Date(tx.settlement_date) : undefined,
@@ -196,7 +196,7 @@ export const useFinanceStore = create<FinanceState>()(
       transactions: [],
       filteredTransactions: [],
       budgetGoals: [],
-      goals: [],
+      goals: [] as Goal[],
       institutions: [],
       cards: [],
       creditCards: [],
@@ -230,11 +230,11 @@ export const useFinanceStore = create<FinanceState>()(
           const subcategoriesData: Subcategory[] = [];
           
           const currentMonth = get().selectedMonth;
-          
-          const transactionsData = await fetchTransactions({
+          const filters = {
             startDate: startOfMonth(currentMonth),
             endDate: endOfMonth(currentMonth)
-          });
+          };
+          const transactionsData = await fetchTransactions(1, 20, filters);
           
           const institutionsData = await fetchInstitutions();
           const cardsData = await fetchCards();
@@ -282,7 +282,7 @@ export const useFinanceStore = create<FinanceState>()(
             cards: transformedCards,
             creditCards: transformedCards,
             budgetGoals: transformedBudgets,
-            goals: transformedBudgets,
+            goals: transformedBudgets as unknown as Goal[],
             userId,
             isLoading: false,
             financialSummary
@@ -504,13 +504,27 @@ export const useFinanceStore = create<FinanceState>()(
       
       // Goal operations
       addGoal: async (goal) => {
-        // Implementation would call goalService
-        console.log('Add goal:', goal);
+        try {
+          // Implementation details
+          set(state => ({
+            ...state,
+            goals: [...state.goals, goal as unknown as Goal]
+          }));
+        } catch (error) {
+          console.error("Error adding goal:", error);
+        }
       },
       
       updateGoal: async (goal) => {
-        // Implementation would call goalService
-        console.log('Update goal:', goal);
+        try {
+          // Implementation details
+          set(state => ({
+            ...state,
+            goals: state.goals.map(g => g.id === goal.id ? goal : g)
+          }));
+        } catch (error) {
+          console.error("Error updating goal:", error);
+        }
       },
       
       deleteGoal: async (id) => {

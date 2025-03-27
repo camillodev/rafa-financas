@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { Category, Subcategory, Transaction, BudgetGoal, FinancialInstitution, CreditCard } from '@/types/finance';
+import { Category, Subcategory, Transaction, BudgetGoal, FinancialInstitution, CreditCard, Goal } from '@/types/finance';
 
 // Export the TransactionFilterType from our types
 export type { TransactionFilterType } from '@/types/finance';
@@ -15,7 +14,7 @@ interface FinanceContextType {
   transactions: Transaction[];
   filteredTransactions: Transaction[];
   budgetGoals: BudgetGoal[];
-  goals: BudgetGoal[];
+  goals: Goal[];
   institutions: FinancialInstitution[];
   financialInstitutions: FinancialInstitution[];
   cards: CreditCard[];
@@ -64,8 +63,8 @@ interface FinanceContextType {
   updateCreditCard: (card: CreditCard) => Promise<void>;
   deleteCreditCard: (id: string) => Promise<void>;
   archiveCreditCard: (id: string) => Promise<void>;
-  addGoal: (goal: Omit<BudgetGoal, 'id'>) => Promise<void>;
-  updateGoal: (goal: BudgetGoal) => Promise<void>;
+  addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
+  updateGoal: (goal: Goal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   addGoalTransaction: (goalId: string, transaction: any) => Promise<void>;
   deleteGoalTransaction: (id: string) => Promise<void>;

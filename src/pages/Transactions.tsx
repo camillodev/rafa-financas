@@ -90,7 +90,7 @@ export function Transactions() {
   } = useFinance();
   
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filter, setFilter] = useState<TransactionFilterType>('all');
+  const [filter, setFilter] = useState<TransactionFilterType>({});
   const [periodFilterActive, setPeriodFilterActive] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -136,18 +136,18 @@ export function Transactions() {
   });
   
   useEffect(() => {
-    const filterParam = searchParams.get('filter') as TransactionFilterType | null;
-    if (filterParam && ['income', 'expense'].includes(filterParam)) {
-      setFilter(filterParam);
+    const filterParam = searchParams.get('filter');
+    if (filterParam && ['income', 'expense', 'all'].includes(filterParam)) {
+      setFilter(filterParam as unknown as TransactionFilterType);
     } else {
-      setFilter('all');
+      setFilter({});
     }
   }, [searchParams]);
   
   // Apply all filters (type, search, advanced)
   const filteredTransactions = monthFilteredTransactions.filter(transaction => {
     // Type filter
-    if (filter !== 'all' && transaction.type !== filter) {
+    if (filter.type && transaction.type !== filter.type) {
       return false;
     }
     
@@ -209,7 +209,7 @@ export function Transactions() {
   
   const handleClearFilter = () => {
     setSearchParams({});
-    setFilter('all');
+    setFilter({});
     setSearchTerm('');
     setAdvancedFilters({
       dateRange: { start: '', end: '' },
@@ -223,13 +223,14 @@ export function Transactions() {
     });
   };
   
-  const handleSetFilter = (newFilter: TransactionFilterType) => {
+  const handleSetFilter = (newFilter: string) => {
     if (newFilter === 'all') {
       setSearchParams({});
+      setFilter({});
     } else {
       setSearchParams({ filter: newFilter });
+      setFilter({ type: newFilter as TransactionType });
     }
-    setFilter(newFilter);
   };
 
   const handleAdvancedFilterChange = (field: string, value: string) => {
@@ -334,7 +335,10 @@ export function Transactions() {
     };
 
     if (editingTransaction) {
-      updateTransaction(editingTransaction.id, transactionData);
+      updateTransaction({
+        id: editingTransaction.id,
+        ...transactionData
+      });
     } else {
       addTransaction(transactionData);
     }
@@ -512,7 +516,7 @@ export function Transactions() {
             <div className="flex gap-1">
               <button 
                 className={`px-3 py-1 text-xs font-medium rounded-md ${
-                  filter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-background'
+                  !filter.type ? 'bg-primary text-primary-foreground' : 'bg-background'
                 }`}
                 onClick={() => handleSetFilter('all')}
               >
@@ -520,7 +524,7 @@ export function Transactions() {
               </button>
               <button 
                 className={`px-3 py-1 text-xs font-medium rounded-md ${
-                  filter === 'income' ? 'bg-finance-income text-white' : 'bg-background'
+                  filter.type === 'income' ? 'bg-finance-income text-white' : 'bg-background'
                 }`}
                 onClick={() => handleSetFilter('income')}
               >
@@ -528,7 +532,7 @@ export function Transactions() {
               </button>
               <button 
                 className={`px-3 py-1 text-xs font-medium rounded-md ${
-                  filter === 'expense' ? 'bg-finance-expense text-white' : 'bg-background'
+                  filter.type === 'expense' ? 'bg-finance-expense text-white' : 'bg-background'
                 }`}
                 onClick={() => handleSetFilter('expense')}
               >
@@ -742,7 +746,7 @@ export function Transactions() {
           </Popover>
           
           {/* Clear Filters Button */}
-          {(filter !== 'all' || searchTerm || Object.values(advancedFilters).some(value => 
+          {(!filter.type || searchTerm || Object.values(advancedFilters).some(value => 
             typeof value === 'string' ? value : Object.values(value).some(v => v)
           )) && (
             <button 
@@ -904,11 +908,11 @@ export function Transactions() {
               <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
               <h4 className="text-xl font-medium">Nenhuma transação encontrada</h4>
               <p className="text-sm text-muted-foreground mt-2">
-                {filter !== 'all' 
-                  ? `Não existem transações do tipo ${filter === 'income' ? 'receita' : 'despesa'} para o período selecionado`
-                  : 'Não existem transações registradas para o período selecionado'}
+                  {!filter.type
+                    ? 'Não existem transações registradas para o período selecionado'
+                    : `Não existem transações do tipo ${filter.type === 'income' ? 'receita' : 'despesa'} para o período selecionado`}
               </p>
-              {(filter !== 'all' || searchTerm || Object.values(advancedFilters).some(value => 
+                {(!filter.type || searchTerm || Object.values(advancedFilters).some(value => 
                 typeof value === 'string' ? value : Object.values(value).some(v => v)
               )) && (
                 <button 
