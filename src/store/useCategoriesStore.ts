@@ -1,34 +1,8 @@
-
 import { create } from 'zustand';
 import * as categoryService from '@/services/categoryService';
 import { Category, CategoryResponse, Subcategory } from '@/types/finance';
-
-interface CategoriesState {
-  categories: Category[];
-  subcategories: Subcategory[];
-  selectedCategories: string[];
-  isLoading: boolean;
-  error: string | null;
-  
-  // Fetch operations
-  fetchCategories: () => Promise<void>;
-  
-  // CRUD operations
-  addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
-  updateCategory: (category: Category) => Promise<void>;
-  deleteCategory: (id: string) => Promise<void>;
-  addSubcategory: (subcategory: Omit<Subcategory, 'id'>) => Promise<void>;
-  updateSubcategory: (subcategory: Subcategory) => Promise<void>;
-  deleteSubcategory: (id: string) => Promise<void>;
-  
-  // Selection
-  toggleCategorySelection: (categoryId: string) => void;
-  resetCategorySelection: () => void;
-  
-  // Helpers
-  findCategoryById: (id: string) => Category | undefined;
-  findCategoryByName: (name: string) => Category | undefined;
-}
+import { CategoriesState } from '@/types/categories';
+import { useTransactionsStore } from './useTransactionsStore';
 
 // Helper function to convert API response to our app's category format
 const convertApiCategories = (apiCategories: CategoryResponse[]): Category[] => {
@@ -196,5 +170,55 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
   
   findCategoryByName: (name: string) => {
     return get().categories.find(cat => cat.name === name);
+  },
+
+  // Add the expenseBreakdown method to match interface
+  expenseBreakdown: () => {
+    const { transactions } = useTransactionsStore.getState();
+    const { categories } = get();
+
+    // Only include expense categories
+    const expenseCategories = categories.filter(cat => cat.type === 'expense');
+
+    return expenseCategories.map(category => {
+      // Get transactions for this category
+      const categoryTransactions = transactions.filter(
+        transaction => transaction.categoryId === category.id && transaction.type === 'expense'
+      );
+
+      // Calculate total amount
+      const totalAmount = categoryTransactions.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0
+      );
+
+      return {
+        id: category.id,
+        name: category.name,
+        color: category.color,
+        icon: category.icon,
+        totalAmount: totalAmount,
+        percentage: 0, // Will be calculated after
+        transactions: categoryTransactions
+      };
+    }).filter(cat => cat.totalAmount > 0)
+      .map(category => {
+        // Calculate the total of all categories
+        const totalExpenses = transactions
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        // Calculate percentage if total expenses > 0
+        const percentage = totalExpenses > 0
+          ? Math.round((category.totalAmount / totalExpenses) * 100)
+          : 0;
+
+        return {
+          ...category,
+          percentage
+        };
+      })
+      // Sort by amount descending
+      .sort((a, b) => b.totalAmount - a.totalAmount);
   }
 }));
