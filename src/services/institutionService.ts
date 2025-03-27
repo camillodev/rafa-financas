@@ -1,130 +1,65 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { FinancialInstitution } from "@/types/finance";
+import { FinancialInstitution, FinancialInstitutionResponse } from '@/types/finance';
 
-export async function fetchInstitutions(includeInactive = false) {
-  let query = supabase
-    .from('institutions')
-    .select('*')
-    .order('name');
-  
-  if (!includeInactive) {
-    query = query.eq('is_active', true);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error('Erro ao buscar instituições financeiras:', error);
-    throw error;
-  }
-  
-  return data || [];
-}
+// Define the base API URL
+const API_URL = 'https://api.example.com';
 
-export async function fetchInstitutionById(id: string) {
-  const { data, error } = await supabase
-    .from('institutions')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error) {
-    console.error('Erro ao buscar instituição financeira:', error);
-    throw error;
-  }
-  
-  return data;
-}
+// Fetch all financial institutions
+export const fetchInstitutions = async (): Promise<FinancialInstitutionResponse[]> => {
+  // Mock data for development
+  const mockInstitutions: FinancialInstitutionResponse[] = [
+    { 
+      id: '1', 
+      name: 'Nubank', 
+      type: 'bank', 
+      logo: 'nubank.png', 
+      current_balance: 5000, 
+      is_active: true, 
+      created_at: '2021-01-01', 
+      updated_at: '2021-01-01', 
+      user_id: '1'
+    },
+    { 
+      id: '2', 
+      name: 'Itaú', 
+      type: 'bank', 
+      logo: 'itau.png', 
+      current_balance: 10000, 
+      is_active: true, 
+      created_at: '2021-01-01', 
+      updated_at: '2021-01-01', 
+      user_id: '1'
+    }
+  ];
 
-export async function addInstitution(institution: Omit<FinancialInstitution, 'id'>) {
-  const { data, error } = await supabase
-    .from('institutions')
-    .insert({
-      name: institution.name,
-      logo: institution.icon,
-      type: 'bank',
-      current_balance: institution.currentBalance || 0,
-      is_active: institution.isActive !== false
-    })
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Erro ao criar instituição financeira:', error);
-    throw error;
-  }
-  
-  return data;
-}
+  return Promise.resolve(mockInstitutions);
+};
 
-export async function updateInstitution(id: string, institution: Partial<FinancialInstitution>) {
-  const updateData: any = {};
+// Add a new financial institution
+export const addInstitution = async (institution: Omit<FinancialInstitution, 'id'>): Promise<FinancialInstitution> => {
+  // Mock implementation
+  const newInstitution: FinancialInstitution = {
+    id: Math.random().toString(36).substring(7),
+    ...institution
+  };
   
-  if (institution.name) updateData.name = institution.name;
-  if (institution.icon) updateData.logo = institution.icon;
-  if (institution.currentBalance !== undefined) updateData.current_balance = institution.currentBalance;
-  if (institution.isActive !== undefined) updateData.is_active = institution.isActive;
-  
-  const { data, error } = await supabase
-    .from('institutions')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Erro ao atualizar instituição financeira:', error);
-    throw error;
-  }
-  
-  return data;
-}
+  return Promise.resolve(newInstitution);
+};
 
-export async function deleteInstitution(id: string) {
-  const { error } = await supabase
-    .from('institutions')
-    .delete()
-    .eq('id', id);
-  
-  if (error) {
-    console.error('Erro ao excluir instituição financeira:', error);
-    throw error;
-  }
-  
-  return true;
-}
+// Update an existing financial institution
+export const updateInstitution = async (id: string, institution: Partial<FinancialInstitution>): Promise<void> => {
+  // Mock implementation - in a real app this would make an API call
+  return Promise.resolve();
+};
 
-export async function updateInstitutionBalance(id: string, amount: number) {
-  // Primeiro, obtemos o saldo atual
-  const { data: currentInstitution, error: fetchError } = await supabase
-    .from('institutions')
-    .select('current_balance')
-    .eq('id', id)
-    .single();
-  
-  if (fetchError) {
-    console.error('Erro ao buscar saldo atual:', fetchError);
-    throw fetchError;
-  }
-  
-  const newBalance = parseFloat(String(currentInstitution.current_balance)) + amount;
-  
-  // Atualizar o saldo
-  const { data, error } = await supabase
-    .from('institutions')
-    .update({ current_balance: newBalance })
-    .eq('id', id)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Erro ao atualizar saldo:', error);
-    throw error;
-  }
-  
-  return data;
-}
+// Delete a financial institution
+export const deleteInstitution = async (id: string): Promise<void> => {
+  // Mock implementation - in a real app this would make an API call
+  return Promise.resolve();
+};
 
-// Aliasing para compatibilidade com os hooks existentes
-export const createInstitution = addInstitution;
+// Archive a financial institution
+export const archiveInstitution = async (id: string): Promise<void> => {
+  // Mock implementation - in a real app this would make an API call
+  return Promise.resolve();
+};

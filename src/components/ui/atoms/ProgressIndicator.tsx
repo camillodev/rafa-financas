@@ -7,52 +7,55 @@ interface ProgressIndicatorProps {
   value: number;
   max: number;
   showPercentage?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;
   className?: string;
-  warningThreshold?: number;
-  dangerThreshold?: number;
-  formatValue?: (value: number) => string;
-  formatMax?: (max: number) => string;
-  showRemaining?: boolean;
 }
 
 const ProgressIndicator = ({
   value,
   max,
   showPercentage = true,
-  className,
-  warningThreshold = 80,
-  dangerThreshold = 100,
-  formatValue,
-  formatMax,
-  showRemaining = false
+  size = 'md',
+  label,
+  className
 }: ProgressIndicatorProps) => {
-  const percentage = Math.min(Math.round((value / max) * 100), 100);
+  const percentage = Math.min(Math.floor((value / max) * 100), 100);
   
-  let progressColor = 'bg-primary';
-  if (percentage >= dangerThreshold) {
-    progressColor = 'bg-destructive';
-  } else if (percentage >= warningThreshold) {
-    progressColor = 'bg-orange-500';
-  }
+  const getProgressColor = () => {
+    if (percentage >= 90) {
+      return 'bg-emerald-500';
+    } else if (percentage >= 60) {
+      return 'bg-amber-500';
+    } else {
+      return 'bg-sky-500';
+    }
+  };
   
+  const getProgressHeight = () => {
+    switch (size) {
+      case 'sm':
+        return 'h-1.5';
+      case 'lg':
+        return 'h-3';
+      default:
+        return 'h-2';
+    }
+  };
+
   return (
-    <div className={cn("space-y-1", className)}>
-      <Progress 
-        value={percentage} 
-        className="h-2"
-        indicatorClassName={progressColor}
-      />
-      {showPercentage && (
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{percentage}%</span>
-          {showRemaining && (
-            <span>
-              {formatValue ? formatValue(Math.max(max - value, 0)) : Math.max(max - value, 0)} 
-              {formatMax && max ? ` / ${formatMax(max)}` : ''}
-            </span>
-          )}
+    <div className={cn("space-y-1.5", className)}>
+      {(label || showPercentage) && (
+        <div className="flex items-center justify-between text-xs">
+          {label && <span className="text-muted-foreground">{label}</span>}
+          {showPercentage && <span className="font-medium">{percentage}%</span>}
         </div>
       )}
+      <Progress 
+        value={percentage} 
+        className={cn(getProgressHeight(), "w-full")}
+        indicatorClassName={getProgressColor()}
+      />
     </div>
   );
 };

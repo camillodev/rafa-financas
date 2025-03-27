@@ -1,4 +1,3 @@
-
 import { TransactionType } from './finance';
 
 /**
@@ -51,3 +50,6 @@ export interface TransactionResponse {
   card_id?: string;
   is_active: boolean;
 }
+
+// Add this at the end of the file to export the type
+export type { TransactionFilterType };
