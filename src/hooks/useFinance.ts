@@ -7,14 +7,6 @@ import { useInstitutionsStore } from '@/store/useInstitutionsStore';
 import { useCardsStore } from '@/store/useCardsStore';
 import { fetchAllFinanceData } from '@/services/financeService';
 import { TransactionFilterType } from '@/types/transaction';
-import { useMemo } from 'react';
-import { TransactionsState } from '@/types/transactions';
-import { CategoriesState } from '@/types/categories';
-import { BudgetsState } from '@/types/budgets';
-import { GoalsState } from '@/types/goals';
-import { InstitutionsState } from '@/types/institutions';
-import { CardsState } from '@/types/cards';
-import { FinanceDateState } from '@/types/date';
 
 export type { TransactionFilterType };
 
@@ -45,33 +37,46 @@ export const useDateNavigation = () => {
  * Hook for financial data access from all domains
  */
 export const useFinancialData = () => {
-  const { transactions, filteredTransactions } = useTransactionsStore();
-  const { categories, subcategories } = useCategoriesStore();
-  const { budgetGoals } = useBudgetsStore();
-  const { goals } = useGoalsStore();
-  const { institutions, financialInstitutions } = useInstitutionsStore();
-  const { cards, creditCards } = useCardsStore();
+  // Store selectors - always call these regardless of condition
+  const transactionsStore = useTransactionsStore();
+  const categoriesStore = useCategoriesStore();
+  const budgetsStore = useBudgetsStore();
+  const goalsStore = useGoalsStore();
+  const institutionsStore = useInstitutionsStore();
+  const cardsStore = useCardsStore();
+
+  // Extract data from stores
+  const transactions = transactionsStore.transactions;
+  const filteredTransactions = transactionsStore.filteredTransactions;
+  const categories = categoriesStore.categories;
+  const subcategories = categoriesStore.subcategories;
+  const budgetGoals = budgetsStore.budgetGoals;
+  const goals = goalsStore.goals;
+  const institutions = institutionsStore.institutions;
+  const financialInstitutions = institutionsStore.financialInstitutions;
+  const cards = cardsStore.cards;
+  const creditCards = cardsStore.creditCards;
 
   // Loading states from all domain stores
   const isLoading =
-    useTransactionsStore(state => state.isLoading) ||
-    useCategoriesStore(state => state.isLoading) ||
-    useBudgetsStore(state => state.isLoading) ||
-    useGoalsStore(state => state.isLoading) ||
-    useInstitutionsStore(state => state.isLoading) ||
-    useCardsStore(state => state.isLoading);
+    transactionsStore.isLoading ||
+    categoriesStore.isLoading ||
+    budgetsStore.isLoading ||
+    goalsStore.isLoading ||
+    institutionsStore.isLoading ||
+    cardsStore.isLoading;
 
   // Error states from all domain stores
   const error =
-    useTransactionsStore(state => state.error) ||
-    useCategoriesStore(state => state.error) ||
-    useBudgetsStore(state => state.error) ||
-    useGoalsStore(state => state.error) ||
-    useInstitutionsStore(state => state.error) ||
-    useCardsStore(state => state.error);
+    transactionsStore.error ||
+    categoriesStore.error ||
+    budgetsStore.error ||
+    goalsStore.error ||
+    institutionsStore.error ||
+    cardsStore.error;
 
   return {
-// Raw data
+    // Raw data
     transactions,
     filteredTransactions,
     categories,
@@ -96,38 +101,48 @@ export const useFinancialData = () => {
  * Hook for calculations and financial metrics
  */
 export const useFinancialCalculations = () => {
-  const { getMonthDateRange, selectedMonth } = useDateNavigation();
-  const { transactions } = useFinancialData();
+  // Get all store functions first
+  const dateNavigationStore = useDateNavigation();
+  const { getMonthDateRange, selectedMonth } = dateNavigationStore;
 
+  const financialDataStore = useFinancialData();
+  const { transactions } = financialDataStore;
+
+  const transactionStore = useTransactionsStore();
   const {
     calculateTotalIncome,
     calculateTotalExpenses,
     calculateBalance,
     getTransactionsByCategory,
     formatCurrency
-  } = useTransactionsStore();
+  } = transactionStore;
 
-  const { expenseBreakdown } = useCategoriesStore();
+  const categoryStore = useCategoriesStore();
+  const { expenseBreakdown } = categoryStore;
 
   // Financial summary based on the current month
-  const financialSummary = useMemo(() => {
+  const getFinancialSummary = () => {
     const { startDate, endDate } = getMonthDateRange();
     return {
       totalIncome: calculateTotalIncome(startDate, endDate),
       totalExpenses: calculateTotalExpenses(startDate, endDate),
       balance: calculateBalance(startDate, endDate)
     };
-  }, [calculateTotalIncome, calculateTotalExpenses, calculateBalance, getMonthDateRange, selectedMonth]);
+  };
+
+  const financialSummary = getFinancialSummary();
 
   // Check if there's data for the current month
-  const hasDataForCurrentMonth = useMemo(() => {
-    if (!transactions.length) return false;
+  const getHasDataForCurrentMonth = () => {
+    if (!transactions || !transactions.length) return false;
 
     const { startDate, endDate } = getMonthDateRange();
     return transactions.some(
       transaction => new Date(transaction.date) >= startDate && new Date(transaction.date) <= endDate
     );
-  }, [transactions, getMonthDateRange, selectedMonth]);
+  };
+
+  const hasDataForCurrentMonth = getHasDataForCurrentMonth();
 
   return {
     formatCurrency,
