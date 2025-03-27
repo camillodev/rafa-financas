@@ -6,9 +6,6 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
 // Create Supabase client with anon key and explicit auth storage config
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
@@ -58,6 +55,22 @@ export const getSession = async () => {
 
 // Add a function to sign in anonymously to enable using RLS
 export const signInAnonymously = async () => {
+  // Check for existing session first
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (sessionData.session) {
+    console.log('Session already exists, no need to sign in anonymously');
+    return { data: sessionData, error: null };
+  }
+  
+  // No session, try to sign in anonymously
   const { data, error } = await supabase.auth.signInAnonymously();
+  
+  if (error) {
+    console.error('Error signing in anonymously:', error);
+  } else {
+    console.log('Signed in anonymously successfully');
+  }
+  
   return { data, error };
 };
