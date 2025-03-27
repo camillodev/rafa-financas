@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, forwardRef } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,33 @@ interface FiltersProps {
   filterOptions: Array<{ value: string; label: string; color?: string }>;
   advancedFiltersContent: React.ReactNode;
 }
+
+// Criar um componente de botão que possa receber refs
+const FilterButton = forwardRef<HTMLButtonElement, {
+  hasActiveFilters: boolean,
+  variant: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link',
+  className?: string,
+  children: React.ReactNode,
+  onClick?: () => void
+}>(({ hasActiveFilters, variant, className, children, onClick }, ref) => (
+  <Button
+    ref={ref}
+    variant={variant}
+    size="icon"
+    className={className}
+    onClick={onClick}
+  >
+    {children}
+    {hasActiveFilters && (
+      <Badge
+        className="absolute -top-1 -right-1 w-2 h-2 p-0 rounded-full bg-primary"
+        variant="secondary"
+      />
+    )}
+  </Button>
+));
+
+FilterButton.displayName = 'FilterButton';
 
 export default function Filters({
   filter,
@@ -88,39 +115,32 @@ export default function Filters({
           </Button>
         ))}
 
-        <Popover open={isAdvancedFilterOpen} onOpenChange={setIsAdvancedFilterOpen}>
-          <PopoverTrigger asChild>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
+        {/* Filtro avançado com popover e tooltip */}
+        <TooltipProvider>
+          <Tooltip>
+            <Popover open={isAdvancedFilterOpen} onOpenChange={setIsAdvancedFilterOpen}>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <FilterButton
+                    hasActiveFilters={hasActiveFilters}
                     variant={hasActiveFilters ? 'secondary' : 'outline'}
-                    size="icon"
                     className="relative"
                   >
                     <Filter className="h-4 w-4" />
-                    {hasActiveFilters && (
-                      <Badge
-                        className="absolute -top-1 -right-1 w-2 h-2 p-0 rounded-full bg-primary"
-                        variant="secondary"
-                      />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Filtros avançados</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            className="w-80 sm:w-96 p-0"
-          >
-            {advancedFiltersContent}
-          </PopoverContent>
-        </Popover>
+                  </FilterButton>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <PopoverContent align="end" className="w-80 sm:w-96 p-0">
+                {advancedFiltersContent}
+              </PopoverContent>
+            </Popover>
+            <TooltipContent side="bottom">
+              <p>Filtros avançados</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
+        {/* Botão de limpar filtros com tooltip */}
         {hasActiveFilters && (
           <TooltipProvider>
             <Tooltip>
