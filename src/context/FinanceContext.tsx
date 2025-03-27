@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { Transaction, Category, BudgetGoal, FinancialSummary, FinancialInstitution, CreditCard, Subcategory, GoalModification } from '../types/finance';
+import { Transaction, Category, BudgetGoal, Budget, FinancialSummary, FinancialInstitution, CreditCard, Subcategory, GoalModification } from '../types/finance';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { toast } from "sonner";
@@ -13,28 +13,69 @@ import { fetchGoals, addGoal as createGoal, updateGoal as updateGoalService, del
 
 export type TransactionFilterType = 'all' | 'income' | 'expense';
 
-type FinanceContextType = {
+// Goal transaction interface
+export interface GoalTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  type: 'add' | 'remove';
+  description: string;
+}
+
+// Financial goal interface
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  icon: string;
+  color: string;
+  transactions: GoalTransaction[];
+  modifications?: GoalModification[]; // Add modifications array to Goal interface
+}
+
+// Budget reallocation context
+export interface BudgetReallocation {
+  totalBudget: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+}
+
+interface FinanceContextType {
   transactions: Transaction[];
-  categories: Category[];
-  creditCards: CreditCard[];
-  financialInstitutions: FinancialInstitution[];
-  budgets: Budget[];
-  goals: Goal[];
   filteredTransactions: Transaction[];
+  categories: Category[];
+  subcategories: Subcategory[];
+  budgetGoals: BudgetGoal[];
+  financialSummary: FinancialSummary;
+  monthlyData: Array<{ month: string; income: number; expenses: number }>;
+  expenseBreakdown: Array<{ category: string; value: number; color: string }>;
+  financialInstitutions: FinancialInstitution[];
+  creditCards: CreditCard[];
+  goals: Goal[];
   currentDate: Date;
-  formatCurrency: (value: number) => string;
+  setCurrentDate: React.Dispatch<React.SetStateAction<Date>>;
   navigateToPreviousMonth: () => void;
   navigateToNextMonth: () => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
+  updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
+  formatCurrency: (value: number) => string;
+  navigateToTransactions: (filter?: TransactionFilterType, institutionId?: string, cardId?: string) => void;
+  hasDataForCurrentMonth: boolean;
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (id: string, category: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
-  addFinancialInstitution: (institution: Omit<FinancialInstitution, 'id'>) => void;
+  addSubcategory: (subcategory: Omit<Subcategory, 'id'>) => void;
+  updateSubcategory: (id: string, subcategory: Partial<Subcategory>) => void;
+  deleteSubcategory: (id: string) => void;
+  addFinancialInstitution: (institution: Omit<FinancialInstitution, 'id' | 'archived'>) => void;
   updateFinancialInstitution: (id: string, institution: Partial<FinancialInstitution>) => void;
   deleteFinancialInstitution: (id: string) => void;
-  addCreditCard: (card: Omit<CreditCard, 'id'>) => void;
+  archiveFinancialInstitution: (id: string, archived: boolean) => void;
+  addCreditCard: (card: Omit<CreditCard, 'id' | 'archived'>) => void;
   updateCreditCard: (id: string, card: Partial<CreditCard>) => void;
   deleteCreditCard: (id: string) => void;
   archiveCreditCard: (id: string, archived: boolean) => void;
@@ -63,28 +104,116 @@ type FinanceContextType = {
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
+// Create mock data for development
+const initialTransactions: Transaction[] = [];
+const initialCategories: Category[] = [];
+const initialBudgetGoals: BudgetGoal[] = [];
+const initialFinancialSummary: FinancialSummary = {
+  totalIncome: 0,
+  totalExpenses: 0,
+  netBalance: 0,
+  savingsGoal: 0,
+  savingsProgress: 0
+};
+const initialMonthlyData: Array<{ month: string; income: number; expenses: number }> = [];
+const initialExpenseBreakdown: Array<{ category: string; value: number; color: string }> = [];
+const initialFinancialInstitutions: FinancialInstitution[] = [];
+const initialCreditCards: CreditCard[] = [];
+const initialSubcategories: Subcategory[] = [];
+
+// Initial Goals mock data with modifications
+const initialGoals: Goal[] = [
+  {
+    id: 'g1',
+    name: 'Viagem para Europa',
+    targetAmount: 15000,
+    currentAmount: 6000,
+    targetDate: '2023-12-31',
+    category: 'Viagem',
+    icon: 'target',
+    color: '#4F46E5',
+    transactions: [
+      { id: 'gt1', date: new Date(2023, 4, 15), amount: 3000, type: 'add', description: 'Depósito inicial' },
+      { id: 'gt2', date: new Date(2023, 5, 10), amount: 2000, type: 'add', description: 'Bônus do trabalho' },
+      { id: 'gt3', date: new Date(2023, 6, 5), amount: 1500, type: 'add', description: 'Economia mensal' },
+      { id: 'gt4', date: new Date(2023, 6, 20), amount: 500, type: 'remove', description: 'Compra de passagem' },
+    ],
+    modifications: [
+      { id: 'gm1', goalId: 'g1', date: new Date(2023, 4, 15), type: 'contribution', description: 'Depósito inicial', amount: 3000 },
+      { id: 'gm2', goalId: 'g1', date: new Date(2023, 5, 10), type: 'target_change', description: 'Aumento do objetivo', previousValue: 12000, newValue: 15000 },
+      { id: 'gm3', goalId: 'g1', date: new Date(2023, 6, 5), type: 'contribution', description: 'Economia mensal', amount: 1500 },
+      { id: 'gm4', goalId: 'g1', date: new Date(2023, 6, 20), type: 'withdrawal', description: 'Compra de passagem', amount: 500 },
+    ]
+  },
+  {
+    id: 'g2',
+    name: 'Comprar um carro',
+    targetAmount: 60000,
+    currentAmount: 35000,
+    targetDate: '2024-06-30',
+    category: 'Veículo',
+    icon: 'target',
+    color: '#10B981',
+    transactions: [
+      { id: 'gt5', date: new Date(2023, 2, 10), amount: 20000, type: 'add', description: 'Venda de investimentos' },
+      { id: 'gt6', date: new Date(2023, 3, 15), amount: 5000, type: 'add', description: 'Economia trimestral' },
+      { id: 'gt7', date: new Date(2023, 4, 20), amount: 10000, type: 'add', description: 'Bônus anual' },
+    ],
+    modifications: [
+      { id: 'gm5', goalId: 'g2', date: new Date(2023, 2, 10), type: 'contribution', description: 'Venda de investimentos', amount: 20000 },
+      { id: 'gm6', goalId: 'g2', date: new Date(2023, 3, 15), type: 'date_change', description: 'Prazo estendido', previousValue: '2023-12-31', newValue: '2024-06-30' },
+      { id: 'gm7', goalId: 'g2', date: new Date(2023, 4, 20), type: 'contribution', description: 'Bônus anual', amount: 10000 },
+    ]
+  },
+  {
+    id: 'g3',
+    name: 'Reserva de emergência',
+    targetAmount: 20000,
+    currentAmount: 12000,
+    targetDate: '2023-09-30',
+    category: 'Economia',
+    icon: 'target',
+    color: '#F59E0B',
+    transactions: [
+      { id: 'gt8', date: new Date(2023, 0, 5), amount: 5000, type: 'add', description: 'Depósito inicial' },
+      { id: 'gt9', date: new Date(2023, 1, 10), amount: 3000, type: 'add', description: 'Economia mensal' },
+      { id: 'gt10', date: new Date(2023, 2, 15), amount: 4000, type: 'add', description: 'Economia mensal' },
+    ],
+    modifications: [
+      { id: 'gm8', goalId: 'g3', date: new Date(2023, 0, 5), type: 'contribution', description: 'Depósito inicial', amount: 5000 },
+      { id: 'gm9', goalId: 'g3', date: new Date(2023, 1, 10), type: 'description_change', description: 'Mudança de descrição', previousValue: 'Fundo de emergência', newValue: 'Reserva de emergência' },
+      { id: 'gm10', goalId: 'g3', date: new Date(2023, 2, 15), type: 'contribution', description: 'Economia mensal', amount: 4000 },
+    ]
+  },
+];
+
+// Adicionar propriedade archived para financialInstitutions e creditCards
+const institutionsWithArchive = initialFinancialInstitutions.map(institution => ({
+  ...institution,
+  archived: false,
+}));
+
+const cardsWithArchive = initialCreditCards.map(card => ({
+  ...card,
+  archived: false,
+}));
+
 export function FinanceProvider({ children }: { children: ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
-  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>({
-    totalIncome: 0,
-    totalExpenses: 0,
-    netBalance: 0,
-    savingsGoal: 0,
-    savingsProgress: 0
-  });
-  const [monthlyData, setMonthlyData] = useState<Array<{ month: string; income: number; expenses: number }>>([]);
-  const [expenseBreakdown, setExpenseBreakdown] = useState<Array<{ category: string; value: number; color: string }>>([]);
-  const [financialInstitutions, setFinancialInstitutions] = useState<FinancialInstitution[]>([]);
-  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories);
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>(initialBudgetGoals);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>(initialFinancialSummary);
+  const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
+  const [expenseBreakdown, setExpenseBreakdown] = useState(initialExpenseBreakdown);
+  const [financialInstitutions, setFinancialInstitutions] = useState<FinancialInstitution[]>(institutionsWithArchive);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>(cardsWithArchive);
+  const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [budgetReallocation, setBudgetReallocation] = useState<BudgetReallocation>({
-    totalBudget: 0,
-    allocatedAmount: 0,
+    totalBudget: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
+    allocatedAmount: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
     unallocatedAmount: 0
   });
   const navigate = useNavigate();
@@ -256,7 +385,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const navigateToPreviousMonth = useCallback(() => {
     setCurrentDate(prevDate => subMonths(prevDate, 1));
-  };
+  }, []);
 
   const navigateToNextMonth = () => {
     setCurrentDate(prevDate => addMonths(prevDate, 1));
@@ -275,32 +404,43 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         institution_id: transaction.financialInstitution || null,
         card_id: transaction.card || null,
         status: transaction.status
-      });
+      } as any);
 
-      if (response && response.data) {
+      if (response) {
         const newTransaction: Transaction = {
-          id: response.data.id,
-          amount: response.data.amount,
-          type: response.data.transaction_type === 'income' ? 'income' : 'expense',
-          category: response.data.category_id,
-          subcategory: response.data.subcategory_id || undefined,
-          date: new Date(response.data.date),
-          settlementDate: response.data.settlement_date ? new Date(response.data.settlement_date) : undefined,
-          description: response.data.description,
-          financialInstitution: response.data.institution_id || undefined,
-          status: response.data.status as 'completed' | 'pending',
-          card: response.data.card_id || undefined
+          id: response.id,
+          amount: response.amount,
+          type: response.transaction_type === 'income' ? 'income' : 'expense',
+          category: response.category_id,
+          subcategory: response.subcategory_id || undefined,
+          date: new Date(response.date),
+          settlementDate: response.settlement_date ? new Date(response.settlement_date) : undefined,
+          description: response.description,
+          financialInstitution: response.institution_id || undefined,
+          status: response.status as 'completed' | 'pending',
+          card: response.card_id || undefined
         };
 
         setTransactions(prev => [newTransaction, ...prev]);
-        updateSummary();
+        // Update summary
+        try {
+          const updateSummary = async () => {
+            const summaryData = await getFinancialSummary(
+              currentDate.getMonth() + 1,
+              currentDate.getFullYear()
+            );
+          };
+          updateSummary();
+        } catch (error) {
+          console.error('Error updating summary:', error);
+        }
         toast.success('Transaction added successfully');
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
       toast.error('Failed to add transaction');
     }
-  }, []);
+  }, [currentDate]);
 
   const deleteTransaction = useCallback((id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
@@ -317,17 +457,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const addCategory = useCallback((category: Omit<Category, 'id'>) => {
     const newCategory = {
       ...category,
-      id: `c${categories.length + 1}`,
+      id: uuidv4(),
     };
     setCategories(prev => [...prev, newCategory]);
     toast.success('Categoria adicionada com sucesso');
-  }, [categories]);
+    return newCategory;
+  }, []);
 
   const updateCategory = useCallback((id: string, category: Partial<Category>) => {
+    const updatedCategory = { id, ...category };
     setCategories(prev => 
-      prev.map(c => (c.id === id ? { ...c, ...category } : c))
+      prev.map(c => c.id === id ? { ...c, ...category } : c)
     );
-    toast.success('Categoria atualizada com sucesso');
+    toast.success("Categoria atualizada com sucesso");
+    return updatedCategory;
   }, []);
 
   const deleteCategory = useCallback((id: string) => {
@@ -338,178 +481,114 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const addSubcategory = useCallback((subcategory: Omit<Subcategory, 'id'>) => {
     const newSubcategory = {
       ...subcategory,
-      id: `sc${subcategories.length + 1}`,
+      id: uuidv4(),
     };
     setSubcategories(prev => [...prev, newSubcategory]);
     toast.success('Subcategoria adicionada com sucesso');
-  }, [subcategories]);
+    return newSubcategory;
+  }, []);
 
   const updateSubcategory = useCallback((id: string, subcategory: Partial<Subcategory>) => {
+    const updatedSubcategory = { id, ...subcategory };
     setSubcategories(prev => 
-      prev.map(sc => (sc.id === id ? { ...sc, ...subcategory } : sc))
+      prev.map(c => c.id === id ? { ...c, ...subcategory } : c)
     );
-    toast.success('Subcategoria atualizada com sucesso');
+    toast.success("Subcategoria atualizada com sucesso");
+    return updatedSubcategory;
   }, []);
 
   const deleteSubcategory = useCallback((id: string) => {
-    setSubcategories(prev => prev.filter(sc => sc.id !== id));
-    toast.success('Subcategoria excluída com sucesso');
+    setSubcategories(prev => prev.filter(c => c.id !== id));
+    toast.success("Subcategoria excluída com sucesso");
   }, []);
 
-  const addFinancialInstitution = useCallback((institution: Omit<FinancialInstitution, 'id' | 'archived'>) => {
+  const addFinancialInstitution = useCallback((institution: Omit<FinancialInstitution, 'id'>) => {
     const newInstitution = {
       ...institution,
-      id: `fi${financialInstitutions.length + 1}`,
-      archived: false
+      id: uuidv4(),
     };
     setFinancialInstitutions(prev => [...prev, newInstitution]);
     toast.success('Instituição financeira adicionada com sucesso');
-  }, [financialInstitutions]);
+    return newInstitution;
+  }, []);
 
   const updateFinancialInstitution = useCallback((id: string, institution: Partial<FinancialInstitution>) => {
+    const updatedInstitution = { id, ...institution };
     setFinancialInstitutions(prev => 
-      prev.map(fi => (fi.id === id ? { ...fi, ...institution } : fi))
+      prev.map(i => i.id === id ? { ...i, ...institution } : i)
     );
     toast.success('Instituição financeira atualizada com sucesso');
+    return updatedInstitution;
   }, []);
 
   const deleteFinancialInstitution = useCallback((id: string) => {
-    setFinancialInstitutions(prev => prev.filter(fi => fi.id !== id));
+    setFinancialInstitutions(prev => prev.filter(i => i.id !== id));
     toast.success('Instituição financeira excluída com sucesso');
   }, []);
 
-  const handleDeleteFinancialInstitution = async (id: string) => {
-    try {
-      await deleteInstitution(id);
-      setFinancialInstitutions(prev => prev.filter(i => i.id !== id));
-      toast.success("Instituição excluída com sucesso");
-    } catch (error) {
-      console.error("Error deleting institution:", error);
-      toast.error("Erro ao excluir instituição");
-    }
-  };
+  const archiveFinancialInstitution = useCallback((id: string, archived: boolean) => {
+    setFinancialInstitutions(prev =>
+      prev.map(i => i.id === id ? { ...i, archived } : i)
+    );
+    toast.success(`Instituição ${archived ? 'arquivada' : 'desarquivada'} com sucesso`);
+  }, []);
 
-  // Credit Cards CRUD
-  const handleAddCreditCard = async (card: Omit<CreditCard, 'id'>) => {
-    try {
-      const newCard = await addCard(card);
-      setCreditCards(prev => [...prev, newCard]);
-      toast.success("Cartão adicionado com sucesso");
-    } catch (error) {
-      console.error("Error adding card:", error);
-      toast.error("Erro ao adicionar cartão");
-    }
-  };
+  const addCreditCard = useCallback((card: Omit<CreditCard, 'id'>) => {
+    const newCard = {
+      ...card,
+      id: uuidv4(),
+    };
+    setCreditCards(prev => [...prev, newCard]);
+    toast.success("Cartão adicionado com sucesso");
+    return newCard;
+  }, []);
 
-  const handleUpdateCreditCard = async (id: string, card: Partial<CreditCard>) => {
-    try {
-      const updatedCard = await updateCard(id, card);
-      setCreditCards(prev => 
-        prev.map(c => c.id === id ? { ...c, ...updatedCard } : c)
-      );
-      toast.success("Cartão atualizado com sucesso");
-    } catch (error) {
-      console.error("Error updating card:", error);
-      toast.error("Erro ao atualizar cartão");
-    }
-  };
+  const updateCreditCard = useCallback((id: string, card: Partial<CreditCard>) => {
+    const updatedCard = { id, ...card };
+    setCreditCards(prev => 
+      prev.map(c => c.id === id ? { ...c, ...card } : c)
+    );
+    toast.success("Cartão atualizado com sucesso");
+    return updatedCard;
+  }, []);
 
-  const handleDeleteCreditCard = async (id: string) => {
-    try {
-      await deleteCard(id);
-      setCreditCards(prev => prev.filter(c => c.id !== id));
-      toast.success("Cartão excluído com sucesso");
-    } catch (error) {
-      console.error("Error deleting card:", error);
-      toast.error("Erro ao excluir cartão");
-    }
-  };
+  const deleteCreditCard = useCallback((id: string) => {
+    setCreditCards(prev => prev.filter(c => c.id !== id));
+    toast.success("Cartão excluído com sucesso");
+  }, []);
 
-  // Budgets CRUD
-  const handleAddBudget = async (budget: Omit<Budget, 'id'>) => {
-    try {
-      const newBudget = await addBudget(budget);
-      setBudgets(prev => [...prev, newBudget]);
-      toast.success("Orçamento adicionado com sucesso");
-    } catch (error) {
-      console.error("Error adding budget:", error);
-      toast.error("Erro ao adicionar orçamento");
-    }
-  };
+  const archiveCreditCard = useCallback((id: string, archived: boolean) => {
+    setCreditCards(prev =>
+      prev.map(c => c.id === id ? { ...c, archived } : c)
+    );
+    toast.success(`Cartão ${archived ? 'arquivado' : 'desarquivado'} com sucesso`);
+  }, []);
 
-  const handleUpdateBudget = async (id: string, budget: Partial<Budget>) => {
-    try {
-      const updatedBudget = await updateBudget(id, budget);
-      setBudgets(prev => 
-        prev.map(b => b.id === id ? { ...b, ...updatedBudget } : b)
-      );
-      toast.success("Orçamento atualizado com sucesso");
-    } catch (error) {
-      console.error("Error updating budget:", error);
-      toast.error("Erro ao atualizar orçamento");
-    }
-  };
+  const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'id' | 'spent'>) => {
+    const newBudgetGoal = {
+      ...budgetGoal,
+      id: uuidv4(),
+      spent: 0,
+    };
 
-  const handleDeleteBudget = async (id: string) => {
-    try {
-      await deleteBudget(id);
-      setBudgets(prev => prev.filter(b => b.id !== id));
-      toast.success("Orçamento excluído com sucesso");
-    } catch (error) {
-      console.error("Error deleting budget:", error);
-      toast.error("Erro ao excluir orçamento");
-    }
-  };
+    setBudgetGoals(prev => [...prev, newBudgetGoal]);
+    toast.success('Orçamento adicionado com sucesso');
+  }, []);
 
-  // Goals CRUD
-  const handleAddGoal = async (goal: Omit<Goal, 'id'>) => {
-    try {
-      const newGoal = await addGoal(goal);
-      setGoals(prev => [...prev, newGoal]);
-      toast.success("Meta adicionada com sucesso");
-    } catch (error) {
-      console.error("Error adding goal:", error);
-      toast.error("Erro ao adicionar meta");
-    }
-  };
+  const updateBudgetGoal = useCallback((category: string, budgetGoal: Partial<Omit<BudgetGoal, 'id' | 'spent'>>) => {
+    setBudgetGoals(prev =>
+      prev.map(bg =>
+        bg.category === category
+          ? { ...bg, ...budgetGoal }
+          : bg
+      )
+    );
+    toast.success('Orçamento atualizado com sucesso');
+  }, []);
 
-  const handleUpdateGoal = async (id: string, goal: Partial<Goal>) => {
-    try {
-      const updatedGoal = await updateGoal(id, goal);
-      setGoals(prev => 
-        prev.map(g => g.id === id ? { ...g, ...updatedGoal } : g)
-      );
-      toast.success("Meta atualizada com sucesso");
-    } catch (error) {
-      console.error("Error updating goal:", error);
-      toast.error("Erro ao atualizar meta");
-    }
-  };
-
-  const deleteGoalTransaction = useCallback((goalId: string, transactionId: string) => {
-    setGoals(prev => {
-      return prev.map(goal => {
-        if (goal.id !== goalId) return goal;
-        
-        const transaction = goal.transactions.find(t => t.id === transactionId);
-        if (!transaction) return goal;
-        
-        let newAmount = goal.currentAmount;
-        if (transaction.type === 'add') {
-          newAmount = Math.max(0, newAmount - transaction.amount);
-        } else {
-          newAmount += transaction.amount;
-        }
-        
-        return {
-          ...goal,
-          currentAmount: newAmount,
-          transactions: goal.transactions.filter(t => t.id !== transactionId)
-        };
-      });
-    });
-    
-    toast.success('Transação da meta excluída com sucesso');
+  const deleteBudgetGoal = useCallback((category: string) => {
+    setBudgetGoals(prev => prev.filter(bg => bg.category !== category));
+    toast.success('Orçamento excluído com sucesso');
   }, []);
 
   const toggleCategorySelection = useCallback((categoryId: string) => {
@@ -526,14 +605,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setSelectedCategories([]);
   }, []);
 
-  const formatCurrency = (value: number): string => {
+  const formatCurrency = useCallback((value: number): string => {
     return value.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
-  };
+  }, []);
 
-  const navigateToTransactions = (filter: TransactionFilterType = 'all', institutionId?: string, cardId?: string) => {
+  const navigateToTransactions = useCallback((filter: TransactionFilterType = 'all', institutionId?: string, cardId?: string) => {
     const params = new URLSearchParams();
     
     if (filter !== 'all') {
@@ -550,33 +629,112 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
     
     navigate(`/transactions${params.toString() ? `?${params.toString()}` : ''}`);
-  };
+  }, [navigate]);
 
-  const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'id' | 'spent'>) => {
-    const newBudgetGoal = {
-      ...budgetGoal,
-      spent: 0,
+  const addGoal = useCallback((goal: Omit<Goal, 'id' | 'transactions' | 'modifications'>) => {
+    const newGoal = {
+      ...goal,
+      id: uuidv4(),
+      transactions: [],
+      modifications: []
     };
-    
-    setBudgetGoals(prev => [...prev, newBudgetGoal]);
-    toast.success('Orçamento adicionado com sucesso');
+    setGoals(prev => [...prev, newGoal]);
+    toast.success('Meta adicionada com sucesso');
+    return newGoal;
   }, []);
 
-  const updateBudgetGoal = useCallback((category: string, budgetGoal: Partial<Omit<BudgetGoal, 'id' | 'spent'>>) => {
-    setBudgetGoals(prev => 
-      prev.map(bg => 
-        bg.category === category 
-          ? { ...bg, ...budgetGoal } 
-          : bg
-      )
+  const updateGoal = useCallback((id: string, goal: Partial<Omit<Goal, 'id' | 'transactions' | 'modifications'>>) => {
+    setGoals(prev =>
+      prev.map(g => g.id === id ? { ...g, ...goal } : g)
     );
-    toast.success('Orçamento atualizado com sucesso');
+    toast.success('Meta atualizada com sucesso');
   }, []);
 
-  const deleteBudgetGoal = useCallback((category: string) => {
-    setBudgetGoals(prev => prev.filter(bg => bg.category !== category));
-    toast.success('Orçamento excluído com sucesso');
+  const deleteGoal = useCallback((id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+    toast.success('Meta excluída com sucesso');
   }, []);
+
+  const addGoalTransaction = useCallback((goalId: string, transaction: Omit<GoalTransaction, 'id'>) => {
+    const newTransaction = {
+      ...transaction,
+      id: uuidv4()
+    };
+
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+
+        let newAmount = goal.currentAmount;
+        if (transaction.type === 'add') {
+          newAmount += transaction.amount;
+        } else {
+          newAmount = Math.max(0, newAmount - transaction.amount);
+        }
+
+        return {
+          ...goal,
+          currentAmount: newAmount,
+          transactions: [...goal.transactions, newTransaction]
+        };
+      });
+    });
+    
+    toast.success('Transação da meta adicionada com sucesso');
+  }, []);
+
+  const deleteGoalTransaction = useCallback((goalId: string, transactionId: string) => {
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+
+        const transaction = goal.transactions.find(t => t.id === transactionId);
+        if (!transaction) return goal;
+
+        let newAmount = goal.currentAmount;
+        if (transaction.type === 'add') {
+          newAmount = Math.max(0, newAmount - transaction.amount);
+        } else {
+          newAmount += transaction.amount;
+        }
+
+        return {
+          ...goal,
+          currentAmount: newAmount,
+          transactions: goal.transactions.filter(t => t.id !== transactionId)
+        };
+      });
+    });
+
+    toast.success('Transação da meta excluída com sucesso');
+  }, []);
+
+  const addGoalModification = useCallback((goalId: string, modification: Omit<GoalModification, 'id' | 'goalId' | 'date'>) => {
+    const newModification = {
+      ...modification,
+      id: uuidv4(),
+      goalId,
+      date: new Date()
+    };
+
+    setGoals(prev => {
+      return prev.map(goal => {
+        if (goal.id !== goalId) return goal;
+
+        return {
+          ...goal,
+          modifications: [...(goal.modifications || []), newModification]
+        };
+      });
+    });
+
+    toast.success('Modificação da meta registrada com sucesso');
+  }, []);
+
+  const getGoalModifications = useCallback((goalId: string): GoalModification[] => {
+    const goal = goals.find(g => g.id === goalId);
+    return goal?.modifications || [];
+  }, [goals]);
 
   const setBudgetTotalAmount = useCallback((amount: number) => {
     const currentAllocated = budgetGoals.reduce((acc, budget) => acc + budget.amount, 0);
@@ -609,6 +767,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       unallocatedAmount: prev.totalBudget - newAllocatedAmount
     }));
   }, []);
+
+  const navigateToGoalDetail = useCallback((goalId: string) => {
+    navigate(`/goals/${goalId}`);
+  }, [navigate]);
 
   return (
     <FinanceContext.Provider
@@ -670,7 +832,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       {children}
     </FinanceContext.Provider>
   );
-};
+}
 
 export const useFinance = () => {
   const context = useContext(FinanceContext);
