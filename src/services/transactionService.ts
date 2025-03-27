@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/finance";
 
@@ -24,10 +25,10 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
       categories:category_id (name, color, icon, type),
       subcategory:subcategory_id (name),
       institutions:institution_id (name, logo)
-    `)
+    `, { count: 'exact' })
     .order('date', { ascending: false });
   
-  // Aplicar filtros dinâmicos
+  // Apply dynamic filters
   if (filters) {
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -40,15 +41,15 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
         } else if (key === 'search') {
           query = query.ilike('description', `%${String(value)}%`);
         } else if (key === 'limit' || key === 'offset') {
-          // Esses filtros são aplicados depois
-        } else {
-          // Using any cast to avoid Type instantiation is excessively deep error
-          (query as any) = (query as any).eq(key, String(value));
+          // These filters are applied later
+        } else if (key.includes('_id')) {
+          // Handle ID fields
+          query = query.eq(key, String(value));
         }
       }
     });
 
-    // Adicionar paginação se necessário
+    // Add pagination if needed
     if (filters.limit !== undefined) {
       query = query.limit(Number(filters.limit));
     }
@@ -63,7 +64,7 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
   const { data, error, count } = await query;
   
   if (error) {
-    console.error('Erro ao buscar transações:', error);
+    console.error('Error fetching transactions:', error);
     throw error;
   }
   
@@ -90,7 +91,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>) {
     .single();
   
   if (error) {
-    console.error('Erro ao criar transação:', error);
+    console.error('Error creating transaction:', error);
     throw error;
   }
   
@@ -127,7 +128,7 @@ export async function updateTransaction(id: string, transaction: Partial<Transac
     .single();
   
   if (error) {
-    console.error('Erro ao atualizar transação:', error);
+    console.error('Error updating transaction:', error);
     throw error;
   }
   
@@ -141,7 +142,7 @@ export async function deleteTransaction(id: string) {
     .eq('id', id);
   
   if (error) {
-    console.error('Erro ao excluir transação:', error);
+    console.error('Error deleting transaction:', error);
     throw error;
   }
   
@@ -149,11 +150,11 @@ export async function deleteTransaction(id: string) {
 }
 
 export async function getFinancialSummary(month: number, year: number) {
-  // Obter o primeiro e último dia do mês
+  // Get the first and last day of the month
   const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
   
-  // Buscar todas as transações do mês
+  // Fetch all transactions for the month
   const { data, error } = await supabase
     .from('transactions')
     .select('amount, transaction_type')
@@ -161,11 +162,11 @@ export async function getFinancialSummary(month: number, year: number) {
     .lte('date', endDate);
   
   if (error) {
-    console.error('Erro ao buscar resumo financeiro:', error);
+    console.error('Error fetching financial summary:', error);
     throw error;
   }
   
-  // Calcular totais
+  // Calculate totals
   const summary = {
     totalIncome: 0,
     totalExpenses: 0,
@@ -185,5 +186,5 @@ export async function getFinancialSummary(month: number, year: number) {
   return summary;
 }
 
-// Aliasing para compatibilidade com os hooks existentes
+// Aliasing for compatibility with existing hooks
 export const createTransaction = addTransaction;
