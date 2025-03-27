@@ -1,10 +1,9 @@
-
-import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from 'lucide-react';
 import { useFinance } from '@/hooks/useFinance';
 import StatValue from '@/components/ui/atoms/StatValue';
+import { useNavigate } from 'react-router-dom';
 
 interface BalanceCardProps {
   className?: string;
@@ -12,13 +11,19 @@ interface BalanceCardProps {
 
 export function BalanceCard({ className }: BalanceCardProps) {
   const finance = useFinance();
-  const { formatCurrency, navigateToTransactions } = finance;
+  const { formatCurrency } = finance;
+  const navigate = useNavigate();
+
+  // Navigation function
+  const navigateToTransactions = () => {
+    navigate('/transactions');
+  };
   
   // Get financial summary
   const summary = finance.financialSummary || {
     totalIncome: 0,
     totalExpenses: 0,
-    netBalance: 0
+    balance: 0
   };
   
   return (
@@ -32,8 +37,9 @@ export function BalanceCard({ className }: BalanceCardProps) {
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Saldo</span>
             <StatValue
-              value={summary.netBalance}
-              formatter={formatCurrency}
+              title="Saldo"
+              value={summary.balance}
+              formatValue={formatCurrency}
               className="text-xl font-bold"
             />
           </div>
@@ -42,8 +48,9 @@ export function BalanceCard({ className }: BalanceCardProps) {
             <div className="flex flex-col space-y-1">
               <span className="text-xs text-muted-foreground">Receitas</span>
               <StatValue
+                title="Receitas"
                 value={summary.totalIncome}
-                formatter={formatCurrency}
+                formatValue={formatCurrency}
                 icon={<ArrowUpIcon className="mr-1 h-4 w-4" />}
                 trend="up"
               />
@@ -52,8 +59,9 @@ export function BalanceCard({ className }: BalanceCardProps) {
             <div className="flex flex-col space-y-1">
               <span className="text-xs text-muted-foreground">Despesas</span>
               <StatValue
+                title="Despesas"
                 value={summary.totalExpenses}
-                formatter={formatCurrency}
+                formatValue={formatCurrency}
                 icon={<ArrowDownIcon className="mr-1 h-4 w-4" />}
                 trend="down"
               />
