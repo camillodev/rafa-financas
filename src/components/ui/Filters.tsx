@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,20 @@ export default function Filters({
   filterOptions,
   advancedFiltersContent
 }: FiltersProps) {
+  // Memoize callbacks
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, [setSearchTerm]);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, [setSearchTerm]);
+
+  // Create a function to handle filter option click
+  const getFilterOptionHandler = useCallback((optionValue: string) => {
+    return () => handleSetFilter(optionValue);
+  }, [handleSetFilter]);
+
   return (
     <div className="flex flex-wrap gap-2 items-center">
       <div className="relative flex-1 min-w-[240px]">
@@ -42,14 +56,14 @@ export default function Filters({
           placeholder={searchPlaceholder}
           className="pl-8 max-w-lg"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
         />
         {searchTerm && (
           <Button
             variant="ghost"
             size="sm"
             className="absolute right-1 top-1 h-7 w-7 p-0 rounded-full"
-            onClick={() => setSearchTerm('')}
+            onClick={handleClearSearch}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Limpar busca</span>
@@ -68,7 +82,7 @@ export default function Filters({
                 ? `bg-${option.color}-100 text-${option.color}-700 hover:bg-${option.color}-200`
                 : ''
             }
-            onClick={() => handleSetFilter(option.value)}
+            onClick={getFilterOptionHandler(option.value)}
           >
             {option.label}
           </Button>

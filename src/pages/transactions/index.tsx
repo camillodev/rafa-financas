@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import {
   Card,
@@ -58,6 +58,9 @@ export function Transactions() {
     hasActiveFilters
   } = useTransactionFilters(monthTransactions);
 
+  // Calculate if filters are active
+  const isAnyFilterActive = hasActiveFilters();
+
   // Use useDataTable for table data management
   const {
     currentPage,
@@ -100,12 +103,21 @@ export function Transactions() {
     currentDate
   });
 
+  // Memoize the export callback
+  const handleExportTransactions = useCallback(() => {
+    exportTransactions(filteredTransactions);
+  }, [exportTransactions, filteredTransactions]);
+
+  // Memoize the onClose callback for AdvancedFiltersBuilder
+  const handleCloseAdvancedFilters = useCallback(() => {
+    setIsFilterPopoverOpen(false);
+  }, [setIsFilterPopoverOpen]);
+
   // Get filter options and field configurations
   const filterOptions = getTransactionFilterOptions();
-  const advancedFilterFields = getAdvancedFilterFields(
-    advancedFilters,
-    categories,
-    financialInstitutions
+  const advancedFilterFields = useMemo(() =>
+    getAdvancedFilterFields(advancedFilters, categories, financialInstitutions),
+    [advancedFilters, categories, financialInstitutions]
   );
 
   return (
@@ -124,14 +136,14 @@ export function Transactions() {
         setSearchTerm={setSearchTerm}
         handleSetFilter={handleSetFilter}
         handleClearFilter={handleClearFilter}
-        hasActiveFilters={hasActiveFilters()}
+        hasActiveFilters={isAnyFilterActive}
         filterOptions={filterOptions}
         advancedFilterFields={advancedFilterFields}
         handleAdvancedFilterChange={handleAdvancedFilterChange}
 
         // Action props
         onAddTransaction={handleOpenAddDialog}
-        onExportTransactions={() => exportTransactions(filteredTransactions)}
+        onExportTransactions={handleExportTransactions}
       />
 
       {/* Transactions Table */}

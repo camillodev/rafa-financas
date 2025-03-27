@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Plus, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import Filters from '@/components/ui/Filters';
@@ -53,6 +53,11 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
   onAddTransaction,
   onExportTransactions
 }) => {
+  // Memoize the onClose callback for AdvancedFiltersBuilder
+  const handleCloseAdvancedFilters = useCallback(() => {
+    setIsAdvancedFilterOpen(false);
+  }, [setIsAdvancedFilterOpen]);
+
   return (
     <>
       <div className="mb-6">
@@ -88,7 +93,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
               fields={advancedFilterFields}
               onChange={handleAdvancedFilterChange}
               onClear={handleClearFilter}
-              onClose={() => setIsAdvancedFilterOpen(false)}
+              onClose={handleCloseAdvancedFilters}
             />
           }
         />
