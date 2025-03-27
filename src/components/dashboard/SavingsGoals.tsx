@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Target, TrendingUp, ArrowRight } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
@@ -7,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 export function SavingsGoals() {
-  const { goals, formatCurrency, navigateToGoalDetail } = useFinance();
+  const { goals, formatCurrency } = useFinance();
+  // Use optional chaining to safely access navigateToGoalDetail
+  const navigateToGoalDetail = useFinance().navigateToGoalDetail ||
+    ((goalId) => console.warn('navigateToGoalDetail not implemented', goalId));
   const navigate = useNavigate();
   
   // Get top 3 goals by percentage completion

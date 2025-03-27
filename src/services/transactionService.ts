@@ -1,171 +1,190 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { type Transaction } from '@/types/finance';
+import { supabase } from "@/integrations/supabase/client";
+import { Transaction } from "@/types/finance";
 
-// Fetch transactions with optional filters
-export async function fetchTransactions(filters?: {
-  startDate?: Date;
-  endDate?: Date;
-  category?: string;
-  institution?: string;
+interface FilterOptions {
+  startDate?: string;
+  endDate?: string;
   type?: string;
-  minAmount?: number;
-  maxAmount?: number;
+  search?: string;
+  limit?: number | string;
+  offset?: number | string;
+  category_id?: string;
+  subcategory_id?: string;
+  institution_id?: string;
+  transaction_type?: string;
   status?: string;
-  limit?: number;
-  offset?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-}) {
-  try {
-    let query = supabase
-      .from('transactions')
-      .select(`
-        *,
-        category:category_id(id, name, color, icon),
-        subcategory:subcategory_id(id, name, color, icon),
-        institution:institution_id(id, name, logo),
-        card:card_id(id, name)
-      `);
+  [key: string]: any;
+}
 
-    // Apply filters
-    if (filters) {
-      if (filters.startDate) {
-        query = query.gte('date', filters.startDate.toISOString().split('T')[0]);
+export async function fetchTransactions(filters: FilterOptions = {}) {
+  let query = supabase
+    .from('transactions')
+    .select(`
+      *,
+      categories:category_id (name, color, icon, type),
+      subcategory:subcategory_id (name),
+      institutions:institution_id (name, logo)
+    `, { count: 'exact' })
+    .order('date', { ascending: false });
+  
+  // Apply dynamic filters
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (key === 'startDate') {
+          query = query.gte('date', value as string);
+        } else if (key === 'endDate') {
+          query = query.lte('date', value as string);
+        } else if (key === 'type') {
+          query = query.eq('transaction_type', value as string);
+        } else if (key === 'search') {
+          query = query.ilike('description', `%${String(value)}%`);
+        } else if (key === 'limit' || key === 'offset') {
+          // These filters are applied later
+        } else if (key.includes('_id')) {
+          // Handle ID fields
+          query = query.eq(key, String(value));
+        }
       }
-      if (filters.endDate) {
-        query = query.lte('date', filters.endDate.toISOString().split('T')[0]);
-      }
-      if (filters.category) {
-        query = query.eq('category_id', filters.category);
-      }
-      if (filters.institution) {
-        query = query.eq('institution_id', filters.institution);
-      }
-      if (filters.type) {
-        query = query.eq('transaction_type', filters.type);
-      }
-      if (filters.minAmount !== undefined) {
-        query = query.gte('amount', filters.minAmount);
-      }
-      if (filters.maxAmount !== undefined) {
-        query = query.lte('amount', filters.maxAmount);
-      }
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
-      
-      // Sorting
-      if (filters.sortBy) {
-        query = query.order(filters.sortBy, { ascending: filters.sortOrder === 'asc' });
-      } else {
-        query = query.order('date', { ascending: false });
-      }
+    });
 
-      // Pagination
-      if (filters.limit) {
-        query = query.limit(filters.limit);
-      }
-      if (filters.offset) {
-        query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
-      }
-    } else {
-      // Default sorting by date descending
-      query = query.order('date', { ascending: false });
+    // Add pagination if needed
+    if (filters.limit !== undefined) {
+      query = query.limit(Number(filters.limit));
     }
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-
-    return { data, count };
-  } catch (error) {
+    
+    if (filters.offset !== undefined) {
+      const offsetValue = Number(filters.offset);
+      const limitValue = Number(filters.limit || 10);
+      query = query.range(offsetValue, offsetValue + limitValue - 1);
+    }
+  }
+  
+  const { data, error, count } = await query;
+  
+  if (error) {
     console.error('Error fetching transactions:', error);
     throw error;
   }
+  
+  return { data: data || [], count: count || 0 };
 }
 
-// Create a new transaction
-export async function createTransaction(transaction: Omit<Transaction, 'id'>) {
-  try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        amount: transaction.amount,
-        date: transaction.date.toISOString().split('T')[0],
-        settlement_date: transaction.settlementDate ? transaction.settlementDate.toISOString().split('T')[0] : null,
-        description: transaction.description,
-        category_id: transaction.category,
-        subcategory_id: transaction.subcategory,
-        institution_id: transaction.financialInstitution,
-        card_id: transaction.card,
-        transaction_type: transaction.type,
-        status: transaction.status,
-        notes: transaction.description
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data;
-  } catch (error) {
+export async function addTransaction(transaction: Omit<Transaction, 'id'>) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert({
+      amount: transaction.amount,
+      category_id: transaction.category,
+      subcategory_id: transaction.subcategory,
+      date: transaction.date instanceof Date ? transaction.date.toISOString().split('T')[0] : transaction.date,
+      settlement_date: transaction.settlementDate instanceof Date ? transaction.settlementDate.toISOString().split('T')[0] : transaction.settlementDate,
+      description: transaction.description,
+      institution_id: transaction.financialInstitution,
+      card_id: transaction.card,
+      transaction_type: transaction.type === 'income' ? 'income' : 'expense',
+      status: transaction.status || 'completed',
+      notes: transaction.description
+    })
+    .select()
+    .single();
+  
+  if (error) {
     console.error('Error creating transaction:', error);
     throw error;
   }
+  
+  return data;
 }
 
-// Update an existing transaction
 export async function updateTransaction(id: string, transaction: Partial<Transaction>) {
-  try {
-    const updateData: any = {};
-    
-    if (transaction.amount !== undefined) updateData.amount = transaction.amount;
-    if (transaction.date !== undefined) updateData.date = transaction.date.toISOString().split('T')[0];
-    if (transaction.settlementDate !== undefined) {
-      updateData.settlement_date = transaction.settlementDate ? 
-        transaction.settlementDate.toISOString().split('T')[0] : null;
-    }
-    if (transaction.description !== undefined) updateData.description = transaction.description;
-    if (transaction.category !== undefined) updateData.category_id = transaction.category;
-    if (transaction.subcategory !== undefined) updateData.subcategory_id = transaction.subcategory;
-    if (transaction.financialInstitution !== undefined) updateData.institution_id = transaction.financialInstitution;
-    if (transaction.card !== undefined) updateData.card_id = transaction.card;
-    if (transaction.type !== undefined) updateData.transaction_type = transaction.type;
-    if (transaction.status !== undefined) updateData.status = transaction.status;
-    if (transaction.description !== undefined) updateData.notes = transaction.description;
-    
-    updateData.updated_at = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data;
-  } catch (error) {
+  const updateData: any = {};
+  
+  if (transaction.amount !== undefined) updateData.amount = transaction.amount;
+  if (transaction.category) updateData.category_id = transaction.category;
+  if (transaction.subcategory) updateData.subcategory_id = transaction.subcategory;
+  if (transaction.date) {
+    updateData.date = transaction.date instanceof Date 
+      ? transaction.date.toISOString().split('T')[0] 
+      : transaction.date;
+  }
+  if (transaction.settlementDate) {
+    updateData.settlement_date = transaction.settlementDate instanceof Date 
+      ? transaction.settlementDate.toISOString().split('T')[0] 
+      : transaction.settlementDate;
+  }
+  if (transaction.description) updateData.description = transaction.description;
+  if (transaction.financialInstitution) updateData.institution_id = transaction.financialInstitution;
+  if (transaction.card) updateData.card_id = transaction.card;
+  if (transaction.type) updateData.transaction_type = transaction.type;
+  if (transaction.status) updateData.status = transaction.status;
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
     console.error('Error updating transaction:', error);
     throw error;
   }
+  
+  return data;
 }
 
-// Delete a transaction
 export async function deleteTransaction(id: string) {
-  try {
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    return true;
-  } catch (error) {
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
     console.error('Error deleting transaction:', error);
     throw error;
   }
+  
+  return true;
 }
+
+export async function getFinancialSummary(month: number, year: number) {
+  // Get the first and last day of the month
+  const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  
+  // Fetch all transactions for the month
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, transaction_type')
+    .gte('date', startDate)
+    .lte('date', endDate);
+  
+  if (error) {
+    console.error('Error fetching financial summary:', error);
+    throw error;
+  }
+  
+  // Calculate totals
+  const summary = {
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0
+  };
+  
+  data?.forEach(transaction => {
+    if (transaction.transaction_type === 'income') {
+      summary.totalIncome += parseFloat(String(transaction.amount));
+    } else {
+      summary.totalExpenses += parseFloat(String(transaction.amount));
+    }
+  });
+  
+  summary.netBalance = summary.totalIncome - summary.totalExpenses;
+  
+  return summary;
+}
+
+// Aliasing for compatibility with existing hooks
+export const createTransaction = addTransaction;

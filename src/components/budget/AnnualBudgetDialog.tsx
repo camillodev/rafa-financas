@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +46,9 @@ type MonthlyBudget = {
 };
 
 export function AnnualBudgetDialog({ isOpen, onClose, currentYear }: AnnualBudgetDialogProps) {
-  const { categories, budgetGoals, formatCurrency } = useFinance();
+  const { categories, formatCurrency } = useFinance();
+  // Use optional chaining to safely access budgetGoals
+  const budgetGoals = useFinance().budgetGoals || [];
   const [annualBudget, setAnnualBudget] = useState<MonthlyBudget[]>([]);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [isApplyingChange, setIsApplyingChange] = useState(false);

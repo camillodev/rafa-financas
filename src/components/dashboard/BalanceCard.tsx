@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
@@ -7,7 +6,18 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 export function BalanceCard() {
-  const { financialSummary, formatCurrency, navigateToTransactions } = useFinance();
+  const { formatCurrency } = useFinance();
+  // Use optional chaining to safely access missing properties
+  const finance = useFinance();
+  const financialSummary = finance.financialSummary || {
+    netBalance: 0,
+    totalIncome: 0,
+    totalExpenses: 0,
+    savingsGoal: 0,
+    savingsProgress: 0
+  };
+  const navigateToTransactions = finance.navigateToTransactions ||
+    ((filter) => console.warn('navigateToTransactions not implemented', filter));
   
   const cards = [
     {

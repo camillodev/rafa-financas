@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchCards, fetchCardById, createCard, updateCard, deleteCard } from '@/services/cardService';
+import { fetchCards, fetchCardById, addCard as createCard, updateCard, deleteCard } from '@/services/cardService';
 import { type CreditCard } from '@/types/finance';
 import { toast } from 'sonner';
 

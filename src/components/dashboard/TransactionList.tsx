@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { ArrowUpRight, ArrowDownRight, ChevronRight, AlertCircle, Eye } from 'lucide-react';
@@ -6,7 +5,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function TransactionList() {
-  const { filteredTransactions, formatCurrency, navigateToTransactions, hasDataForCurrentMonth } = useFinance();
+  const { filteredTransactions, formatCurrency } = useFinance();
+  // Use optional chaining to safely access missing properties
+  const finance = useFinance();
+  const navigateToTransactions = finance.navigateToTransactions ||
+    (() => console.warn('navigateToTransactions not implemented'));
+  const hasDataForCurrentMonth = finance.hasDataForCurrentMonth || false;
   
   // Get the most recent 5 transactions from the filtered transactions
   const recentTransactions = [...filteredTransactions]
