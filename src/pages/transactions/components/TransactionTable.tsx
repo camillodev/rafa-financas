@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUpRight, ArrowDownRight, MoreHorizontal, Pencil, Trash2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, MoreHorizontal, Pencil, Trash2, AlertCircle } from 'lucide-react';
 import { Transaction } from '@/types/finance';
 import {
   Table,
@@ -24,6 +24,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import TablePagination from './TablePagination';
+import { formatDate } from '@/lib/utils';
 
 interface TransactionTableProps {
   filteredTransactions: Transaction[];
@@ -54,94 +63,6 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
   pageSize,
   PAGE_SIZES
 }) => {
-  // Helper function to render pagination
-  const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    // Previous button
-    pages.push(
-      <button
-        key="prev"
-        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-        className="px-3 py-1 rounded border disabled:opacity-50"
-      >
-        <ChevronLeft size={16} />
-      </button>
-    );
-
-    // First page
-    if (startPage > 1) {
-      pages.push(
-        <button
-          key="1"
-          onClick={() => handlePageChange(1)}
-          className={`px-3 py-1 rounded ${currentPage === 1 ? 'bg-primary text-primary-foreground' : 'border'}`}
-        >
-          1
-        </button>
-      );
-
-      // Ellipsis if needed
-      if (startPage > 2) {
-        pages.push(<span key="ellipsis1">...</span>);
-      }
-    }
-
-    // Page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 rounded ${currentPage === i ? 'bg-primary text-primary-foreground' : 'border'}`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    // Last page
-    if (endPage < totalPages) {
-      // Ellipsis if needed
-      if (endPage < totalPages - 1) {
-        pages.push(<span key="ellipsis2">...</span>);
-      }
-
-      pages.push(
-        <button
-          key={totalPages}
-          onClick={() => handlePageChange(totalPages)}
-          className={`px-3 py-1 rounded ${currentPage === totalPages ? 'bg-primary text-primary-foreground' : 'border'}`}
-        >
-          {totalPages}
-        </button>
-      );
-    }
-
-    // Next button
-    pages.push(
-      <button
-        key="next"
-        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages || totalPages === 0}
-        className="px-3 py-1 rounded border disabled:opacity-50"
-      >
-        <ChevronRight size={16} />
-      </button>
-    );
-
-    return pages;
-  };
-
   if (filteredTransactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -246,32 +167,16 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
         </Table>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex flex-wrap justify-between items-center mt-4 gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            Mostrando {paginatedTransactions.length} de {filteredTransactions.length} resultados
-          </span>
-          <Select
-            value={pageSize.toString()}
-            onValueChange={(value) => handlePageSizeChange(Number(value))}
-          >
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZES.map(size => (
-                <SelectItem key={size} value={size.toString()}>
-                  {size} itens
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {renderPagination()}
-        </div>
+      <div className="mt-4">
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredTransactions.length}
+          pageSizeOptions={PAGE_SIZES}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
     </>
   );
