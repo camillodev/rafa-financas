@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useTheme } from '@/hooks/use-theme';
 import { 
@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Sun, Monitor, Database, Trash2, Layers, Receipt, PieChart, CreditCard, Target, Split } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Moon, Sun, Monitor, Receipt, Layers, PieChart, CreditCard, Target, Split } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/lib/auth';
 import { FeatureKey, useFeatureFlags } from '@/context/FeatureFlagsContext';
@@ -19,6 +20,9 @@ import { FeatureKey, useFeatureFlags } from '@/context/FeatureFlagsContext';
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { isSupabaseReady } = useAuth();
+  const featureFlagsContext = useFeatureFlags();
+  const features = featureFlagsContext?.features || {};
+  const isDevelopment = process.env.NODE_ENV === 'development';
 
   const handleThemeChange = (value: "light" | "dark" | "system") => {
     setTheme(value);
@@ -102,7 +106,7 @@ const Settings = () => {
                   </div>
                   <Switch
                     id={`feature-${key}`}
-                    checked={features[key]} 
+                    checked={features[key as FeatureKey]} 
                     onCheckedChange={() => handleFeatureToggle(key as FeatureKey)}
                   />
                 </div>
