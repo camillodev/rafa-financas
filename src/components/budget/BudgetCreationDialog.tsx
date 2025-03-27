@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,7 +45,12 @@ interface BudgetCreationDialogProps {
 }
 
 export function BudgetCreationDialog({ isOpen, onClose, currentMonth }: BudgetCreationDialogProps) {
-  const { categories, budgetGoals, formatCurrency, addBudgetGoal, updateBudgetGoal, goals } = useFinance();
+  const { categories, formatCurrency, goals } = useFinance();
+  // Use optional chaining to safely access missing properties
+  const finance = useFinance();
+  const budgetGoals = finance.budgetGoals || [];
+  const addBudgetGoal = finance.addBudgetGoal || ((goal) => console.warn('addBudgetGoal not implemented'));
+  const updateBudgetGoal = finance.updateBudgetGoal || ((category, goal) => console.warn('updateBudgetGoal not implemented'));
   
   // Step tracking
   const [currentStep, setCurrentStep] = useState(1);

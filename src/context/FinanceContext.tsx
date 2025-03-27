@@ -1,19 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
-import { 
-  transactions as initialTransactions, 
-  categories as initialCategories, 
-  budgetGoals as initialBudgetGoals,
-  financialSummary as initialFinancialSummary,
-  monthlyData as initialMonthlyData,
-  expenseBreakdown as initialExpenseBreakdown,
-  financialInstitutions as initialFinancialInstitutions,
-  creditCards as initialCreditCards,
-  subcategories as initialSubcategories
-} from '../data/mockData';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from 'react';
 import { Transaction, Category, BudgetGoal, FinancialSummary, FinancialInstitution, CreditCard, Subcategory, GoalModification } from '../types/finance';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
+import { fetchTransactions, addTransaction as createTransaction, updateTransaction as updateTransactionService, deleteTransaction as deleteTransactionService, getFinancialSummary } from '@/services/transactionService';
+import { fetchCategories, addCategory as createCategory, updateCategory as updateCategoryService, deleteCategory as deleteCategoryService, fetchSubcategories } from '@/services/categoryService';
+import { fetchBudgets, addBudget as createBudgetGoal, updateBudget as updateBudgetGoalService, deleteBudget as deleteBudgetGoalService } from '@/services/budgetService';
+import { fetchInstitutions, addInstitution as createFinancialInstitution, updateInstitution as updateFinancialInstitutionService, deleteInstitution as deleteFinancialInstitutionService } from '@/services/institutionService';
+import { fetchCards, addCard as createCreditCard, updateCard as updateCreditCardService, deleteCard as deleteCreditCardService } from '@/services/cardService';
+import { fetchGoals, addGoal as createGoal, updateGoal as updateGoalService, deleteGoal as deleteGoalService, addContribution, removeContribution, addGoalModification as addGoalModificationService } from '@/services/goalService';
 
 export type TransactionFilterType = 'all' | 'income' | 'expense';
 
@@ -87,8 +83,8 @@ interface FinanceContextType {
   toggleCategorySelection: (categoryId: string) => void;
   resetCategorySelection: () => void;
   // Budget goal functions
-  addBudgetGoal: (budgetGoal: Omit<BudgetGoal, 'spent'>) => void;
-  updateBudgetGoal: (category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => void;
+  addBudgetGoal: (budgetGoal: Omit<BudgetGoal, 'id' | 'spent'>) => void;
+  updateBudgetGoal: (category: string, budgetGoal: Partial<Omit<BudgetGoal, 'id' | 'spent'>>) => void;
   deleteBudgetGoal: (category: string) => void;
   // Goal management functions
   addGoal: (goal: Omit<Goal, 'id' | 'transactions' | 'modifications'>) => void;
@@ -108,102 +104,182 @@ interface FinanceContextType {
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
-// Initial Goals mock data with modifications
-const initialGoals: Goal[] = [
-  {
-    id: 'g1',
-    name: 'Viagem para Europa',
-    targetAmount: 15000,
-    currentAmount: 6000,
-    targetDate: '2023-12-31',
-    category: 'Viagem',
-    icon: 'target',
-    color: '#4F46E5',
-    transactions: [
-      { id: 'gt1', date: new Date(2023, 4, 15), amount: 3000, type: 'add', description: 'Depósito inicial' },
-      { id: 'gt2', date: new Date(2023, 5, 10), amount: 2000, type: 'add', description: 'Bônus do trabalho' },
-      { id: 'gt3', date: new Date(2023, 6, 5), amount: 1500, type: 'add', description: 'Economia mensal' },
-      { id: 'gt4', date: new Date(2023, 6, 20), amount: 500, type: 'remove', description: 'Compra de passagem' },
-    ],
-    modifications: [
-      { id: 'gm1', goalId: 'g1', date: new Date(2023, 4, 15), type: 'contribution', description: 'Depósito inicial', amount: 3000 },
-      { id: 'gm2', goalId: 'g1', date: new Date(2023, 5, 10), type: 'target_change', description: 'Aumento do objetivo', previousValue: 12000, newValue: 15000 },
-      { id: 'gm3', goalId: 'g1', date: new Date(2023, 6, 5), type: 'contribution', description: 'Economia mensal', amount: 1500 },
-      { id: 'gm4', goalId: 'g1', date: new Date(2023, 6, 20), type: 'withdrawal', description: 'Compra de passagem', amount: 500 },
-    ]
-  },
-  {
-    id: 'g2',
-    name: 'Comprar um carro',
-    targetAmount: 60000,
-    currentAmount: 35000,
-    targetDate: '2024-06-30',
-    category: 'Veículo',
-    icon: 'target',
-    color: '#10B981',
-    transactions: [
-      { id: 'gt5', date: new Date(2023, 2, 10), amount: 20000, type: 'add', description: 'Venda de investimentos' },
-      { id: 'gt6', date: new Date(2023, 3, 15), amount: 5000, type: 'add', description: 'Economia trimestral' },
-      { id: 'gt7', date: new Date(2023, 4, 20), amount: 10000, type: 'add', description: 'Bônus anual' },
-    ],
-    modifications: [
-      { id: 'gm5', goalId: 'g2', date: new Date(2023, 2, 10), type: 'contribution', description: 'Venda de investimentos', amount: 20000 },
-      { id: 'gm6', goalId: 'g2', date: new Date(2023, 3, 15), type: 'date_change', description: 'Prazo estendido', previousValue: '2023-12-31', newValue: '2024-06-30' },
-      { id: 'gm7', goalId: 'g2', date: new Date(2023, 4, 20), type: 'contribution', description: 'Bônus anual', amount: 10000 },
-    ]
-  },
-  {
-    id: 'g3',
-    name: 'Reserva de emergência',
-    targetAmount: 20000,
-    currentAmount: 12000,
-    targetDate: '2023-09-30',
-    category: 'Economia',
-    icon: 'target',
-    color: '#F59E0B',
-    transactions: [
-      { id: 'gt8', date: new Date(2023, 0, 5), amount: 5000, type: 'add', description: 'Depósito inicial' },
-      { id: 'gt9', date: new Date(2023, 1, 10), amount: 3000, type: 'add', description: 'Economia mensal' },
-      { id: 'gt10', date: new Date(2023, 2, 15), amount: 4000, type: 'add', description: 'Economia mensal' },
-    ],
-    modifications: [
-      { id: 'gm8', goalId: 'g3', date: new Date(2023, 0, 5), type: 'contribution', description: 'Depósito inicial', amount: 5000 },
-      { id: 'gm9', goalId: 'g3', date: new Date(2023, 1, 10), type: 'description_change', description: 'Mudança de descrição', previousValue: 'Fundo de emergência', newValue: 'Reserva de emergência' },
-      { id: 'gm10', goalId: 'g3', date: new Date(2023, 2, 15), type: 'contribution', description: 'Economia mensal', amount: 4000 },
-    ]
-  },
-];
-
-// Adicionar propriedade archived para financialInstitutions e creditCards
-const institutionsWithArchive = initialFinancialInstitutions.map(institution => ({
-  ...institution,
-  archived: false,
-}));
-
-const cardsWithArchive = initialCreditCards.map(card => ({
-  ...card,
-  archived: false,
-}));
-
 export function FinanceProvider({ children }: { children: ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories);
-  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>(initialBudgetGoals);
-  const [financialSummary] = useState<FinancialSummary>(initialFinancialSummary);
-  const [monthlyData] = useState(initialMonthlyData);
-  const [expenseBreakdown] = useState(initialExpenseBreakdown);
-  const [financialInstitutions, setFinancialInstitutions] = useState<(FinancialInstitution & { archived: boolean })[]>(institutionsWithArchive);
-  const [creditCards, setCreditCards] = useState<(CreditCard & { archived: boolean })[]>(cardsWithArchive);
-  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>({
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+    savingsGoal: 0,
+    savingsProgress: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<Array<{ month: string; income: number; expenses: number }>>([]);
+  const [expenseBreakdown, setExpenseBreakdown] = useState<Array<{ category: string; value: number; color: string }>>([]);
+  const [financialInstitutions, setFinancialInstitutions] = useState<FinancialInstitution[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [budgetReallocation, setBudgetReallocation] = useState<BudgetReallocation>({
-    totalBudget: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
-    allocatedAmount: budgetGoals.reduce((acc, budget) => acc + budget.amount, 0),
+    totalBudget: 0,
+    allocatedAmount: 0,
     unallocatedAmount: 0
   });
   const navigate = useNavigate();
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load transactions
+        const transactionsData = await fetchTransactions();
+        if (transactionsData && transactionsData.data) {
+          // Transform API data to match Transaction interface
+          const formattedTransactions = transactionsData.data.map(t => ({
+            id: t.id,
+            amount: t.amount,
+            type: t.transaction_type === 'income' ? 'income' : 'expense',
+            category: t.category_id,
+            subcategory: t.subcategory_id,
+            date: new Date(t.date),
+            settlementDate: t.settlement_date ? new Date(t.settlement_date) : undefined,
+            description: t.description,
+            financialInstitution: t.institution_id,
+            status: t.status || 'completed',
+            card: t.card_id
+          } as Transaction));
+          setTransactions(formattedTransactions);
+        }
+
+        // Load categories
+        const categoriesData = await fetchCategories();
+        if (categoriesData) {
+          const formattedCategories = categoriesData.map(c => ({
+            id: c.id,
+            name: c.name,
+            icon: c.icon,
+            color: c.color,
+            type: c.type === 'income' ? 'income' : 'expense',
+            isActive: c.is_active
+          } as Category));
+          setCategories(formattedCategories);
+        }
+
+        // Load subcategories
+        const subcategoriesData = await fetchSubcategories('all');
+        setSubcategories(subcategoriesData || []);
+
+        // Load budget goals
+        const budgetGoalsData = await fetchBudgets(new Date().getMonth() + 1, new Date().getFullYear());
+        // Transform API data to match BudgetGoal interface
+        if (budgetGoalsData) {
+          const formattedBudgetGoals = budgetGoalsData.map(b => ({
+            id: b.id,
+            category: b.category_id,
+            amount: b.amount,
+            spent: 0, // Will need to calculate this based on transactions
+            period: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly'
+          }));
+          setBudgetGoals(formattedBudgetGoals);
+        }
+
+        // Load financial institutions
+        const institutionsData = await fetchInstitutions();
+        const formattedInstitutions = institutionsData.map(i => ({
+          id: i.id,
+          name: i.name,
+          icon: i.logo,
+          currentBalance: i.current_balance,
+          isActive: i.is_active,
+          type: i.type,
+          archived: false
+        } as FinancialInstitution));
+        setFinancialInstitutions(formattedInstitutions);
+
+        // Load credit cards
+        const cardsData = await fetchCards();
+        const formattedCards = cardsData.map(c => ({
+          id: c.id,
+          name: c.name,
+          limit: c.limit_amount,
+          dueDate: c.due_day,
+          institutionId: c.institution_id,
+          closingDay: c.closing_day,
+          isActive: c.is_active,
+          archived: false
+        } as CreditCard));
+        setCreditCards(formattedCards);
+
+        // Load goals
+        const goalsData = await fetchGoals();
+        // Transform API data to match Goal interface
+        if (goalsData) {
+          const formattedGoals = goalsData.map(g => ({
+            id: g.id,
+            name: g.title,
+            targetAmount: g.target_amount,
+            currentAmount: g.current_amount,
+            targetDate: g.target_date,
+            category: g.category_id,
+            icon: g.categories?.icon || 'target',
+            color: g.categories?.color || '#4F46E5',
+            transactions: [] // Will load these separately if needed
+          }));
+          setGoals(formattedGoals);
+        }
+
+        // Update budget reallocation
+        const totalBudget = budgetGoalsData ? budgetGoalsData.reduce((acc, budget) => acc + budget.amount, 0) : 0;
+        setBudgetReallocation({
+          totalBudget,
+          allocatedAmount: totalBudget,
+          unallocatedAmount: 0
+        });
+
+        // Load financial summary
+        const date = new Date();
+        const summaryData = await getFinancialSummary(date.getMonth() + 1, date.getFullYear());
+        setFinancialSummary({
+          totalIncome: summaryData.totalIncome,
+          totalExpenses: summaryData.totalExpenses,
+          netBalance: summaryData.netBalance,
+          savingsGoal: summaryData.totalIncome * 0.2, // Default savings goal is 20% of income
+          savingsProgress: Math.max(0, summaryData.netBalance)
+        } as FinancialSummary);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast.error('Erro ao carregar dados');
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Update financial summary when current date changes
+  useEffect(() => {
+    const updateSummary = async () => {
+      try {
+        const summaryData = await getFinancialSummary(
+          currentDate.getMonth() + 1,
+          currentDate.getFullYear()
+        );
+        setFinancialSummary({
+          totalIncome: summaryData.totalIncome,
+          totalExpenses: summaryData.totalExpenses,
+          netBalance: summaryData.netBalance,
+          savingsGoal: summaryData.totalIncome * 0.2, // Default savings goal is 20% of income
+          savingsProgress: Math.max(0, summaryData.netBalance)
+        });
+      } catch (error) {
+        console.error('Error updating financial summary:', error);
+      }
+    };
+
+    updateSummary();
+  }, [currentDate]);
 
   const filteredTransactions = useMemo(() => {
     const startDate = startOfMonth(currentDate);
@@ -227,14 +303,45 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setCurrentDate(prevDate => addMonths(prevDate, 1));
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
-    const newTransaction = {
-      ...transaction,
-      id: `t${transactions.length + 1}`,
-    };
-    setTransactions(prev => [...prev, newTransaction]);
-    toast.success('Transação adicionada com sucesso');
-  }, [transactions]);
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+    try {
+      const response = await createTransaction({
+        amount: transaction.amount,
+        transaction_type: transaction.type,
+        category_id: transaction.category,
+        subcategory_id: transaction.subcategory || null,
+        date: format(transaction.date, 'yyyy-MM-dd'),
+        settlement_date: transaction.settlementDate ? format(transaction.settlementDate, 'yyyy-MM-dd') : null,
+        description: transaction.description,
+        institution_id: transaction.financialInstitution || null,
+        card_id: transaction.card || null,
+        status: transaction.status
+      });
+
+      if (response && response.data) {
+        const newTransaction: Transaction = {
+          id: response.data.id,
+          amount: response.data.amount,
+          type: response.data.transaction_type === 'income' ? 'income' : 'expense',
+          category: response.data.category_id,
+          subcategory: response.data.subcategory_id || undefined,
+          date: new Date(response.data.date),
+          settlementDate: response.data.settlement_date ? new Date(response.data.settlement_date) : undefined,
+          description: response.data.description,
+          financialInstitution: response.data.institution_id || undefined,
+          status: response.data.status as 'completed' | 'pending',
+          card: response.data.card_id || undefined
+        };
+
+        setTransactions(prev => [newTransaction, ...prev]);
+        updateSummary();
+        toast.success('Transaction added successfully');
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast.error('Failed to add transaction');
+    }
+  }, []);
 
   const deleteTransaction = useCallback((id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
@@ -536,7 +643,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     navigate(`/transactions${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
-  const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'spent'>) => {
+  const addBudgetGoal = useCallback((budgetGoal: Omit<BudgetGoal, 'id' | 'spent'>) => {
     const newBudgetGoal = {
       ...budgetGoal,
       spent: 0,
@@ -546,7 +653,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     toast.success('Orçamento adicionado com sucesso');
   }, []);
 
-  const updateBudgetGoal = useCallback((category: string, budgetGoal: Partial<Omit<BudgetGoal, 'spent'>>) => {
+  const updateBudgetGoal = useCallback((category: string, budgetGoal: Partial<Omit<BudgetGoal, 'id' | 'spent'>>) => {
     setBudgetGoals(prev => 
       prev.map(bg => 
         bg.category === category 

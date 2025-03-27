@@ -1,4 +1,3 @@
-
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -45,6 +44,9 @@ export interface BudgetGoal {
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
   date?: Date;
 }
+
+// Alias for back-compatibility
+export type Budget = BudgetGoal;
 
 export interface FinancialSummary {
   totalIncome: number;

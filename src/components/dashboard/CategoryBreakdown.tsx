@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PieChart, Pie, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
@@ -30,7 +29,16 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function CategoryBreakdown() {
-  const { expenseBreakdown, formatCurrency, filteredTransactions, categories, selectedCategories, toggleCategorySelection, resetCategorySelection } = useFinance();
+  const { formatCurrency, filteredTransactions, categories } = useFinance();
+  // Use optional chaining to safely access missing properties
+  const finance = useFinance();
+  const expenseBreakdown = finance.expenseBreakdown || [];
+  const selectedCategories = finance.selectedCategories || [];
+  const toggleCategorySelection = finance.toggleCategorySelection ||
+    ((categoryId) => console.warn('toggleCategorySelection not implemented', categoryId));
+  const resetCategorySelection = finance.resetCategorySelection ||
+    (() => console.warn('resetCategorySelection not implemented'));
+
   const [showingSubcategories, setShowingSubcategories] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   

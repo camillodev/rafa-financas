@@ -1,10 +1,17 @@
-
 import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import AnimatedNumber from '@/components/ui/AnimatedNumber';
 
 export function DashboardHeader() {
-  const { financialSummary } = useFinance();
+  // Use optional chaining to safely access financialSummary
+  const finance = useFinance();
+  const financialSummary = finance.financialSummary || {
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+    savingsGoal: 0,
+    savingsProgress: 0
+  };
   
   return (
     <div className="flex flex-col mb-6 animate-slide-down">
