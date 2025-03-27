@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactions, addTransaction as createTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
 import { type Transaction } from '@/types/finance';
@@ -27,7 +26,33 @@ export function useTransactions(filters?: {
     refetch
   } = useQuery({
     queryKey: ['transactions', filters],
-    queryFn: () => fetchTransactions(filters),
+    queryFn: () => {
+      // Convert filters to compatible format for fetchTransactions
+      const apiFilters: any = { ...filters };
+
+      // Convert Date objects to ISO strings
+      if (filters?.startDate) {
+        apiFilters.startDate = filters.startDate.toISOString().split('T')[0];
+      }
+
+      if (filters?.endDate) {
+        apiFilters.endDate = filters.endDate.toISOString().split('T')[0];
+      }
+
+      // Map institution to institution_id if needed
+      if (filters?.institution) {
+        apiFilters.institution_id = filters.institution;
+        delete apiFilters.institution;
+      }
+
+      // Map category to category_id if needed
+      if (filters?.category) {
+        apiFilters.category_id = filters.category;
+        delete apiFilters.category;
+      }
+
+      return fetchTransactions(apiFilters);
+    },
     enabled: true
   });
 

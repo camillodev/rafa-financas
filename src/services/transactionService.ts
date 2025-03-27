@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/finance";
 
@@ -43,7 +42,8 @@ export async function fetchTransactions(filters: FilterOptions = {}) {
         } else if (key === 'limit' || key === 'offset') {
           // Esses filtros são aplicados depois
         } else {
-          query = query.eq(key, String(value));
+          // Using any cast to avoid Type instantiation is excessively deep error
+          (query as any) = (query as any).eq(key, String(value));
         }
       }
     });
