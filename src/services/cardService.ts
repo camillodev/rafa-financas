@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { CreditCard } from '@/types/finance';
 
@@ -127,3 +126,23 @@ export const archiveCreditCard = async (id: string, archived: boolean): Promise<
     throw error;
   }
 };
+
+// Aliases to match imports in useCards.ts
+export const fetchCards = fetchCreditCards;
+export const fetchCardById = async (id: string): Promise<CreditCard | null> => {
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .select('*, institutions(name)')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching credit card:', error);
+    return null;
+  }
+
+  return convertApiResponseToCard(data);
+};
+export const addCard = addCreditCard;
+export const updateCard = updateCreditCard;
+export const deleteCard = deleteCreditCard;

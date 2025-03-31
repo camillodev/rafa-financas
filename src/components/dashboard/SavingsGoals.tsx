@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFinance } from "@/hooks/useFinance";
 import ProgressIndicator from "@/components/ui/atoms/ProgressIndicator";
 
@@ -18,15 +18,15 @@ const SavingsGoals = () => {
 
   return (
     <Card className="h-full">
-      <CardHeader 
-        title="Metas de Economia" 
-        action={
+      <CardHeader>
+        <CardTitle>Metas de Economia</CardTitle>
+        <div className="flex justify-end">
           <Button size="sm" variant="outline" onClick={() => finance.navigateToGoalDetail('new')}>
             <Plus className="h-4 w-4 mr-1" />
             Nova Meta
           </Button>
-        }
-      />
+        </div>
+      </CardHeader>
       <CardContent>
         {sortedGoals.length > 0 ? (
           <div className="space-y-4">

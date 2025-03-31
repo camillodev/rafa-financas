@@ -11,7 +11,7 @@ export interface CardsState {
 
   // CRUD operations
   addCreditCard: (card: Omit<CreditCard, 'id'>) => Promise<void>;
-  updateCreditCard: (card: CreditCard) => Promise<void>;
+  updateCreditCard: (id: string, card: Partial<CreditCard>) => Promise<void>;
   deleteCreditCard: (id: string) => Promise<void>;
-  archiveCreditCard: (id: string) => Promise<void>;
+  archiveCreditCard: (id: string, archived: boolean) => Promise<void>;
 } 

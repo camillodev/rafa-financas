@@ -1,18 +1,9 @@
 import { Transaction, BankTransactionResponse } from '@/types/finance';
-import { PaginatedResponse, TransactionApiParams } from '@/types/transaction';
+import { TransactionApiParams } from '@/types/transaction';
+import { PaginatedResponse } from '@/types/finance';
 
 // Define the base API URL
 const API_URL = 'https://api.example.com';
-
-// Atualizar para incluir os campos necessários no tipo PaginatedResponse
-export interface PaginatedResponse<T> {
-  data: T[];
-  count: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  total: number; // Campo adicional para compatibilidade
-}
 
 // Fetch transactions with optional filtering
 export const fetchTransactions = async (params?: TransactionApiParams): Promise<PaginatedResponse<BankTransactionResponse>> => {

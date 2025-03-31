@@ -222,12 +222,13 @@ export interface BudgetResponse {
   };
 }
 
-export type SplitBillDivisionMethod = 'equal' | 'custom' | 'percentage';
+export type SplitBillDivisionMethod = 'equal' | 'custom' | 'percentage' | 'fixed' | 'weight';
 export type SplitBillStatus = 'active' | 'settled' | 'archived' | 'completed';
 
 export interface SplitBillGroup {
   id: string;
   name: string;
+  participants: SplitBillParticipant[];
   createdAt?: Date;
   updatedAt?: Date;
 }

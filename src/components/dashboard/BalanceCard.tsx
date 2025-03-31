@@ -18,10 +18,10 @@ const BalanceCard = () => {
 
   return (
     <Card className="h-full">
-      <CardHeader 
-        title="Balanço" 
-        description="Resumo do mês atual"
-      />
+      <CardHeader>
+        <CardTitle>Balanço</CardTitle>
+        <CardDescription>Resumo do mês atual</CardDescription>
+      </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Balance */}
