@@ -1,250 +1,193 @@
-
 import { create } from 'zustand';
-import { addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
-import { Transaction, TransactionType } from '@/types/finance';
-import { TransactionFilterType } from '@/types/transaction';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { Transaction, TransactionType, BankTransactionResponse } from '@/types/finance';
+import { PaginatedResponse } from '@/types/transaction';
+import * as transactionService from '@/services/transactionService';
 
 interface TransactionsState {
   transactions: Transaction[];
   filteredTransactions: Transaction[];
   isLoading: boolean;
   error: string | null;
-  filter: TransactionFilterType | null;
-
-  // Actions
+  page: number;
+  pageSize: number;
+  totalTransactions: number;
+  totalPages: number;
+  
   setTransactions: (transactions: Transaction[]) => void;
-  setFilter: (filter: TransactionFilterType | null) => void;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
-  updateTransaction: (transaction: Transaction) => Promise<void>;
+  setFilteredTransactions: (transactions: Transaction[]) => void;
+  
+  fetchTransactions: (params?: any) => Promise<void>;
+  
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<Transaction>;
+  updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  clearFilters: () => void;
-
-  // Calculations
+  
   calculateTotalIncome: (startDate?: Date, endDate?: Date) => number;
   calculateTotalExpenses: (startDate?: Date, endDate?: Date) => number;
   calculateBalance: (startDate?: Date, endDate?: Date) => number;
-  getTransactionsByCategory: (
-    categoryId: string,
-    startDate?: Date,
-    endDate?: Date
-  ) => Transaction[];
-  formatCurrency: (value: number) => string;
+  getTransactionsByCategory: (categoryId: string) => Transaction[];
+  formatCurrency: (amount: number) => string;
+  
+  expenseBreakdown: (startDate?: Date, endDate?: Date) => { category: string; amount: number; color: string; }[];
 }
 
-// Função de utilidade para converter strings para os tipos corretos
-const ensureCorrectTypes = (transaction: any): Transaction => {
-  return {
-    ...transaction,
-    type: transaction.type as TransactionType,
-    status: transaction.status as 'completed' | 'pending',
-    amount: Number(transaction.amount),
-    date: new Date(transaction.date)
-  };
-};
+const initialPageSize = 10;
 
 export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   transactions: [],
   filteredTransactions: [],
   isLoading: false,
   error: null,
-  filter: null,
-
-  setTransactions: (transactions) => {
-    const typedTransactions = transactions.map(ensureCorrectTypes);
-    set({ 
-      transactions: typedTransactions, 
-      filteredTransactions: typedTransactions 
-    });
-  },
-
-  setFilter: (filter) => {
-    set({ filter });
-    
-    if (!filter) {
-      set(state => ({ filteredTransactions: state.transactions }));
-      return;
-    }
-
-    set(state => {
-      let filtered = [...state.transactions];
-
-      // Filter by date range
-      if (filter.startDate) {
-        filtered = filtered.filter(t => new Date(t.date) >= filter.startDate!);
-      }
-      
-      if (filter.endDate) {
-        filtered = filtered.filter(t => new Date(t.date) <= filter.endDate!);
-      }
-
-      // Filter by categories
-      if (filter.categories && filter.categories.length > 0) {
-        filtered = filtered.filter(t => filter.categories!.includes(t.categoryId));
-      }
-
-      // Filter by type
-      if (filter.type) {
-        filtered = filtered.filter(t => t.type === filter.type);
-      }
-
-      // Filter by status
-      if (filter.status) {
-        filtered = filtered.filter(t => t.status === filter.status);
-      }
-
-      // Filter by institution
-      if (filter.institution) {
-        filtered = filtered.filter(t => t.institutionId === filter.institution);
-      }
-      
-      // Filter by card
-      if (filter.card) {
-        filtered = filtered.filter(t => t.card === filter.card);
-      }
-      
-      // Filter by search term
-      if (filter.search) {
-        const searchLower = filter.search.toLowerCase();
-        filtered = filtered.filter(
-          t => 
-            t.description.toLowerCase().includes(searchLower) || 
-            (t.category && t.category.toLowerCase().includes(searchLower))
-        );
-      }
-
-      return { filteredTransactions: filtered };
-    });
-  },
-
-  addTransaction: async (transaction) => {
+  page: 1,
+  pageSize: initialPageSize,
+  totalTransactions: 0,
+  totalPages: 1,
+  
+  setTransactions: (transactions: Transaction[]) => set({ transactions }),
+  setFilteredTransactions: (filteredTransactions: Transaction[]) => set({ filteredTransactions }),
+  
+  fetchTransactions: async (params?: any) => {
+    set({ isLoading: true, error: null });
     try {
-      set({ isLoading: true });
-      const result = await addTransaction(transaction);
-      set(state => ({
-        transactions: [...state.transactions, { ...transaction, id: result.id }],
-        filteredTransactions: [...state.filteredTransactions, { ...transaction, id: result.id }],
-        isLoading: false,
-      }));
-      toast.success('Transação adicionada com sucesso!');
-    } catch (error) {
-      set({ isLoading: false, error: (error as Error).message });
-      toast.error('Erro ao adicionar transação.');
-    }
-  },
-
-  updateTransaction: async (transaction) => {
-    try {
-      set({ isLoading: true });
-      await updateTransaction(transaction);
+      const response: PaginatedResponse<BankTransactionResponse> = await transactionService.fetchTransactions(params);
       
-      set(state => {
-        const updatedTransactions = state.transactions.map(t => 
-          t.id === transaction.id ? transaction : t
-        );
-        
-        // Apply the current filter to the updated transactions
-        let updatedFilteredTransactions = updatedTransactions;
-        if (state.filter) {
-          get().setFilter(state.filter);
-          // We'll use the filtered transactions set by setFilter
-          return { 
-            transactions: updatedTransactions,
-            isLoading: false 
-          };
-        }
-        
-        return {
-          transactions: updatedTransactions,
-          filteredTransactions: updatedFilteredTransactions,
-          isLoading: false,
-        };
-      });
-      
-      toast.success('Transação atualizada com sucesso!');
-    } catch (error) {
-      set({ isLoading: false, error: (error as Error).message });
-      toast.error('Erro ao atualizar transação.');
-    }
-  },
-
-  deleteTransaction: async (id) => {
-    try {
-      set({ isLoading: true });
-      await deleteTransaction(id);
-      
-      set(state => ({
-        transactions: state.transactions.filter(t => t.id !== id),
-        filteredTransactions: state.filteredTransactions.filter(t => t.id !== id),
-        isLoading: false,
+      // Transform BankTransactionResponse to Transaction
+      const transactions: Transaction[] = response.data.map(item => ({
+        id: item.id,
+        amount: item.amount,
+        type: item.type as TransactionType,
+        category: item.categories?.name || 'Uncategorized',
+        date: new Date(item.date),
+        description: item.description,
+        status: item.status as 'completed' | 'pending',
+        institution: item.institutions?.name || 'Unknown',
+        dueDate: item.due_date ? new Date(item.due_date) : undefined,
+        card: item.card_id || undefined,
       }));
       
-      toast.success('Transação excluída com sucesso!');
-    } catch (error) {
-      set({ isLoading: false, error: (error as Error).message });
-      toast.error('Erro ao excluir transação.');
+      set({
+        transactions,
+        filteredTransactions: transactions,
+        totalTransactions: response.total,
+        totalPages: Math.ceil(response.total / initialPageSize),
+        isLoading: false,
+        page: params?.page || 1,
+        pageSize: params?.pageSize || initialPageSize,
+      });
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.message || 'Failed to fetch transactions'
+      });
     }
   },
-
-  clearFilters: () => {
-    set(state => ({
-      filter: null,
-      filteredTransactions: state.transactions,
-    }));
-  },
-
-  calculateTotalIncome: (startDate, endDate) => {
-    const { transactions } = get();
-    
-    return transactions
-      .filter(t => t.type === 'income')
-      .filter(t => {
-        const date = new Date(t.date);
-        if (startDate && date < startDate) return false;
-        if (endDate && date > endDate) return false;
-        return true;
-      })
+  
+  calculateTotalIncome: (startDate?: Date, endDate?: Date) => {
+    return get().transactions
+      .filter(transaction => transaction.type === 'income' &&
+                             (!startDate || transaction.date >= startDate) &&
+                             (!endDate || transaction.date <= endDate))
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   },
-
-  calculateTotalExpenses: (startDate, endDate) => {
-    const { transactions } = get();
-    
-    return transactions
-      .filter(t => t.type === 'expense')
-      .filter(t => {
-        const date = new Date(t.date);
-        if (startDate && date < startDate) return false;
-        if (endDate && date > endDate) return false;
-        return true;
-      })
+  
+  calculateTotalExpenses: (startDate?: Date, endDate?: Date) => {
+    return get().transactions
+      .filter(transaction => transaction.type === 'expense' &&
+                             (!startDate || transaction.date >= startDate) &&
+                             (!endDate || transaction.date <= endDate))
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   },
-
-  calculateBalance: (startDate, endDate) => {
-    const income = get().calculateTotalIncome(startDate, endDate);
-    const expenses = get().calculateTotalExpenses(startDate, endDate);
-    return income - expenses;
+  
+  calculateBalance: (startDate?: Date, endDate?: Date) => {
+    const totalIncome = get().calculateTotalIncome(startDate, endDate);
+    const totalExpenses = get().calculateTotalExpenses(startDate, endDate);
+    return totalIncome - totalExpenses;
   },
-
-  getTransactionsByCategory: (categoryId, startDate, endDate) => {
-    const { transactions } = get();
-    
-    return transactions
-      .filter(t => t.categoryId === categoryId)
-      .filter(t => {
-        const date = new Date(t.date);
-        if (startDate && date < startDate) return false;
-        if (endDate && date > endDate) return false;
-        return true;
-      });
+  
+  getTransactionsByCategory: (categoryId: string) => {
+    return get().transactions.filter(transaction => transaction.category === categoryId);
   },
-
-  formatCurrency: (value) => {
+  
+  formatCurrency: (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(amount);
+  },
+  
+  expenseBreakdown: (startDate?: Date, endDate?: Date) => {
+    const expenses = get().transactions.filter(transaction => transaction.type === 'expense' &&
+                                                              (!startDate || transaction.date >= startDate) &&
+                                                              (!endDate || transaction.date <= endDate));
+    
+    const categoryTotals: { [category: string]: number } = {};
+    expenses.forEach(expense => {
+      categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+    });
+    
+    const breakdown = Object.entries(categoryTotals).map(([category, amount]) => ({
+      category,
+      amount,
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Generate random color
+    }));
+    
+    return breakdown;
+  },
+  
+  addTransaction: async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
+    try {
+      // Converter para o formato esperado pela API
+      const apiTransaction = {
+        amount: transaction.amount,
+        type: transaction.type,
+        category_id: transaction.category,
+        subcategory_id: transaction.subcategory,
+        date: transaction.date,
+        description: transaction.description,
+        status: transaction.status || 'completed', // Valor padrão
+        institution_id: transaction.institution,
+        card_id: transaction.card,
+      };
+      
+      const response = await transactionService.addTransaction(apiTransaction);
+      
+      // Converter de volta para o formato usado na aplicação
+      const newTransaction: Transaction = {
+        id: response.id,
+        amount: response.amount,
+        type: response.type as TransactionType,
+        category: response.category || '',
+        subcategory: response.subcategory || undefined,
+        date: new Date(response.date),
+        description: response.description,
+        status: response.status as 'completed' | 'pending',
+        institution: response.institution || undefined,
+        dueDate: transaction.dueDate,
+        card: transaction.card
+      };
+      
+      return newTransaction;
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      throw error;
+    }
+  },
+  
+  updateTransaction: async (id: string, transaction: Partial<Transaction>): Promise<void> => {
+    try {
+      await transactionService.updateTransaction(id, transaction);
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      throw error;
+    }
+  },
+  
+  deleteTransaction: async (id: string): Promise<void> => {
+    try {
+      await transactionService.deleteTransaction(id);
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
   }
 }));

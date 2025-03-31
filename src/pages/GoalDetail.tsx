@@ -63,6 +63,7 @@ import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { toast } from "sonner";
 import { Goal, GoalModification, GoalTransaction } from '@/types/finance';
+import { GoalModificationWithAmount } from '@/types/goals';
 
 export function GoalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -88,7 +89,7 @@ export function GoalDetail() {
   const [isDeleteTransactionDialogOpen, setIsDeleteTransactionDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<GoalTransaction | null>(null);
   
-  const [modificationHistory, setModificationHistory] = useState<GoalModification[]>([]);
+  const [modificationHistory, setModificationHistory] = useState<GoalModificationWithAmount[]>([]);
   
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -106,7 +107,6 @@ export function GoalDetail() {
     date: format(new Date(), 'yyyy-MM-dd'),
   });
   
-  // Load modification history
   useEffect(() => {
     if (id) {
       getGoalModifications(id).then(data => {
@@ -118,7 +118,6 @@ export function GoalDetail() {
     }
   }, [id, getGoalModifications]);
   
-  // Initialize form data with goal details
   useEffect(() => {
     if (goal) {
       setEditFormData({
@@ -223,7 +222,6 @@ export function GoalDetail() {
     addGoalTransaction(goal.id, transaction);
     setIsTransactionDialogOpen(false);
     
-    // Reset form
     setTransactionFormData({
       amount: 0,
       type: 'add',
@@ -633,7 +631,6 @@ export function GoalDetail() {
         </TabsContent>
       </Tabs>
       
-      {/* Edit Goal Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -738,7 +735,6 @@ export function GoalDetail() {
         </DialogContent>
       </Dialog>
       
-      {/* Add Transaction Dialog */}
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -814,7 +810,6 @@ export function GoalDetail() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Goal Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -834,7 +829,6 @@ export function GoalDetail() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Transaction Dialog */}
       <Dialog open={isDeleteTransactionDialogOpen} onOpenChange={setIsDeleteTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>

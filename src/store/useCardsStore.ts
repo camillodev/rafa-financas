@@ -1,22 +1,8 @@
+
 import { create } from 'zustand';
 import * as cardService from '@/services/cardService';
-import { CreditCard, CreditCardResponse } from '@/types/finance';
+import { CreditCard } from '@/types/finance';
 import { CardsState } from '@/types/cards';
-
-// Convert API card responses to our app's card format
-const convertApiCards = (apiCards: CreditCardResponse[]): CreditCard[] => {
-  return apiCards.map(card => ({
-    id: card.id,
-    name: card.name,
-    type: card.type,
-    institution: card.institutions?.name || '',
-    institutionId: card.institution_id,
-    limit: card.limit,
-    dueDate: card.due_date,
-    closingDate: card.closing_date,
-    isActive: card.is_active
-  }));
-};
 
 export const useCardsStore = create<CardsState>((set) => ({
   cards: [],
@@ -28,10 +14,9 @@ export const useCardsStore = create<CardsState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const cardsData = await cardService.fetchCreditCards();
-      const cards = convertApiCards(cardsData);
       set({
-        cards,
-        creditCards: cards,  // Set both properties
+        cards: cardsData,
+        creditCards: cardsData,
         isLoading: false
       });
     } catch (error) {
@@ -63,13 +48,13 @@ export const useCardsStore = create<CardsState>((set) => ({
     }
   },
   
-  updateCreditCard: async (card: CreditCard) => {
+  updateCreditCard: async (id: string, cardData: Partial<CreditCard>) => {
     set({ isLoading: true, error: null });
     try {
-      await cardService.updateCreditCard(card.id, card);
+      await cardService.updateCreditCard(id, cardData);
       set(state => ({
-        cards: state.cards.map(c => c.id === card.id ? card : c),
-        creditCards: state.creditCards.map(c => c.id === card.id ? card : c),
+        cards: state.cards.map(c => c.id === id ? { ...c, ...cardData } : c),
+        creditCards: state.creditCards.map(c => c.id === id ? { ...c, ...cardData } : c),
         isLoading: false
       }));
     } catch (error) {
@@ -101,13 +86,13 @@ export const useCardsStore = create<CardsState>((set) => ({
     }
   },
   
-  archiveCreditCard: async (id: string) => {
+  archiveCreditCard: async (id: string, archived: boolean) => {
     set({ isLoading: true, error: null });
     try {
-      await cardService.archiveCreditCard(id);
+      await cardService.archiveCreditCard(id, archived);
       set(state => {
         const updatedCards = state.cards.map(c =>
-          c.id === id ? { ...c, isActive: false } : c
+          c.id === id ? { ...c, isActive: !archived, archived } : c
         );
         return {
           cards: updatedCards,

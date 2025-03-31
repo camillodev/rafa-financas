@@ -21,7 +21,7 @@ export function UpcomingBills() {
     return transactions.filter(transaction => 
       transaction.type === 'expense' && 
       transaction.dueDate && 
-      isFuture(new Date(transaction.dueDate))
+      isFuture(new Date(transaction.dueDate as any))
     ).sort((a, b) => {
       // Certifica-se de que as datas são objetos Date
       const dateA = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate as any);
@@ -67,7 +67,7 @@ export function UpcomingBills() {
     if (days === 0) {
       return <Badge variant="destructive">Hoje</Badge>;
     } else if (days === 1) {
-      return <Badge variant="warning">Amanhã</Badge>;
+      return <Badge variant="outline">Amanhã</Badge>; // Mudança de "warning" para "outline"
     } else {
       return <Badge variant="outline">Em {days} dias</Badge>;
     }
@@ -177,7 +177,7 @@ function BillItem({ bill, formatCurrency }: BillItemProps) {
           {days === 0 ? (
             <Badge variant="destructive">Hoje</Badge>
           ) : days === 1 ? (
-            <Badge variant="warning">Amanhã</Badge>
+            <Badge variant="outline">Amanhã</Badge> // Mudança de "warning" para "outline"
           ) : (
             <Badge variant="outline">Em {days} dias</Badge>
           )}

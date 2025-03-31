@@ -7,7 +7,7 @@ import { useInstitutionsStore } from '@/store/useInstitutionsStore';
 import { useCardsStore } from '@/store/useCardsStore';
 import { fetchAllFinanceData } from '@/services/financeService';
 import { TransactionFilterType } from '@/types/transaction';
-import { useFinanceNavigation } from '@/hooks/useFinanceNavigation';
+import { useNavigate } from 'react-router-dom';
 
 export type { TransactionFilterType };
 
@@ -289,6 +289,21 @@ export const useCardOperations = () => {
   };
 };
 
+// Adicionar navigateToTransactions e navegação para goals
+export function useFinanceNavigation() {
+  const navigate = useNavigate();
+  
+  const navigateToTransactions = (period = 'all', categoryId?: string, cardId?: string) => {
+    navigate('/transactions', { state: { period, categoryId, cardId } });
+  };
+  
+  const navigateToGoalDetail = (id: string) => {
+    navigate(`/goals/${id}`);
+  };
+  
+  return { navigateToTransactions, navigateToGoalDetail };
+}
+
 /**
  * Main finance hook that aggregates all specialized hooks
  * This hook exists to maintain backward compatibility with existing components
@@ -336,5 +351,18 @@ export const useFinance = () => {
     
     // Finance Navigation
     ...financeNavigation,
+    
+    // Adicionando as funções de navegação
+    navigateToTransactions: financeNavigation.navigateToTransactions,
+    navigateToGoalDetail: financeNavigation.navigateToGoalDetail,
+    
+    // Adicionando funções de data
+    setCurrentDate: dateNavigation.setCurrentDate,
+    getMonthDateRange: dateNavigation.getMonthDateRange,
+    selectedMonth: dateNavigation.selectedMonth,
+    currentDate: dateNavigation.currentDate,
+    setSelectedMonth: dateNavigation.setSelectedMonth,
+    navigateToPreviousMonth: dateNavigation.navigateToPreviousMonth,
+    navigateToNextMonth: dateNavigation.navigateToNextMonth,
   };
 };

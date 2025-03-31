@@ -1,9 +1,18 @@
-
 import { Transaction, BankTransactionResponse } from '@/types/finance';
 import { PaginatedResponse, TransactionApiParams } from '@/types/transaction';
 
 // Define the base API URL
 const API_URL = 'https://api.example.com';
+
+// Atualizar para incluir os campos necessários no tipo PaginatedResponse
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  total: number; // Campo adicional para compatibilidade
+}
 
 // Fetch transactions with optional filtering
 export const fetchTransactions = async (params?: TransactionApiParams): Promise<PaginatedResponse<BankTransactionResponse>> => {
@@ -86,6 +95,19 @@ export const fetchTransactions = async (params?: TransactionApiParams): Promise<
     }
   ];
 
+  const {
+    page = 1,
+    pageSize = 10,
+    startDate,
+    endDate,
+    category_id,
+    institution_id,
+    card_id,
+    transaction_type,
+    status,
+    search
+  } = params || {};
+
   // Simple filtering based on date range if provided
   let filteredTransactions = [...mockTransactions];
   
@@ -101,12 +123,18 @@ export const fetchTransactions = async (params?: TransactionApiParams): Promise<
     );
   }
 
-  return Promise.resolve({
-    data: filteredTransactions,
-    page: 1,
-    pageSize: 10,
-    total: filteredTransactions.length
-  });
+  const data = filteredTransactions.slice((page - 1) * pageSize, page * pageSize);
+  const count = filteredTransactions.length;
+
+  // Ajustar o retorno para incluir todos os campos necessários
+  return {
+    data: data || [],
+    count: count || 0,
+    page,
+    pageSize,
+    total: count || 0,
+    totalPages: Math.ceil((count || 0) / pageSize)
+  };
 };
 
 // Add a new transaction
