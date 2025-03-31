@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchInstitutions, fetchInstitutionById, addInstitution as createInstitution, updateInstitution, deleteInstitution } from '@/services/institutionService';
+import { fetchInstitutions, addInstitution as createInstitution, updateInstitution, deleteInstitution } from '@/services/institutionService';
 import { type FinancialInstitution } from '@/types/finance';
 import { toast } from 'sonner';
 
@@ -14,7 +14,7 @@ export function useInstitutions(includeInactive = false) {
     refetch
   } = useQuery({
     queryKey: ['institutions', includeInactive],
-    queryFn: () => fetchInstitutions(includeInactive),
+    queryFn: () => fetchInstitutions(),
     enabled: true
   });
 
@@ -31,8 +31,8 @@ export function useInstitutions(includeInactive = false) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, institution }: { id: string; institution: Partial<FinancialInstitution> }) => 
-      updateInstitution(id, institution),
+    mutationFn: (institution: FinancialInstitution) => 
+      updateInstitution(institution),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
       toast.success('Instituição atualizada com sucesso');
@@ -72,7 +72,10 @@ export function useInstitutions(includeInactive = false) {
 export function useInstitution(id: string) {
   return useQuery({
     queryKey: ['institution', id],
-    queryFn: () => fetchInstitutionById(id),
+    queryFn: async () => {
+      const institutions = await fetchInstitutions();
+      return institutions.find(inst => inst.id === id);
+    },
     enabled: !!id
   });
 }

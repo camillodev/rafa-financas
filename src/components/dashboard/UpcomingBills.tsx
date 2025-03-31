@@ -1,104 +1,188 @@
-import React from 'react';
-import { Calendar, AlertCircle, Check, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useFinance } from '@/hooks/useFinance';
+
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from "@/components/ui/badge";
-import { format, isAfter, isBefore, addDays } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useFinance } from '@/hooks/useFinance';
+import { Calendar, AlertCircle } from 'lucide-react';
+import { format, addDays, isAfter, differenceInDays, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Transaction } from '@/types/finance';
+import { cn } from '@/lib/utils';
 
 export function UpcomingBills() {
-  const { filteredTransactions, formatCurrency } = useFinance();
-  const navigate = useNavigate();
+  const { transactions, formatCurrency } = useFinance();
   
-  const today = new Date();
-  const nextWeek = addDays(today, 7);
-  
-  // Filter for bills due in the next 7 days
-  const upcomingBills = filteredTransactions
-    .filter(tx => 
-      tx.type === 'expense' && 
-      tx.category === 'Contas a Pagar' &&
-      tx.dueDate && // Make sure it has a due date
-      !isAfter(new Date(tx.dueDate), nextWeek) &&
-      (!tx.status || tx.status !== 'completed')
-    )
-    .sort((a, b) => 
-      a.dueDate && b.dueDate 
-        ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime() 
-        : 0
-    )
-    .slice(0, 3);
-  
-  const getBillStatus = (bill: typeof filteredTransactions[0]) => {
-    if (bill.status === 'completed') {
-      return { label: 'Pago', color: 'bg-green-500 text-white', icon: <Check size={12} /> };
-    }
+  // Filter upcoming bills (transactions with future dueDate)
+  const upcomingBills = useMemo(() => {
+    const today = new Date();
     
-    if (bill.dueDate && isBefore(new Date(bill.dueDate), today)) {
-      return { label: 'Atrasado', color: 'bg-red-500 text-white', icon: <AlertCircle size={12} /> };
-    }
+    return transactions.filter(transaction => 
+      transaction.type === 'expense' && 
+      transaction.dueDate && 
+      isFuture(new Date(transaction.dueDate))
+    ).sort((a, b) => {
+      // Certifica-se de que as datas são objetos Date
+      const dateA = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate as any);
+      const dateB = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate as any);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [transactions]);
+  
+  // Group bills by "today", "this week", "this month", "later"
+  const groupedBills = useMemo(() => {
+    const today = new Date();
+    const thisWeek = addDays(today, 7);
+    const thisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of current month
     
-    return { label: 'Pendente', color: 'bg-yellow-500 text-white', icon: <Clock size={12} /> };
+    return {
+      today: upcomingBills.filter(bill => {
+        const dueDate = new Date(bill.dueDate as any);
+        return format(dueDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+      }),
+      thisWeek: upcomingBills.filter(bill => {
+        const dueDate = new Date(bill.dueDate as any);
+        return isAfter(dueDate, today) && 
+               !isAfter(dueDate, thisWeek) && 
+               format(dueDate, 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd');
+      }),
+      thisMonth: upcomingBills.filter(bill => {
+        const dueDate = new Date(bill.dueDate as any);
+        return isAfter(dueDate, thisWeek) && !isAfter(dueDate, thisMonth);
+      }),
+      later: upcomingBills.filter(bill => {
+        const dueDate = new Date(bill.dueDate as any);
+        return isAfter(dueDate, thisMonth);
+      })
+    };
+  }, [upcomingBills]);
+
+  // Return date badge to show in the bill item
+  const getDateBadge = (bill: Transaction) => {
+    const today = new Date();
+    const dueDate = new Date(bill.dueDate as any);
+    const days = differenceInDays(dueDate, today);
+    
+    if (days === 0) {
+      return <Badge variant="destructive">Hoje</Badge>;
+    } else if (days === 1) {
+      return <Badge variant="warning">Amanhã</Badge>;
+    } else {
+      return <Badge variant="outline">Em {days} dias</Badge>;
+    }
   };
   
-  const handleNavigateToBills = () => {
-    navigate('/bills');
-  };
+  const getBillEmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <Calendar className="h-10 w-10 text-muted-foreground mb-2" />
+      <p className="text-muted-foreground mb-1">Sem contas próximas</p>
+      <p className="text-xs text-muted-foreground">As contas a vencer aparecerão aqui</p>
+    </div>
+  );
   
   return (
-    <Card className="animate-fade-in">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Contas Próximas</CardTitle>
-        <button 
-          className="text-sm text-primary hover:underline flex items-center gap-1"
-          onClick={handleNavigateToBills}
-        >
-          Ver Todas
-        </button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Contas a Vencer
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        {upcomingBills.length > 0 ? (
-          <div className="space-y-3">
-            {upcomingBills.map((bill) => {
-              const status = getBillStatus(bill);
-              
-              return (
-                <div 
-                  key={bill.id}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer border"
-                  onClick={handleNavigateToBills}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                      <Calendar size={18} />
-                    </div>
-                    <div>
-                      <p className="font-medium line-clamp-1">{bill.description}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className={`text-xs px-2 py-0.5 ${status.color} flex items-center gap-1`}>
-                          {status.icon} {status.label}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {bill.dueDate && format(new Date(bill.dueDate), 'dd MMM', { locale: ptBR })}
-                        </span>
-                      </div>
-                    </div>
+        <ScrollArea className="h-[300px] pr-3">
+          {upcomingBills.length > 0 ? (
+            <div className="space-y-6">
+              {groupedBills.today.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Hoje</h4>
+                  <div className="space-y-2">
+                    {groupedBills.today.map(bill => (
+                      <BillItem key={bill.id} bill={bill} formatCurrency={formatCurrency} />
+                    ))}
                   </div>
-                  <span className="font-semibold text-destructive">{formatCurrency(bill.amount)}</span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <Calendar className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Sem contas próximas</p>
-          </div>
-        )}
+              )}
+              
+              {groupedBills.thisWeek.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Esta semana</h4>
+                  <div className="space-y-2">
+                    {groupedBills.thisWeek.map(bill => (
+                      <BillItem key={bill.id} bill={bill} formatCurrency={formatCurrency} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {groupedBills.thisMonth.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Este mês</h4>
+                  <div className="space-y-2">
+                    {groupedBills.thisMonth.map(bill => (
+                      <BillItem key={bill.id} bill={bill} formatCurrency={formatCurrency} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {groupedBills.later.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Mais tarde</h4>
+                  <div className="space-y-2">
+                    {groupedBills.later.map(bill => (
+                      <BillItem key={bill.id} bill={bill} formatCurrency={formatCurrency} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            getBillEmptyState()
+          )}
+        </ScrollArea>
       </CardContent>
     </Card>
   );
 }
 
-export default UpcomingBills;
+interface BillItemProps {
+  bill: Transaction;
+  formatCurrency: (value: number) => string;
+}
+
+function BillItem({ bill, formatCurrency }: BillItemProps) {
+  // Certifica-se de que dueDate é um objeto Date
+  const dueDate = bill.dueDate instanceof Date ? bill.dueDate : new Date(bill.dueDate as any);
+  const today = new Date();
+  const days = differenceInDays(dueDate, today);
+  
+  // Define class based on urgency
+  const urgencyClass = days <= 1 ? "bg-red-50" : days <= 3 ? "bg-orange-50" : "bg-gray-50";
+  
+  return (
+    <div className={cn("rounded-md p-3 flex justify-between items-center", urgencyClass)}>
+      <div className="flex-1">
+        <div className="font-medium">{bill.description}</div>
+        <div className="text-sm text-muted-foreground flex items-center">
+          <Calendar className="h-3 w-3 mr-1" />
+          {format(dueDate, 'dd/MM/yyyy', { locale: ptBR })}
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-medium text-red-600">
+          {formatCurrency(bill.amount)}
+        </div>
+        <div className="mt-1">
+          {days === 0 ? (
+            <Badge variant="destructive">Hoje</Badge>
+          ) : days === 1 ? (
+            <Badge variant="warning">Amanhã</Badge>
+          ) : (
+            <Badge variant="outline">Em {days} dias</Badge>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

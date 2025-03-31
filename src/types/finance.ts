@@ -1,3 +1,4 @@
+
 export interface Category {
   id: string;
   name: string;
@@ -11,6 +12,7 @@ export interface Subcategory {
   id: string;
   name: string;
   categoryId: string;
+  color?: string; // Adicionado para resolver erros em Categories.tsx
 }
 
 export type TransactionType = 'income' | 'expense';
@@ -32,6 +34,8 @@ export interface Transaction {
   paymentMethod?: string;
   transactionType?: 'Credit Card' | 'Transfer' | 'Debit' | 'Other';
   isActive?: boolean;
+  dueDate?: Date; // Adicionado para UpcomingBills.tsx
+  card?: string; // Adicionado para Reports.tsx
 }
 
 export interface Budget {
@@ -47,6 +51,10 @@ export interface FinancialInstitution {
   icon: string;
   currentBalance: number;
   isActive: boolean;
+  logoUrl?: string; // Adicionado para Institutions.tsx
+  balance?: number; // Adicionado para Institutions.tsx
+  color?: string; // Adicionado para Institutions.tsx
+  archived?: boolean; // Adicionado para Institutions.tsx
 }
 
 export interface CreditCard {
@@ -59,6 +67,14 @@ export interface CreditCard {
   dueDate: number;
   closingDate: number;
   isActive: boolean;
+  // Campos adicionais para Cards.tsx
+  number?: string;
+  brand?: string;
+  color?: string;
+  used?: number;
+  dueDay?: number;
+  closingDay?: number;
+  archived?: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -72,9 +88,12 @@ export interface PaginatedResponse<T> {
 export interface BudgetGoal {
   id: string;
   category: string;
+  categoryId?: string; // Adicionado para Budgets.tsx
   amount: number;
-  period: string;
   spent: number;
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  
+  // Campos opcionais para flexibilidade
   color?: string;
   name?: string;
   icon?: string;
@@ -214,4 +233,67 @@ export interface BudgetResponse {
     icon: string;
     type: string;
   };
+}
+
+// Adicionar tipos para funcionalidade de divisão de contas
+export interface SplitBillParticipant {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface SplitBillParticipantShare {
+  participantId: string;
+  isIncluded: boolean;
+  amount?: number;
+  percentage?: number;
+  weight?: number;
+}
+
+export type SplitBillDivisionMethod = 'equal' | 'fixed' | 'percentage' | 'weight';
+
+export interface SplitBill {
+  id: string;
+  name: string;
+  totalAmount: number;
+  date: Date;
+  category?: string;
+  divisionMethod: SplitBillDivisionMethod;
+  groupId?: string;
+  participants: SplitBillParticipantShare[];
+  status: 'active' | 'settled' | 'archived';
+}
+
+export interface SplitBillGroup {
+  id: string;
+  name: string;
+  participants: SplitBillParticipant[];
+}
+
+export interface SplitBillPayment {
+  id: string;
+  splitBillId: string;
+  participantId: string;
+  amount: number;
+  date: Date;
+  notes?: string;
+}
+
+// Tipos para Goal transactions e modificações
+export interface GoalTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  type: 'add' | 'remove';
+  description: string;
+}
+
+export interface GoalModification {
+  id: string;
+  date: Date;
+  type: 'contribution' | 'withdrawal' | 'target_change' | 'date_change' | 'description_change';
+  description: string;
+  previousValue?: any;
+  newValue?: any;
 }

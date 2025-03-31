@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -165,6 +164,7 @@ export function BudgetCreationForm({
     Object.entries(categoryAllocations).forEach(([category, amount]) => {
       if (amount > 0) {
         budgets.push({
+          id: '', // ID vazio para novas entradas será preenchido pelo backend
           category,
           amount,
           spent: 0,
@@ -176,6 +176,7 @@ export function BudgetCreationForm({
     // Add goals budget
     if (goalsAllocation > 0) {
       budgets.push({
+        id: '', // ID vazio para novas entradas será preenchido pelo backend
         category: 'Metas',
         amount: goalsAllocation,
         spent: 0,

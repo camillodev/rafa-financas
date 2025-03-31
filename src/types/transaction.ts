@@ -1,3 +1,4 @@
+
 import { TransactionType } from './finance';
 
 /**
@@ -51,5 +52,11 @@ export interface TransactionResponse {
   is_active: boolean;
 }
 
-// Add this at the end of the file to export the type
-export type { TransactionFilterType };
+// Adicionando PaginatedResponse para uso em transactionService
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

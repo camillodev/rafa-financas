@@ -7,6 +7,7 @@ import { useInstitutionsStore } from '@/store/useInstitutionsStore';
 import { useCardsStore } from '@/store/useCardsStore';
 import { fetchAllFinanceData } from '@/services/financeService';
 import { TransactionFilterType } from '@/types/transaction';
+import { useFinanceNavigation } from '@/hooks/useFinanceNavigation';
 
 export type { TransactionFilterType };
 
@@ -20,7 +21,8 @@ export const useDateNavigation = () => {
     setSelectedMonth,
     navigateToPreviousMonth,
     navigateToNextMonth,
-    getMonthDateRange
+    getMonthDateRange,
+    setCurrentDate
   } = useFinanceDateStore();
 
   return {
@@ -29,7 +31,8 @@ export const useDateNavigation = () => {
     setSelectedMonth,
     navigateToPreviousMonth,
     navigateToNextMonth,
-    getMonthDateRange
+    getMonthDateRange,
+    setCurrentDate
   };
 };
 
@@ -301,6 +304,7 @@ export const useFinance = () => {
   const goalOperations = useGoalOperations();
   const institutionOperations = useInstitutionOperations();
   const cardOperations = useCardOperations();
+  const financeNavigation = useFinanceNavigation();
 
   return {
     // Date Navigation
@@ -329,6 +333,8 @@ export const useFinance = () => {
 
     // Card Operations
     ...cardOperations,
+    
+    // Finance Navigation
+    ...financeNavigation,
   };
 };
-
