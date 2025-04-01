@@ -56,7 +56,7 @@ export function Transactions() {
     handleClearFilter,
     handleAdvancedFilterChange,
     hasActiveFilters
-  } = useTransactionFilters(monthTransactions);
+  } = useTransactionFilters(monthTransactions, financialInstitutions);
 
   // Calculate if filters are active
   const isAnyFilterActive = hasActiveFilters();

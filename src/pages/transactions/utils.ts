@@ -31,7 +31,7 @@ export function getAdvancedFilterFields(
       options: [
         { value: 'all', label: 'Todas' },
         ...categories.map(cat => ({
-          value: cat.name,
+          value: cat.id,
           label: cat.name,
         })),
       ],
@@ -44,7 +44,7 @@ export function getAdvancedFilterFields(
       options: [
         { value: 'all', label: 'Todas' },
         ...financialInstitutions.map(inst => ({
-          value: inst.name,
+          value: inst.id,
           label: inst.name,
         })),
       ],

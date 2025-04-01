@@ -39,7 +39,10 @@ interface UseTransactionFiltersReturn {
   hasActiveFilters: () => boolean;
 }
 
-export function useTransactionFilters(transactions: TransactionValues[]): UseTransactionFiltersReturn {
+export function useTransactionFilters(
+  transactions: TransactionValues[],
+  financialInstitutions: Array<{ id: string; name: string }> = []
+): UseTransactionFiltersReturn {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<TransactionFilterType>({});
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -95,7 +98,7 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
         return false;
       }
 
-      if (advancedFilters.category && advancedFilters.category !== 'all' && transaction.category !== advancedFilters.category) {
+      if (advancedFilters.category && advancedFilters.category !== 'all' && transaction.categoryId !== advancedFilters.category) {
         return false;
       }
 
@@ -103,8 +106,11 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
         return false;
       }
 
-      if (advancedFilters.institution && advancedFilters.institution !== 'all' && transaction.financialInstitution !== advancedFilters.institution) {
-        return false;
+      if (advancedFilters.institution && advancedFilters.institution !== 'all') {
+        const matchingInstitution = financialInstitutions.find(inst => inst.id === advancedFilters.institution);
+        if (matchingInstitution && transaction.financialInstitution !== matchingInstitution.name) {
+          return false;
+        }
       }
 
       if (advancedFilters.transactionType && advancedFilters.transactionType !== 'all' && transaction.transactionType !== advancedFilters.transactionType) {
@@ -142,7 +148,8 @@ export function useTransactionFilters(transactions: TransactionValues[]): UseTra
     advancedFilters.paymentMethod,
     advancedFilters.status,
     advancedFilters.amountRange.min,
-    advancedFilters.amountRange.max
+    advancedFilters.amountRange.max,
+    financialInstitutions
   ]);
 
   // Set filter type
