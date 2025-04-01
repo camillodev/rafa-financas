@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -153,7 +152,9 @@ export function Cards() {
       dueDay: formData.dueDay,
       color: formData.color,
       institutionId: formData.institutionId,
-      dueDate: formData.dueDate,
+      dueDate: formData.dueDay,
+      isActive: true,
+      type: 'credit'
     };
     
     if (editingCard) {

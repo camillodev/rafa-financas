@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { Transaction, TransactionType, BankTransactionResponse } from '@/types/finance';
-import { PaginatedResponse } from '@/types/transaction';
+import { Transaction, TransactionType, PaginatedResponse, BankTransactionResponse } from '@/types/finance';
 import * as transactionService from '@/services/transactionService';
 
 interface TransactionsState {
@@ -52,24 +51,25 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
       const response: PaginatedResponse<BankTransactionResponse> = await transactionService.fetchTransactions(params);
       
       // Transform BankTransactionResponse to Transaction
-      const transactions: Transaction[] = response.data.map(item => ({
+      const transactions: Transaction[] = (response.data || []).map(item => ({
         id: item.id,
         amount: item.amount,
         type: item.type as TransactionType,
-        category: item.categories?.name || 'Uncategorized',
+        category: item.categories?.name || 'Unknown',
+        categoryId: item.category_id || '',
         date: new Date(item.date),
         description: item.description,
         status: item.status as 'completed' | 'pending',
         institution: item.institutions?.name || 'Unknown',
-        dueDate: item.due_date ? new Date(item.due_date) : undefined,
+        dueDate: item.settlement_date ? new Date(item.settlement_date) : undefined,
         card: item.card_id || undefined,
       }));
       
       set({
         transactions,
         filteredTransactions: transactions,
-        totalTransactions: response.total,
-        totalPages: Math.ceil(response.total / initialPageSize),
+        totalTransactions: response.total || 0,
+        totalPages: Math.ceil((response.total || 0) / initialPageSize),
         isLoading: false,
         page: params?.page || 1,
         pageSize: params?.pageSize || initialPageSize,
@@ -136,20 +136,17 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   
   addTransaction: async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
     try {
-      // Converter para o formato esperado pela API
-      const apiTransaction = {
+      const response = await transactionService.addTransaction({
         amount: transaction.amount,
         type: transaction.type,
-        category_id: transaction.category,
-        subcategory_id: transaction.subcategory,
+        category: transaction.category,
+        categoryId: transaction.categoryId,
         date: transaction.date,
         description: transaction.description,
-        status: transaction.status || 'completed', // Valor padrão
-        institution_id: transaction.institution,
-        card_id: transaction.card,
-      };
-      
-      const response = await transactionService.addTransaction(apiTransaction);
+        status: transaction.status || 'completed',
+        institution: transaction.institution,
+        card: transaction.card,
+      });
       
       // Converter de volta para o formato usado na aplicação
       const newTransaction: Transaction = {
@@ -157,6 +154,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
         amount: response.amount,
         type: response.type as TransactionType,
         category: response.category || '',
+        categoryId: response.categoryId || '',
         subcategory: response.subcategory || undefined,
         date: new Date(response.date),
         description: response.description,

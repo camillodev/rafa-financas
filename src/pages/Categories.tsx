@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -207,11 +206,13 @@ export default function Categories() {
     e.preventDefault();
     
     if (editingCategory) {
-      updateCategory(editingCategory.id, {
+      updateCategory({
+        id: editingCategory.id,
         name: formData.name,
         icon: formData.icon,
         color: formData.color,
         type: formData.type,
+        isActive: editingCategory.isActive
       });
     } else {
       addCategory({
@@ -219,6 +220,7 @@ export default function Categories() {
         icon: formData.icon,
         color: formData.color,
         type: formData.type,
+        isActive: true
       });
     }
     
@@ -229,7 +231,8 @@ export default function Categories() {
     e.preventDefault();
     
     if (editingSubcategory) {
-      updateSubcategory(editingSubcategory.id, {
+      updateSubcategory({
+        id: editingSubcategory.id,
         name: subcategoryFormData.name,
         categoryId: subcategoryFormData.categoryId,
         color: subcategoryFormData.color || undefined,

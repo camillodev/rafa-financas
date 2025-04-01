@@ -1,4 +1,4 @@
-import { Transaction } from '@/types/finance';
+import { Transaction, TransactionType, BankTransactionResponse, PaginatedResponse } from '@/types/finance';
 import { TransactionFilterType, TransactionApiParams } from '@/types/transaction';
 
 export interface TransactionsState {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useFinance } from '@/context/FinanceContext';
@@ -94,11 +93,11 @@ export function Institutions() {
       name: institution.name,
       type: institution.type || 'Bank',
       logoUrl: institution.logoUrl || '',
-      balance: institution.balance || institution.currentBalance,
+      balance: institution.balance || 0,
       color: institution.color || '#4F46E5',
-      icon: institution.icon,
-      currentBalance: institution.currentBalance,
-      isActive: institution.isActive
+      icon: 'building',
+      isActive: institution.isActive,
+      currentBalance: institution.balance || 0  
     });
     setIsDialogOpen(true);
   };
@@ -138,7 +137,10 @@ export function Institutions() {
     };
     
     if (editingInstitution) {
-      updateFinancialInstitution(editingInstitution.id, institutionData);
+      updateFinancialInstitution({
+        id: editingInstitution.id,
+        ...institutionData
+      });
     } else {
       addFinancialInstitution(institutionData);
     }
@@ -154,7 +156,7 @@ export function Institutions() {
   };
   
   const handleArchive = (id: string, archived: boolean) => {
-    archiveFinancialInstitution(id, archived);
+    archiveFinancialInstitution(id);
   };
   
   const handleNavigateToTransactions = (institutionId: string) => {
@@ -226,7 +228,7 @@ export function Institutions() {
         <div className="flex flex-col space-y-1.5">
           <span className="text-sm text-muted-foreground">Saldo Atual</span>
           <span className="text-2xl font-semibold">
-            {formatCurrency(institution.balance || institution.currentBalance || 0)}
+            {formatCurrency(institution.balance || 0)}
           </span>
         </div>
       </CardContent>

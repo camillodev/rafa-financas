@@ -117,14 +117,12 @@ export const fetchTransactions = async (params?: TransactionApiParams): Promise<
   const data = filteredTransactions.slice((page - 1) * pageSize, page * pageSize);
   const count = filteredTransactions.length;
 
-  // Ajustar o retorno para incluir todos os campos necessários
+  // Return object matching PaginatedResponse interface
   return {
     data: data || [],
-    count: count || 0,
     page,
     pageSize,
-    total: count || 0,
-    totalPages: Math.ceil((count || 0) / pageSize)
+    total: count || 0
   };
 };
 
