@@ -1,27 +1,30 @@
+
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useFinance } from '@/hooks/useFinance';
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import StatValue from "@/components/ui/atoms/StatValue";
+import CardHeader from "@/components/ui/atoms/CardHeader";
 
 const BalanceCard = () => {
   const finance = useFinance();
-  const { selectedMonth } = finance;
+  const { getMonthDateRange } = finance;
+  const { startDate, endDate } = getMonthDateRange();
 
-  const totalIncome = finance.calculateTotalIncome(selectedMonth);
-  const totalExpenses = finance.calculateTotalExpenses(selectedMonth);
-  const balance = finance.calculateBalance(selectedMonth);
+  const totalIncome = finance.calculateTotalIncome(startDate, endDate);
+  const totalExpenses = finance.calculateTotalExpenses(startDate, endDate);
+  const balance = finance.calculateBalance(startDate, endDate);
 
   // Format currency for display
   const formatValue = (value: number) => finance.formatCurrency(value);
 
   return (
     <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Balanço</CardTitle>
-        <CardDescription>Resumo do mês atual</CardDescription>
-      </CardHeader>
+      <CardHeader 
+        title="Balanço" 
+        description="Resumo do mês atual"
+      />
       <CardContent>
         <div className="space-y-6">
           {/* Balance */}

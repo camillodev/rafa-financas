@@ -1,12 +1,18 @@
+
+import React from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useFinance } from "@/hooks/useFinance";
+import { useFinanceNavigation } from "@/hooks/useFinanceNavigation";
 import ProgressIndicator from "@/components/ui/atoms/ProgressIndicator";
+import CardHeader from "@/components/ui/atoms/CardHeader";
 
 const SavingsGoals = () => {
   const finance = useFinance();
-  const { goals, formatCurrency } = finance;
+  const { navigateToGoalDetail } = useFinanceNavigation();
+  const { formatCurrency } = finance;
+  const { goals } = finance;
 
   // Sort goals by percentage complete (descending)
   const sortedGoals = [...goals]
@@ -18,15 +24,15 @@ const SavingsGoals = () => {
 
   return (
     <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Metas de Economia</CardTitle>
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={() => finance.navigateToGoalDetail('new')}>
+      <CardHeader
+        title="Metas de Economia"
+        action={
+          <Button size="sm" variant="outline" onClick={() => navigateToGoalDetail('new')}>
             <Plus className="h-4 w-4 mr-1" />
             Nova Meta
           </Button>
-        </div>
-      </CardHeader>
+        }
+      />
       <CardContent>
         {sortedGoals.length > 0 ? (
           <div className="space-y-4">
@@ -71,7 +77,7 @@ const SavingsGoals = () => {
           variant="ghost" 
           size="sm" 
           className="w-full"
-          onClick={() => finance.navigateToGoalDetail('')}
+          onClick={() => navigateToGoalDetail('')}
         >
           Ver Todas as Metas
         </Button>

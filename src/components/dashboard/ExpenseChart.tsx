@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { 
   ResponsiveContainer, 
   ComposedChart, 
@@ -11,17 +12,17 @@ import {
   Legend 
 } from 'recharts';
 import { useFinance } from '@/hooks/useFinance';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { format, getDate, startOfMonth, endOfMonth, eachDayOfInterval, isEqual, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import CardHeader from '@/components/ui/atoms/CardHeader';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   const { formatCurrency } = useFinance();
   
   if (active && payload && payload.length) {
     return (
-      <div className="custom-tooltip bg-background border rounded-lg shadow-md p-3">
+      <div className="custom-tooltip bg-card border rounded-lg shadow-md p-3">
         <p className="font-medium mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={`tooltip-${index}`} className="flex items-center justify-between gap-4">
@@ -81,10 +82,11 @@ export function ExpenseChart() {
   }, [filteredTransactions, currentDate]);
   
   return (
-    <Card className="animate-fade-in">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Receitas vs Despesas</CardTitle>
-      </CardHeader>
+    <Card className="h-full">
+      <CardHeader 
+        title="Receitas vs Despesas"
+        description="Comparativo do mês atual"
+      />
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart 

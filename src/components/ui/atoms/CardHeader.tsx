@@ -9,18 +9,23 @@ interface CardHeaderProps {
   className?: string;
 }
 
-const CardHeader = ({ title, description, action, className }: CardHeaderProps) => {
+export function CardHeader({
+  title,
+  description,
+  action,
+  className,
+}: CardHeaderProps) {
   return (
-    <div className={cn("flex items-center justify-between mb-4", className)}>
-      <div>
-        <h3 className="text-lg font-medium">{title}</h3>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
+    <div className={cn("flex flex-col space-y-1.5", className)}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold leading-none tracking-tight">{title}</h3>
+        {action && <div>{action}</div>}
       </div>
-      {action}
+      {description && (
+        <p className="text-sm text-muted-foreground">{description}</p>
+      )}
     </div>
   );
-};
+}
 
 export default CardHeader;

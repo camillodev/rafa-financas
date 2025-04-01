@@ -7,6 +7,8 @@ import { useFinance } from '@/hooks/useFinance';
 import { useFinanceNavigation } from '@/hooks/useFinanceNavigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import CardHeader from '@/components/ui/atoms/CardHeader';
+import { Card } from '@/components/ui/card';
 
 export function TransactionList() {
   const { transactions, formatCurrency } = useFinance();
@@ -27,51 +29,55 @@ export function TransactionList() {
   const hasTransactions = recentTransactions.length > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Transações Recentes</h3>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigateToTransactions()} 
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Ver todas
-          <ArrowRight className="ml-1 h-4 w-4" />
-        </Button>
-      </div>
+    <Card className="h-full">
+      <CardHeader
+        title="Transações Recentes"
+        action={
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigateToTransactions()} 
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center"
+          >
+            Ver todas
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Button>
+        }
+      />
       
-      {hasTransactions ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recentTransactions.map(transaction => (
-              <TableRow key={transaction.id}>
-                <TableCell className="font-medium">{transaction.description}</TableCell>
-                <TableCell>
-                  {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
-                </TableCell>
-                <TableCell>{transaction.category}</TableCell>
-                <TableCell className={`text-right ${transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
-                  {transaction.type === 'expense' ? '-' : '+'}{formatCurrency(transaction.amount)}
-                </TableCell>
+      <div className="p-6 pt-0">
+        {hasTransactions ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <div className="text-center py-8 border rounded-lg">
-          <p className="text-muted-foreground">Não há transações recentes</p>
-        </div>
-      )}
-    </div>
+            </TableHeader>
+            <TableBody>
+              {recentTransactions.map(transaction => (
+                <TableRow key={transaction.id}>
+                  <TableCell className="font-medium">{transaction.description}</TableCell>
+                  <TableCell>
+                    {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>{transaction.category}</TableCell>
+                  <TableCell className={`text-right ${transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
+                    {transaction.type === 'expense' ? '-' : '+'}{formatCurrency(transaction.amount)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8 border rounded-lg">
+            <p className="text-muted-foreground">Não há transações recentes</p>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

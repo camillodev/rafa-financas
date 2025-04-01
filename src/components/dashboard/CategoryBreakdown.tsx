@@ -1,7 +1,8 @@
 
+import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { useFinance } from "@/hooks/useFinance";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import CardHeader from "@/components/ui/atoms/CardHeader";
 import CategoryBadge from "@/components/ui/atoms/CategoryBadge";
 
@@ -23,11 +24,30 @@ const CategoryBreakdown = () => {
   // Check if we have any data
   const hasData = expenseData.length > 0;
 
+  // Custom tooltip for the pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const percentage = ((data.value / totalExpenses) * 100).toFixed(1);
+      
+      return (
+        <div className="bg-card p-2 border rounded-md shadow-sm">
+          <p className="text-sm font-medium">{data.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(data.value)} ({percentage}%)
+          </p>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <Card className="h-full">
       <CardHeader 
         title="Despesas por Categoria" 
-        description={hasData ? formatCurrency(totalExpenses) : "Sem dados para o período"}
+        description={hasData ? `Total: ${formatCurrency(totalExpenses)}` : "Sem dados para o período"}
       />
       
       <CardContent>
@@ -42,6 +62,7 @@ const CategoryBreakdown = () => {
                     cy="50%"
                     labelLine={false}
                     outerRadius={80}
+                    innerRadius={30}
                     fill="#8884d8"
                     dataKey="value"
                     nameKey="name"
@@ -66,6 +87,7 @@ const CategoryBreakdown = () => {
                       />
                     ))}
                   </Pie>
+                  <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

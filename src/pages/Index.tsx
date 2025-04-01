@@ -11,6 +11,7 @@ import MonthFilter from '@/components/ui/MonthFilter';
 import { useFinance } from '@/hooks/useFinance';
 import { UpcomingBills } from '@/components/dashboard/UpcomingBills';
 import SavingsGoals from '@/components/dashboard/SavingsGoals';
+import TimeSeriesChart from '@/components/dashboard/TimeSeriesChart';
 import {
   Tabs,
   TabsContent,
@@ -23,41 +24,57 @@ const Index = () => {
 
   return (
     <AppLayout>
-      <DashboardHeader />
-      
-      <MonthFilter 
-        currentDate={currentDate}
-        onPreviousMonth={navigateToPreviousMonth}
-        onNextMonth={navigateToNextMonth}
-      />
-      
-      <BalanceCard />
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-3 xl:col-span-2">
-          <Tabs defaultValue="expenses" className="w-full">
-            <TabsList className="mb-4 overflow-x-auto max-w-full flex-nowrap w-auto">
-              <TabsTrigger value="expenses" className="flex-shrink-0">Receitas vs Despesas</TabsTrigger>
-              <TabsTrigger value="categories" className="flex-shrink-0">Despesas por Categoria</TabsTrigger>
-            </TabsList>
-            <TabsContent value="expenses">
-              <ExpenseChart />
-            </TabsContent>
-            <TabsContent value="categories">
-              <CategoryBreakdown />
-            </TabsContent>
-          </Tabs>
+      <div className="space-y-6">
+        <DashboardHeader />
+        
+        <MonthFilter 
+          currentDate={currentDate}
+          onPreviousMonth={navigateToPreviousMonth}
+          onNextMonth={navigateToNextMonth}
+        />
+        
+        {/* First Row - Balance & Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="md:col-span-1 xl:col-span-1">
+            <BalanceCard />
+          </div>
+          <div className="md:col-span-1 xl:col-span-1">
+            <SavingsGoals />
+          </div>
+          <div className="md:col-span-2 xl:col-span-2">
+            <BudgetProgress />
+          </div>
         </div>
-        <div className="lg:col-span-3 xl:col-span-1">
-          <SavingsGoals />
+        
+        {/* Second Row - Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
+          <div className="lg:col-span-4">
+            <Tabs defaultValue="comparison" className="w-full">
+              <TabsList className="mb-4 overflow-x-auto flex w-auto">
+                <TabsTrigger value="comparison">Receitas vs Despesas</TabsTrigger>
+                <TabsTrigger value="timeline">Saldo ao Longo do Tempo</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comparison" className="h-full">
+                <ExpenseChart />
+              </TabsContent>
+              <TabsContent value="timeline" className="h-full">
+                <TimeSeriesChart />
+              </TabsContent>
+            </Tabs>
+          </div>
+          <div className="lg:col-span-3">
+            <CategoryBreakdown />
+          </div>
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        <TransactionList />
-        <div className="grid grid-cols-1 gap-4 lg:gap-6">
-          <BudgetProgress />
-          <UpcomingBills />
+        
+        {/* Third Row - Transactions & Upcoming Bills */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="lg:col-span-1">
+            <TransactionList />
+          </div>
+          <div className="lg:col-span-1">
+            <UpcomingBills />
+          </div>
         </div>
       </div>
     </AppLayout>
